@@ -1,11 +1,8 @@
 package zio.sbt
 
-import sbt.{Def, *}
-
-import scala.annotation.nowarn
 import mdoc.MdocPlugin
-import Keys.*
-import MdocPlugin.autoImport.*
+import mdoc.MdocPlugin.autoImport.*
+import sbt.{Def, *}
 
 import java.nio.file.Paths
 
@@ -13,57 +10,57 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
   object autoImport {
     val projectName = settingKey[String]("project name")
-    val installWebsite = taskKey[Unit]("install website")
-    val installSite = taskKey[Unit]("install website")
-    val runMdoc = taskKey[Unit]("run mdoc")
-    val taskA = taskKey[Unit]("run task A")
-    val taskB = taskKey[Unit]("run task A")
-    val taskC = taskKey[Unit]("run task C")
+    val installWebsiteTheme = taskKey[Unit]("install website theme")
+    val compileDocs = taskKey[Unit]("compile docs")
+    val installWebsite = taskKey[Unit]("install the website for the first time")
+    val docusaurusServer = taskKey[Unit]("run docusaurus")
+    val previewWebsite = taskKey[Unit]("preview website")
   }
 
-  import autoImport._
+  import autoImport.*
 
   override def requires =
     MdocPlugin
 
   override lazy val projectSettings =
     Seq(
-      installWebsite := installWebsiteTask.value,
-      taskA := taskATask.value,
-      taskB := taskBTask.value,
-      runMdoc := runMdocTask.value,
+      installWebsiteTheme := installWebsiteThemeTask.value,
+      compileDocs := compileDocsTask.value,
       mdocOut := Paths.get("website/docs").toFile,
-      mdocVariables := {
-        mdocVariables.value ++
-          Map(
-            "VERSION" -> version.value,
-            "PRERELEASE_VERSION" -> version.value,
-            "SNAPSHOT_VERSION" -> version.value,
-            "API_URL" -> "url"
-          )
-      },
-      taskC := Def.sequential(taskA, taskB,installWebsite, runMdoc).value
+      installWebsite := Def.sequential(installWebsiteTheme, compileDocs).value,
+      docusaurusServer := docusaurusServerTask.value,
+      previewWebsite := previewWebsiteTask.value
     )
 
-  lazy val taskATask =
-    Def.task {
-      println("running task A")
+  lazy val previewWebsiteTask = Def.task {
+    import zio.*
+
+    val task = ZIO.scoped {
+      for {
+        _ <- ZIO.attempt(compileDocsTask.value).debug.forkScoped
+        _ <- ZIO.attempt(docusaurusServerTask.value)
+      } yield ()
     }
 
-  lazy val taskBTask =
-    Def.task {
-      println("running task B")
+    Unsafe.unsafe { implicit unsafe =>
+      Runtime.default.unsafe.run(task).getOrThrowFiberFailure()
     }
+  }
 
-  lazy val runMdocTask = Def
+  lazy val docusaurusServerTask = Def.task {
+    import sys.process.*
+    "yarn --cwd ./website run start" !
+  }
+
+  lazy val compileDocsTask = Def
     .taskDyn {
-      println("hello")
-      mdoc.toTask("")
+      println("Compiling docs using mdoc ...")
+      mdoc.toTask(" --watch --no-livereload")
     }
 
-  lazy val installWebsiteTask =
+  lazy val installWebsiteThemeTask =
     Def.task {
-      import sys.process._
+      import sys.process.*
 
       val task =
         s"""|npx @zio.dev/create-zio-website@latest website \\
@@ -76,7 +73,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
       println(s"executing the following task: \n$task")
 
       task !
-      
+
       "rm website/.git/ -rvf" !
     }
 }
