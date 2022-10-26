@@ -42,7 +42,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
             "API_URL" -> "url"
           )
       },
-      taskC := Def.sequential(taskA, taskB, runMdoc, installWebsite).value
+      taskC := Def.sequential(taskA, taskB,installWebsite, runMdoc).value
     )
 
   lazy val taskATask =
@@ -76,5 +76,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
       println(s"executing the following task: \n$task")
 
       task !
+      
+      "rm website/.git/ -rvf" !
     }
 }
