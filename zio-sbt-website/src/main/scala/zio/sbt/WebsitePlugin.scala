@@ -11,8 +11,7 @@ import scala.language.postfixOps
 object WebsitePlugin extends sbt.AutoPlugin {
 
   object autoImport {
-    val compileDocs = taskKey[Unit]("compile docs")
-    val checkDocs = taskKey[String]("check docs")
+    val compileDocs = inputKey[Unit]("compile docs")
     val installWebsite = taskKey[Unit]("install the website for the first time")
     val previewWebsite = taskKey[Unit]("preview website")
   }
@@ -23,8 +22,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
   override lazy val projectSettings =
     Seq(
-      compileDocs := compileDocsTask.value,
-      checkDocs := checkDocsTask.value,
+      compileDocs := compileDocsTask.evaluated,
       mdocOut := Paths.get("website/docs").toFile,
       installWebsite := installWebsiteTask.value,
       previewWebsite := previewWebsiteTask.value
@@ -36,7 +34,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
       val task =
         for {
-          _ <- ZIO.attempt(compileDocsTask.value).forkDaemon
+          _ <- ZIO.attempt(compileDocsTask.toTask(" --watch").value).forkDaemon
           _ <- ZIO.attempt(docusaurusServerTask.value)
         } yield ()
 
@@ -44,25 +42,26 @@ object WebsitePlugin extends sbt.AutoPlugin {
         Runtime.default.unsafe.run(task).getOrThrowFiberFailure()
       }
     }
-    .dependsOn(mdoc.toTask(""))
+    .dependsOn(compileDocsTask.toTask(""))
 
   lazy val docusaurusServerTask = Def.task {
     import sys.process.*
     "yarn --cwd ./website run start" !
   }
 
-  lazy val compileDocsTask = Def
-    .taskDyn {
+  lazy val compileDocsTask =
+    Def.inputTaskDyn {
+      val parsed =
+        sbt.complete.DefaultParsers.spaceDelimited("<arg>").parsed
+      val watch =
+        parsed.headOption.getOrElse("").equalsIgnoreCase("--watch")
       val logger = streams.value.log
       logger.info("Compiling docs using mdoc ...")
-      mdoc.toTask(" --watch --no-livereload")
-    }
 
-  lazy val checkDocsTask = Def
-    .taskDyn {
-      val logger = streams.value.log
-      logger.info("Compiling docs using mdoc ...")
-      mdoc.toTask("")
+      if (watch)
+        mdoc.toTask(" --watch --no-livereload")
+      else
+        mdoc.toTask("")
     }
 
   lazy val installWebsiteTask =
