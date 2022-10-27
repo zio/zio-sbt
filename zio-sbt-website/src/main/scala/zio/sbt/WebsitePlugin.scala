@@ -49,7 +49,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
   lazy val compileDocsTask = Def
     .taskDyn {
-      println("Compiling docs using mdoc ...")
+      streams.value.log.info("Compiling docs using mdoc ...")
       mdoc.toTask(" --watch --no-livereload")
     }
 
@@ -65,7 +65,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
             |  --license="Apache-2.0" \\
             |  --architecture=Linux""".stripMargin
 
-      println(s"installing website for ${normalizedName.value} ... \n$task")
+      streams.value.log.info(s"installing website for ${normalizedName.value} ... \n$task")
       task !
 
       s"mv ${normalizedName.value} website" !
