@@ -14,6 +14,8 @@ object WebsitePlugin extends sbt.AutoPlugin {
     val compileDocs = inputKey[Unit]("compile docs")
     val installWebsite = taskKey[Unit]("install the website for the first time")
     val previewWebsite = taskKey[Unit]("preview website")
+    val publishWebsite = inputKey[Unit]("publish website to the npm registry")
+    val npmToken = settingKey[String]("npm token")
   }
 
   import autoImport.*
@@ -25,7 +27,8 @@ object WebsitePlugin extends sbt.AutoPlugin {
       compileDocs := compileDocsTask.evaluated,
       mdocOut := Paths.get("website/docs").toFile,
       installWebsite := installWebsiteTask.value,
-      previewWebsite := previewWebsiteTask.value
+      previewWebsite := previewWebsiteTask.value,
+      publishWebsite := publishWebsiteTask.value
     )
 
   lazy val previewWebsiteTask = Def
@@ -84,4 +87,20 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
       "rm website/.git/ -rvf" !
     }
+
+  lazy val publishWebsiteTask =
+    Def.task {
+      import sys.process.*
+
+      val version =
+        ("git tag --sort=committerdate" !!).split("\n").last
+        .replace("docs-", "")
+
+      Process(s"npm version $version", new File("website/docs/")) !
+
+      "npm config set access public" !
+
+      Process("npm publish", new File("website/docs/")) !
+    }
+
 }
