@@ -110,16 +110,15 @@ object WebsitePlugin extends sbt.AutoPlugin {
       
     }
 
-  lazy val generateGithubWorkflowTask =
+  lazy val generateGithubWorkflowTask = {
     Def.task {
       val template = {
-        """
+       """
          |name: docs
          |
          |on:
-         |  push:
-         |    branches: [main]
-         |    tags: ["*"]
+         |  - release
+         |  - workflow_dispatch
          |
          |jobs:
          |  publish:
@@ -153,5 +152,6 @@ object WebsitePlugin extends sbt.AutoPlugin {
       
       IO.write(new File(".github/workflows/docs.yml"), template)
     }
+  }
 
 }
