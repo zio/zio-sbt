@@ -33,6 +33,9 @@ object WebsitePlugin extends sbt.AutoPlugin {
       generateGithubWorkflow := generateGithubWorkflowTask.value
     )
 
+  private def exit(exitCode: Int) =
+    if (exitCode != 0) sys.exit(exitCode)
+
   lazy val previewWebsiteTask = Def
     .task {
       import zio.*
@@ -51,7 +54,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
   lazy val docusaurusServerTask = Def.task {
     import sys.process.*
-    "yarn --cwd ./website run start" !
+    exit("yarn --cwd ./website run start" !)
   }
 
   lazy val compileDocsTask =
@@ -83,26 +86,28 @@ object WebsitePlugin extends sbt.AutoPlugin {
             |  --architecture=Linux""".stripMargin
 
       logger.info(s"installing website for ${normalizedName.value} ... \n$task")
-      task !
+      exit(task !)
 
-      s"mv ${normalizedName.value} website" !
+      exit(s"mv ${normalizedName.value} website" !)
 
-      "rm website/.git/ -rvf" !
+      exit("rm website/.git/ -rvf" !)
     }
 
   lazy val publishWebsiteTask =
     Def.task {
       import sys.process.*
 
+        
       val version =
         ("git tag --sort=committerdate" !!).split("\n").last
         .replace("docs-", "")
 
-      Process(s"npm version $version", new File("website/docs/")) !
+      exit(Process(s"npm version $version", new File("website/docs/")) !)
 
-      "npm config set access public" !
+      exit("npm config set access public" !)
 
-      Process("npm publish", new File("website/docs/")) ! ProcessLogger(stdout append _, stderr append _)
+      exit(Process("npm publish", new File("website/docs/")).!)
+      
     }
 
   lazy val generateGithubWorkflowTask =
