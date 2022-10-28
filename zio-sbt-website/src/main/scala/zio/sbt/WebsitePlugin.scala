@@ -114,7 +114,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
     Def.task {
       val template = {
         """
-         |name: Website
+         |name: docs
          |
          |on:
          |  push:
@@ -129,14 +129,21 @@ object WebsitePlugin extends sbt.AutoPlugin {
          |      - uses: actions/checkout@v3.1.0
          |        with:
          |          fetch-depth: 0
-         |      - run: git tag --sort=committerdate | tail -1
+         |      - name: Print Latest Tag For Debugging Purposes
+         |        run: git tag --sort=committerdate | tail -1
          |      - uses: olafurpg/setup-scala@v13
-         |      - run: sbt compileDocs
+         |      - name: Compile zio-sbt
+         |        run: |
+         |          git clone https://github.com/khajavi/zio-sbt.git
+         |          cd zio-sbt
+         |          sbt website/publishLocal
+         |      - name: Compile Project's Documentation
+         |        run: sbt compileDocs
          |      - uses: actions/setup-node@v3
          |        with:
          |          node-version: '16.x'
          |          registry-url: 'https://registry.npmjs.org'
-         |      - name: npm publish  
+         |      - name: Publishing Docs to NPM Registry
          |        run: sbt publishWebsite
          |        env:
          |          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -144,7 +151,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
          |""".stripMargin
       }
       
-      IO.write(new File(".github/workflows/mdoc.yml"), template)
+      IO.write(new File(".github/workflows/docs.yml"), template)
     }
 
 }
