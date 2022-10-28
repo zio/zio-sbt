@@ -111,45 +111,42 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
   lazy val generateGithubWorkflowTask = {
     Def.task {
-      val template = {
-        """
-         |name: docs
-         |
-         |on:
-         |  - release
-         |  - workflow_dispatch
-         |
-         |jobs:
-         |  publish:
-         |    runs-on: ubuntu-20.04
-         |    timeout-minutes: 30
-         |    steps:
-         |      - uses: actions/checkout@v3.1.0
-         |        with:
-         |          fetch-depth: 0
-         |      - name: Print Latest Tag For Debugging Purposes
-         |        run: git tag --sort=committerdate | tail -1
-         |      - uses: olafurpg/setup-scala@v13
-         |      - name: Compile zio-sbt
-         |        run: |
-         |          git clone https://github.com/khajavi/zio-sbt.git
-         |          cd zio-sbt
-         |          sbt website/publishLocal
-         |      - name: Compile Project's Documentation
-         |        run: sbt compileDocs
-         |      - uses: actions/setup-node@v3
-         |        with:
-         |          node-version: '16.x'
-         |          registry-url: 'https://registry.npmjs.org'
-         |      - name: Publishing Docs to NPM Registry
-         |        run: sbt publishToNpm
-         |        env:
-         |          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-         |
-         |""".stripMargin
-      }
+      val template =
+        """|name: Documentation
+           |
+           |on:
+           |  - release
+           |  - workflow_dispatch
+           |
+           |jobs:
+           |  publish-docs:
+           |    runs-on: ubuntu-20.04
+           |    timeout-minutes: 30
+           |    steps:
+           |      - uses: actions/checkout@v3.1.0
+           |        with:
+           |          fetch-depth: 0
+           |      - name: Print Latest Tag For Debugging Purposes
+           |        run: git tag --sort=committerdate | tail -1
+           |      - uses: olafurpg/setup-scala@v13
+           |      - name: Compile zio-sbt
+           |        run: |
+           |          git clone https://github.com/khajavi/zio-sbt.git
+           |          cd zio-sbt
+           |          sbt website/publishLocal
+           |      - name: Compile Project's Documentation
+           |        run: sbt compileDocs
+           |      - uses: actions/setup-node@v3
+           |        with:
+           |          node-version: '16.x'
+           |          registry-url: 'https://registry.npmjs.org'
+           |      - name: Publishing Docs to NPM Registry
+           |        run: sbt publishToNpm
+           |        env:
+           |          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+           |""".stripMargin
 
-      IO.write(new File(".github/workflows/docs.yml"), template)
+      IO.write(new File(".github/workflows/documentation.yml"), template)
     }
   }
 
