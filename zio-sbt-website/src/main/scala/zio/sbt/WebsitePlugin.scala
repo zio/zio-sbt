@@ -14,7 +14,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
     val compileDocs = inputKey[Unit]("compile docs")
     val installWebsite = taskKey[Unit]("install the website for the first time")
     val previewWebsite = taskKey[Unit]("preview website")
-    val publishWebsite = inputKey[Unit]("publish website to the npm registry")
+    val publishToNpm = inputKey[Unit]("publish website to the npm registry")
     val npmToken = settingKey[String]("npm token")
     val generateGithubWorkflow = taskKey[Unit]("generate github workflow")
   }
@@ -29,7 +29,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
       mdocOut := Paths.get("website/docs").toFile,
       installWebsite := installWebsiteTask.value,
       previewWebsite := previewWebsiteTask.value,
-      publishWebsite := publishWebsiteTask.value,
+      publishToNpm := publishWebsiteTask.value,
       generateGithubWorkflow := generateGithubWorkflowTask.value
     )
 
@@ -97,7 +97,6 @@ object WebsitePlugin extends sbt.AutoPlugin {
     Def.task {
       import sys.process.*
 
-        
       val version =
         ("git tag --sort=committerdate" !!).split("\n").last
         .replace("docs-", "")
@@ -107,13 +106,13 @@ object WebsitePlugin extends sbt.AutoPlugin {
       exit("npm config set access public" !)
 
       exit(Process("npm publish", new File("website/docs/")).!)
-      
+
     }
 
   lazy val generateGithubWorkflowTask = {
     Def.task {
       val template = {
-       """
+        """
          |name: docs
          |
          |on:
@@ -143,13 +142,13 @@ object WebsitePlugin extends sbt.AutoPlugin {
          |          node-version: '16.x'
          |          registry-url: 'https://registry.npmjs.org'
          |      - name: Publishing Docs to NPM Registry
-         |        run: sbt publishWebsite
+         |        run: sbt publishToNpm
          |        env:
          |          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
          |
          |""".stripMargin
       }
-      
+
       IO.write(new File(".github/workflows/docs.yml"), template)
     }
   }
