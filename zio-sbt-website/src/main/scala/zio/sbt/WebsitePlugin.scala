@@ -16,6 +16,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
     val previewWebsite = taskKey[Unit]("preview website")
     val publishWebsite = inputKey[Unit]("publish website to the npm registry")
     val npmToken = settingKey[String]("npm token")
+    val generateGithubWorkflow = taskKey[Unit]("generate github workflow")
   }
 
   import autoImport.*
@@ -28,7 +29,8 @@ object WebsitePlugin extends sbt.AutoPlugin {
       mdocOut := Paths.get("website/docs").toFile,
       installWebsite := installWebsiteTask.value,
       previewWebsite := previewWebsiteTask.value,
-      publishWebsite := publishWebsiteTask.value
+      publishWebsite := publishWebsiteTask.value,
+      generateGithubWorkflow := generateGithubWorkflowTask.value
     )
 
   lazy val previewWebsiteTask = Def
@@ -101,6 +103,43 @@ object WebsitePlugin extends sbt.AutoPlugin {
       "npm config set access public" !
 
       Process("npm publish", new File("website/docs/")) ! ProcessLogger(stdout append _, stderr append _)
+    }
+
+  lazy val generateGithubWorkflowTask =
+    Def.task {
+      val template = {
+        """
+         |name: Website
+         |
+         |on:
+         |  push:
+         |    branches: [main]
+         |    tags: ["*"]
+         |
+         |jobs:
+         |  publish:
+         |    runs-on: ubuntu-20.04
+         |    timeout-minutes: 30
+         |    steps:
+         |      - uses: actions/checkout@v3.1.0
+         |        with:
+         |          fetch-depth: 0
+         |      - run: git tag --sort=committerdate | tail -1
+         |      - uses: olafurpg/setup-scala@v13
+         |      - run: sbt compileDocs
+         |      - uses: actions/setup-node@v3
+         |        with:
+         |          node-version: '16.x'
+         |          registry-url: 'https://registry.npmjs.org'
+         |      - name: npm publish  
+         |        run: sbt publishWebsite
+         |        env:
+         |          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+         |
+         |""".stripMargin
+      }
+      
+      IO.write(new File(".github/workflows/mdoc.yml"), template)
     }
 
 }
