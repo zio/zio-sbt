@@ -6,7 +6,7 @@ lazy val root = (project in file("."))
   .enablePlugins(SbtPlugin)
   .settings(
     name := "zio-sbt"
-  )
+  ).aggregate(website)
   
 lazy val website =
   project
