@@ -100,7 +100,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
       "npm config set access public" !
 
-      Process("npm publish", new File("website/docs/")) !
+      Process("npm publish", new File("website/docs/")) ! ProcessLogger(stdout append _, stderr append _)
     }
 
 }
