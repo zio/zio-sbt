@@ -48,9 +48,9 @@ lazy val root = project
     publish / skip := true
   )
   .aggregate(
-    zioSbtWebsiteJS, zioSbtWebsiteJVM
+    zioSbtWebsiteJS,
+    zioSbtWebsiteJVM
   )
-
 
 lazy val zioSbtWebsiteJS = zioSbtWebsite.js
   .settings(scalaJSUseMainModuleInitializer := true)
