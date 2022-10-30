@@ -1,5 +1,5 @@
 import sbtcrossproject.CrossPlugin.autoImport.crossProject
-import BuildHelper.{ crossProjectSettings, _ }
+import BuildHelper.{crossProjectSettings, _}
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport.scalaJSUseMainModuleInitializer
 import BuildHelper._
 
@@ -22,7 +22,11 @@ inThisBuild(
         "scm:git:git@github.com:zio/zio-sbt.git"
       )
     ),
-    licenses := Seq("Apache-2.0" -> url(s"${scmInfo.value.map(_.browseUrl).get}/blob/v${version.value}/LICENSE")),
+    licenses := Seq(
+      "Apache-2.0" -> url(
+        s"${scmInfo.value.map(_.browseUrl).get}/blob/v${version.value}/LICENSE"
+      )
+    ),
     pgpPassphrase := sys.env.get("PGP_PASSWORD").map(_.toArray),
     pgpPublicRing := file("/tmp/public.asc"),
     pgpSecretRing := file("/tmp/secret.asc")
@@ -40,12 +44,18 @@ addCommandAlias("fixCheck", "scalafixAll --check")
 lazy val root = project
   .in(file("."))
   .settings(
-    name := "zio-schema",
+    name := "zio-sbt",
     publish / skip := true
   )
   .aggregate(
-    zioSbtWebsite
+    zioSbtWebsiteJS, zioSbtWebsiteJVM
   )
+
+
+lazy val zioSbtWebsiteJS = zioSbtWebsite.js
+  .settings(scalaJSUseMainModuleInitializer := true)
+
+lazy val zioSbtWebsiteJVM = zioSbtWebsite.jvm
 
 lazy val tests = crossProject(JSPlatform, JVMPlatform)
   .in(file("tests"))
@@ -53,25 +63,27 @@ lazy val tests = crossProject(JSPlatform, JVMPlatform)
   .settings(publish / skip := true)
   .settings(crossProjectSettings)
   .settings(buildInfoSettings("zio.sbt"))
-  
+
 lazy val zioSbtWebsite =
-  project
+  crossProject(JSPlatform, JVMPlatform)
     .in(file("zio-sbt-website"))
     .settings(stdSettings("zio-schema"))
     .settings(crossProjectSettings)
     .settings(buildInfoSettings("zio.sbt"))
     .enablePlugins(SbtPlugin)
-    
+
 lazy val docs = project
   .in(file("zio-sbt-docs"))
   .settings(
     publish / skip := true,
     mdocVariables := Map(
       "SNAPSHOT_VERSION" -> version.value,
-      "RELEASE_VERSION"  -> previousStableVersion.value.getOrElse("can't find release"),
-      "ORG"              -> organization.value,
-      "NAME"             -> (root / name).value,
-      "CROSS_VERSIONS"   -> (root / crossScalaVersions).value.mkString(", ")
+      "RELEASE_VERSION" -> previousStableVersion.value.getOrElse(
+        "can't find release"
+      ),
+      "ORG" -> organization.value,
+      "NAME" -> (root / name).value,
+      "CROSS_VERSIONS" -> (root / crossScalaVersions).value.mkString(", ")
     ),
     moduleName := "zio-sbt-docs",
     scalacOptions -= "-Yno-imports",
@@ -82,8 +94,12 @@ lazy val docs = project
     ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(root),
     ScalaUnidoc / unidoc / target := (LocalRootProject / baseDirectory).value / "website" / "static" / "api",
     cleanFiles += (ScalaUnidoc / unidoc / target).value,
-    docusaurusCreateSite := docusaurusCreateSite.dependsOn(Compile / unidoc).value,
-    docusaurusPublishGhpages := docusaurusPublishGhpages.dependsOn(Compile / unidoc).value
+    docusaurusCreateSite := docusaurusCreateSite
+      .dependsOn(Compile / unidoc)
+      .value,
+    docusaurusPublishGhpages := docusaurusPublishGhpages
+      .dependsOn(Compile / unidoc)
+      .value
   )
   .dependsOn(root)
   .enablePlugins(MdocPlugin, DocusaurusPlugin, ScalaUnidocPlugin)

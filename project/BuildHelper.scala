@@ -1,9 +1,8 @@
+import sbt.Keys._
 import sbt._
-import Keys._
-
-import sbtcrossproject.CrossPlugin.autoImport.crossProjectPlatform
+import sbtbuildinfo.BuildInfoKeys._
 import sbtbuildinfo._
-import BuildInfoKeys._
+import sbtcrossproject.CrossPlugin.autoImport.crossProjectPlatform
 import scalafix.sbt.ScalafixPlugin.autoImport._
 
 object BuildHelper {
@@ -15,38 +14,25 @@ object BuildHelper {
     import scala.jdk.CollectionConverters._
 
     val doc = new Load(LoadSettings.builder().build())
-      .loadFromReader(
-        scala.io.Source.fromFile(".github/workflows/ci.yml").bufferedReader()
-      )
-    val yaml = doc.asInstanceOf[JMap[
-      String,
-      JMap[String, JMap[String, JMap[String, JMap[String, JList[String]]]]]
-    ]]
-    val list = yaml
-      .get("jobs")
-      .get("build")
-      .get("strategy")
-      .get("matrix")
-      .get("scala")
-      .asScala
+      .loadFromReader(scala.io.Source.fromFile(".github/workflows/ci.yml").bufferedReader())
+    val yaml = doc.asInstanceOf[JMap[String, JMap[String, JMap[String, JMap[String, JMap[String, JList[String]]]]]]]
+    val list = yaml.get("jobs").get("build").get("strategy").get("matrix").get("scala").asScala
     list.map(v => (v.split('.').take(2).mkString("."), v)).toMap
   }
 
   val Scala212: String = versions("2.12")
   val Scala213: String = versions("2.13")
-  val Scala3: String = versions(
-    "3.1"
-  ) //versions.getOrElse("3.0", versions("3.1"))
+  val Scala3: String   = versions("3.1") //versions.getOrElse("3.0", versions("3.1"))
 
-  val zioVersion = "2.0.1"
-  val zioJsonVersion = "0.3.0-RC9"
+  val zioVersion        = "2.0.1"
+  val zioJsonVersion    = "0.3.0-RC9"
   val zioPreludeVersion = "1.0.0-RC15"
-  val zioOpticsVersion = "0.2.0"
-  val silencerVersion = "1.7.11"
-  val avroVersion = "1.11.0"
+  val zioOpticsVersion  = "0.2.0"
+  val silencerVersion   = "1.7.11"
+  val avroVersion       = "1.11.0"
 
   private val testDeps = Seq(
-    "dev.zio" %% "zio-test" % zioVersion % "test",
+    "dev.zio" %% "zio-test"     % zioVersion % "test",
     "dev.zio" %% "zio-test-sbt" % zioVersion % "test"
   )
 
@@ -56,7 +42,7 @@ object BuildHelper {
       if (scalaVersion.value == Scala3) Seq()
       else
         Seq(
-          "org.scala-lang" % "scala-reflect" % scalaVersion.value % "provided",
+          "org.scala-lang" % "scala-reflect"  % scalaVersion.value % "provided",
           "org.scala-lang" % "scala-compiler" % scalaVersion.value % "provided"
         )
     }
@@ -70,21 +56,14 @@ object BuildHelper {
         )
       else
         Seq(
-          ("com.github.ghik" % "silencer-lib" % silencerVersion % Provided)
-            .cross(CrossVersion.full),
-          compilerPlugin(
-            ("com.github.ghik" % "silencer-plugin" % silencerVersion).cross(
-              CrossVersion.full
-            )
-          )
+          ("com.github.ghik" % "silencer-lib" % silencerVersion % Provided).cross(CrossVersion.full),
+          compilerPlugin(("com.github.ghik" % "silencer-plugin" % silencerVersion).cross(CrossVersion.full))
         )
     }
     CrossVersion.partialVersion(scalaVersion) match {
       case Some((2, x)) if x <= 12 =>
         stdCompileOnlyDeps ++ Seq(
-          compilerPlugin(
-            ("org.scalamacros" % "paradise" % "2.1.1").cross(CrossVersion.full)
-          )
+          compilerPlugin(("org.scalamacros" % "paradise" % "2.1.1").cross(CrossVersion.full))
         )
       case _ => stdCompileOnlyDeps
     }
@@ -165,25 +144,15 @@ object BuildHelper {
     }
   )
 
-  def platformSpecificSources(
-      platform: String,
-      conf: String,
-      baseDirectory: File
-  )(versions: String*): Seq[File] =
+  def platformSpecificSources(platform: String, conf: String, baseDirectory: File)(versions: String*): Seq[File] =
     for {
       platform <- List("shared", platform)
-      version <- "scala" :: versions.toList.map("scala-" + _)
-      result =
-        baseDirectory.getParentFile / platform.toLowerCase / "src" / conf / version
+      version  <- "scala" :: versions.toList.map("scala-" + _)
+      result   = baseDirectory.getParentFile / platform.toLowerCase / "src" / conf / version
       if result.exists
     } yield result
 
-  def crossPlatformSources(
-      scalaVer: String,
-      platform: String,
-      conf: String,
-      baseDir: File
-  ): Seq[sbt.File] = {
+  def crossPlatformSources(scalaVer: String, platform: String, conf: String, baseDir: File): Seq[sbt.File] = {
     val versions = CrossVersion.partialVersion(scalaVer) match {
       case Some((2, 11)) =>
         List("2.11", "2.11+", "2.11-2.12", "2.x")
@@ -217,13 +186,7 @@ object BuildHelper {
   )
 
   def buildInfoSettings(packageName: String) = Seq(
-    buildInfoKeys := Seq[BuildInfoKey](
-      name,
-      version,
-      scalaVersion,
-      sbtVersion,
-      isSnapshot
-    ),
+    buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion, isSnapshot),
     buildInfoPackage := packageName
   )
 
@@ -232,20 +195,15 @@ object BuildHelper {
       name := s"$prjName",
       crossScalaVersions := Seq(Scala213, Scala212, Scala3),
       ThisBuild / scalaVersion := Scala213, //crossScalaVersions.value.head, //Scala3,
-      scalacOptions := compilerOptions(
-        scalaVersion.value,
-        optimize = !isSnapshot.value
-      ),
+      scalacOptions := compilerOptions(scalaVersion.value, optimize = !isSnapshot.value),
       libraryDependencies ++= compileOnlyDeps(scalaVersion.value) ++ testDeps,
       ThisBuild / semanticdbEnabled := scalaVersion.value != Scala3, // enable SemanticDB,
       ThisBuild / semanticdbOptions += "-P:semanticdb:synthetics:on",
       ThisBuild / semanticdbVersion := scalafixSemanticdb.revision,
-      ThisBuild / scalafixScalaBinaryVersion := CrossVersion.binaryScalaVersion(
-        scalaVersion.value
-      ),
+      ThisBuild / scalafixScalaBinaryVersion := CrossVersion.binaryScalaVersion(scalaVersion.value),
       ThisBuild / scalafixDependencies ++= List(
         "com.github.liancheng" %% "organize-imports" % "0.6.0",
-        "com.github.vovapolu" %% "scaluzzi" % "0.1.21"
+        "com.github.vovapolu"  %% "scaluzzi"         % "0.1.21"
       ),
       Test / parallelExecution := !sys.env.contains("CI"),
       incOptions ~= (_.withLogRecompileOnMacro(true)),
