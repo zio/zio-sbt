@@ -15,8 +15,9 @@ object WebsitePlugin extends sbt.AutoPlugin {
     val installWebsite = taskKey[Unit]("install the website for the first time")
     val previewWebsite = taskKey[Unit]("preview website")
     val publishToNpm = inputKey[Unit]("publish website to the npm registry")
-    val npmToken = settingKey[String]("npm token")
     val generateGithubWorkflow = taskKey[Unit]("generate github workflow")
+    val npmToken = settingKey[String]("npm token")
+    val docsDependencies = settingKey[Seq[ModuleID]]("documentation project dependencies")
   }
 
   import autoImport.*
@@ -30,7 +31,9 @@ object WebsitePlugin extends sbt.AutoPlugin {
       installWebsite := installWebsiteTask.value,
       previewWebsite := previewWebsiteTask.value,
       publishToNpm := publishWebsiteTask.value,
-      generateGithubWorkflow := generateGithubWorkflowTask.value
+      generateGithubWorkflow := generateGithubWorkflowTask.value,
+      docsDependencies := Seq.empty,
+      libraryDependencies ++= docsDependencies.value
     )
 
   private def exit(exitCode: Int) =
