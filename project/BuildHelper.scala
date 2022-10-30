@@ -8,12 +8,12 @@ import scalafix.sbt.ScalafixPlugin.autoImport._
 object BuildHelper {
 
   private val versions: Map[String, String] = {
-    import org.snakeyaml.engine.v2.api.{Load, LoadSettings}
+    import org.snakeyaml.engine.v2.api.{ Load, LoadSettings }
 
-    import java.util.{List => JList, Map => JMap}
+    import java.util.{ List => JList, Map => JMap }
     import scala.jdk.CollectionConverters._
 
-    val doc = new Load(LoadSettings.builder().build())
+    val doc  = new Load(LoadSettings.builder().build())
       .loadFromReader(
         scala.io.Source.fromFile(".github/workflows/ci.yml").bufferedReader()
       )
@@ -33,46 +33,48 @@ object BuildHelper {
 
   val Scala212: String = versions("2.12")
   val Scala213: String = versions("2.13")
-  val Scala3: String = versions(
+
+  val Scala3: String   = versions(
     "3.1"
   ) //versions.getOrElse("3.0", versions("3.1"))
 
-  val zioVersion = "2.0.1"
-  val zioJsonVersion = "0.3.0-RC9"
+  val zioVersion        = "2.0.1"
+  val zioJsonVersion    = "0.3.0-RC9"
   val zioPreludeVersion = "1.0.0-RC15"
-  val zioOpticsVersion = "0.2.0"
-  val silencerVersion = "1.7.11"
-  val avroVersion = "1.11.0"
+  val zioOpticsVersion  = "0.2.0"
+  val silencerVersion   = "1.7.11"
+  val avroVersion       = "1.11.0"
 
   private val testDeps = Seq(
-    "dev.zio" %% "zio-test" % zioVersion % "test",
+    "dev.zio" %% "zio-test"     % zioVersion % "test",
     "dev.zio" %% "zio-test-sbt" % zioVersion % "test"
   )
 
-  def macroDefinitionSettings = Seq(
-    scalacOptions += "-language:experimental.macros",
-    libraryDependencies ++= {
-      if (scalaVersion.value == Scala3) Seq()
-      else
-        Seq(
-          "org.scala-lang" % "scala-reflect" % scalaVersion.value % "provided",
-          "org.scala-lang" % "scala-compiler" % scalaVersion.value % "provided"
-        )
-    }
-  )
+  def macroDefinitionSettings =
+    Seq(
+      scalacOptions += "-language:experimental.macros",
+      libraryDependencies ++= {
+        if (scalaVersion.value == Scala3) Seq()
+        else
+          Seq(
+            "org.scala-lang" % "scala-reflect"  % scalaVersion.value % "provided",
+            "org.scala-lang" % "scala-compiler" % scalaVersion.value % "provided"
+          )
+      }
+    )
 
   private def compileOnlyDeps(scalaVersion: String) = {
     val stdCompileOnlyDeps = {
       if (scalaVersion == Scala3)
         Seq(
-          "com.github.ghik" % s"silencer-lib_$Scala213" % silencerVersion % Provided
+          "com.github.ghik"    % s"silencer-lib_$Scala213" % silencerVersion % Provided
         )
       else
         Seq(
-          ("com.github.ghik" % "silencer-lib" % silencerVersion % Provided)
+          ("com.github.ghik"   % "silencer-lib"            % silencerVersion % Provided)
             .cross(CrossVersion.full),
           compilerPlugin(
-            ("com.github.ghik" % "silencer-plugin" % silencerVersion).cross(
+            ("com.github.ghik" % "silencer-plugin"         % silencerVersion).cross(
               CrossVersion.full
             )
           )
@@ -85,7 +87,7 @@ object BuildHelper {
             ("org.scalamacros" % "paradise" % "2.1.1").cross(CrossVersion.full)
           )
         )
-      case _ => stdCompileOnlyDeps
+      case _                       => stdCompileOnlyDeps
     }
   }
 
@@ -125,7 +127,7 @@ object BuildHelper {
       else Seq.empty
 
     val extraOptions = CrossVersion.partialVersion(scalaVersion) match {
-      case Some((3, _)) =>
+      case Some((3, _))  =>
         Seq(
           "-language:implicitConversions",
           "-Xignore-scala2-macros"
@@ -148,7 +150,7 @@ object BuildHelper {
           "-Ywarn-nullary-override",
           "-Ywarn-nullary-unit"
         ) ++ std2xOptions ++ optimizerOptions
-      case _ => Seq.empty
+      case _             => Seq.empty
     }
 
     stdOptions ++ extraOptions
@@ -165,23 +167,23 @@ object BuildHelper {
   )
 
   def platformSpecificSources(
-      platform: String,
-      conf: String,
-      baseDirectory: File
+    platform: String,
+    conf: String,
+    baseDirectory: File
   )(versions: String*): Seq[File] =
     for {
       platform <- List("shared", platform)
-      version <- "scala" :: versions.toList.map("scala-" + _)
-      result =
+      version  <- "scala" :: versions.toList.map("scala-" + _)
+      result    =
         baseDirectory.getParentFile / platform.toLowerCase / "src" / conf / version
       if result.exists
     } yield result
 
   def crossPlatformSources(
-      scalaVer: String,
-      platform: String,
-      conf: String,
-      baseDir: File
+    scalaVer: String,
+    platform: String,
+    conf: String,
+    baseDir: File
   ): Seq[sbt.File] = {
     val versions = CrossVersion.partialVersion(scalaVer) match {
       case Some((2, 11)) =>
@@ -190,7 +192,7 @@ object BuildHelper {
         List("2.12", "2.11+", "2.12+", "2.11-2.12", "2.12-2.13", "2.x")
       case Some((2, 13)) =>
         List("2.13", "2.11+", "2.12+", "2.13+", "2.12-2.13", "2.x")
-      case _ =>
+      case _             =>
         List()
     }
     platformSpecificSources(platform, conf, baseDir)(versions: _*)
@@ -215,22 +217,23 @@ object BuildHelper {
     }
   )
 
-  def buildInfoSettings(packageName: String) = Seq(
-    buildInfoKeys := Seq[BuildInfoKey](
-      name,
-      version,
-      scalaVersion,
-      sbtVersion,
-      isSnapshot
-    ),
-    buildInfoPackage := packageName
-  )
+  def buildInfoSettings(packageName: String) =
+    Seq(
+      buildInfoKeys := Seq[BuildInfoKey](
+        name,
+        version,
+        scalaVersion,
+        sbtVersion,
+        isSnapshot
+      ),
+      buildInfoPackage := packageName
+    )
 
   def stdSettings(prjName: String) =
     Seq(
       name := s"$prjName",
-      crossScalaVersions := Seq(Scala213, Scala212, Scala3),
-      ThisBuild / scalaVersion := Scala213, //crossScalaVersions.value.head, //Scala3,
+      crossScalaVersions := Seq(Scala212, Scala3),
+      ThisBuild / scalaVersion := Scala212,                          //crossScalaVersions.value.head, //Scala3,
       scalacOptions := compilerOptions(
         scalaVersion.value,
         optimize = !isSnapshot.value
@@ -244,7 +247,7 @@ object BuildHelper {
       ),
       ThisBuild / scalafixDependencies ++= List(
         "com.github.liancheng" %% "organize-imports" % "0.6.0",
-        "com.github.vovapolu" %% "scaluzzi" % "0.1.21"
+        "com.github.vovapolu"  %% "scaluzzi"         % "0.1.21"
       ),
       Test / parallelExecution := !sys.env.contains("CI"),
       incOptions ~= (_.withLogRecompileOnMacro(true)),

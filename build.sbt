@@ -1,7 +1,8 @@
 import sbtcrossproject.CrossPlugin.autoImport.crossProject
-import BuildHelper.{crossProjectSettings, _}
+import BuildHelper.{ crossProjectSettings, _ }
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport.scalaJSUseMainModuleInitializer
-import BuildHelper._
+
+sbtPlugin := true
 
 inThisBuild(
   List(
@@ -48,8 +49,10 @@ lazy val root = project
     publish / skip := true
   )
   .aggregate(
+    zioSbtWebsiteJVM,
     zioSbtWebsiteJS,
-    zioSbtWebsiteJVM
+    testsJVM,
+    testsJS
   )
 
 lazy val zioSbtWebsiteJS = zioSbtWebsite.js
@@ -64,10 +67,15 @@ lazy val tests = crossProject(JSPlatform, JVMPlatform)
   .settings(crossProjectSettings)
   .settings(buildInfoSettings("zio.sbt"))
 
+lazy val testsJS = tests.js
+  .settings(scalaJSUseMainModuleInitializer := true)
+
+lazy val testsJVM = tests.jvm
+
 lazy val zioSbtWebsite =
   crossProject(JSPlatform, JVMPlatform)
     .in(file("zio-sbt-website"))
-    .settings(stdSettings("zio-schema"))
+    .settings(stdSettings("zio-sbt"))
     .settings(crossProjectSettings)
     .settings(buildInfoSettings("zio.sbt"))
     .enablePlugins(SbtPlugin)
@@ -78,12 +86,12 @@ lazy val docs = project
     publish / skip := true,
     mdocVariables := Map(
       "SNAPSHOT_VERSION" -> version.value,
-      "RELEASE_VERSION" -> previousStableVersion.value.getOrElse(
+      "RELEASE_VERSION"  -> previousStableVersion.value.getOrElse(
         "can't find release"
       ),
-      "ORG" -> organization.value,
-      "NAME" -> (root / name).value,
-      "CROSS_VERSIONS" -> (root / crossScalaVersions).value.mkString(", ")
+      "ORG"              -> organization.value,
+      "NAME"             -> (root / name).value,
+      "CROSS_VERSIONS"   -> (root / crossScalaVersions).value.mkString(", ")
     ),
     moduleName := "zio-sbt-docs",
     scalacOptions -= "-Yno-imports",
