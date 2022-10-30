@@ -1,3 +1,6 @@
+import sbtcrossproject.CrossPlugin.autoImport.crossProject
+import BuildHelper.{ crossProjectSettings, _ }
+import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport.scalaJSUseMainModuleInitializer
 import BuildHelper._
 
 inThisBuild(
@@ -28,6 +31,12 @@ inThisBuild(
 
 ThisBuild / publishTo := sonatypePublishToBundle.value
 
+addCommandAlias("prepare", "fix; fmt")
+addCommandAlias("fmt", "all scalafmtSbt scalafmtAll")
+addCommandAlias("fmtCheck", "all scalafmtSbtCheck scalafmtCheckAll")
+addCommandAlias("fix", "scalafixAll")
+addCommandAlias("fixCheck", "scalafixAll --check")
+
 lazy val root = project
   .in(file("."))
   .settings(
@@ -37,6 +46,13 @@ lazy val root = project
   .aggregate(
     zioSbtWebsite
   )
+
+lazy val tests = crossProject(JSPlatform, JVMPlatform)
+  .in(file("tests"))
+  .settings(stdSettings("zio-sbt-tests"))
+  .settings(publish / skip := true)
+  .settings(crossProjectSettings)
+  .settings(buildInfoSettings("zio.sbt"))
   
 lazy val zioSbtWebsite =
   project
@@ -45,3 +61,29 @@ lazy val zioSbtWebsite =
     .settings(crossProjectSettings)
     .settings(buildInfoSettings("zio.sbt"))
     .enablePlugins(SbtPlugin)
+    
+lazy val docs = project
+  .in(file("zio-sbt-docs"))
+  .settings(
+    publish / skip := true,
+    mdocVariables := Map(
+      "SNAPSHOT_VERSION" -> version.value,
+      "RELEASE_VERSION"  -> previousStableVersion.value.getOrElse("can't find release"),
+      "ORG"              -> organization.value,
+      "NAME"             -> (root / name).value,
+      "CROSS_VERSIONS"   -> (root / crossScalaVersions).value.mkString(", ")
+    ),
+    moduleName := "zio-sbt-docs",
+    scalacOptions -= "-Yno-imports",
+    scalacOptions -= "-Xfatal-warnings",
+    libraryDependencies ++= Seq(
+      "dev.zio" %% "zio" % zioVersion
+    ),
+    ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(root),
+    ScalaUnidoc / unidoc / target := (LocalRootProject / baseDirectory).value / "website" / "static" / "api",
+    cleanFiles += (ScalaUnidoc / unidoc / target).value,
+    docusaurusCreateSite := docusaurusCreateSite.dependsOn(Compile / unidoc).value,
+    docusaurusPublishGhpages := docusaurusPublishGhpages.dependsOn(Compile / unidoc).value
+  )
+  .dependsOn(root)
+  .enablePlugins(MdocPlugin, DocusaurusPlugin, ScalaUnidocPlugin)
