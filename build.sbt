@@ -41,6 +41,7 @@ lazy val root = project
 lazy val zioSbtWebsite =
   project
     .in(file("zio-sbt-website"))
-    .settings(name := "zio-sbt-website")
+    .settings(stdSettings("zio-schema"))
+    .settings(crossProjectSettings)
     .settings(buildInfoSettings("zio.sbt"))
     .enablePlugins(SbtPlugin)
