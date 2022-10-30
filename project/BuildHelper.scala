@@ -34,7 +34,7 @@ object BuildHelper {
   val Scala212: String = versions("2.12")
   val Scala213: String = versions("2.13")
 
-  val Scala3: String   = versions(
+  val Scala3: String = versions(
     "3.1"
   ) //versions.getOrElse("3.0", versions("3.1"))
 
@@ -232,7 +232,7 @@ object BuildHelper {
   def stdSettings(prjName: String) =
     Seq(
       name := s"$prjName",
-      crossScalaVersions := Seq(Scala212, Scala3),
+      crossScalaVersions := Seq(Scala212),
       ThisBuild / scalaVersion := Scala212,                          //crossScalaVersions.value.head, //Scala3,
       scalacOptions := compilerOptions(
         scalaVersion.value,
