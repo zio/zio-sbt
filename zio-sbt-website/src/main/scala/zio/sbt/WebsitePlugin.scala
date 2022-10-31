@@ -78,8 +78,8 @@ object WebsitePlugin extends sbt.AutoPlugin {
       import sys.process.*
       val logger = streams.value.log
 
-      val task =
-        s"""|npx @zio.dev/create-zio-website@latest ${normalizedName.value} \\
+      val task: String =
+        s"""|npx @zio.dev/create-zio-website@latest ${normalizedName.value}-website \\
             |  --description="${name.value}" \\
             |  --author="ZIO Contributors" \\
             |  --email="email@zio.dev" \\
@@ -87,11 +87,10 @@ object WebsitePlugin extends sbt.AutoPlugin {
             |  --architecture=Linux""".stripMargin
 
       logger.info(s"installing website for ${normalizedName.value} ... \n$task")
-      exit(task !)
-
-      exit(s"mv ${normalizedName.value} website" !)
       
-      exit(s"mv ./website ./target" !)
+      exit(Process(task, new File("target/")) !)
+
+      exit(Process(s"mv ${normalizedName.value}-website website", new File("target/")) !)
 
       exit("rm target/website/.git/ -rvf" !)
     }
