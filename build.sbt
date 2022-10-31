@@ -7,7 +7,7 @@ sbtPlugin := true
 inThisBuild(
   List(
     name := "zio-sbt",
-    organization := "dev.zio",
+    organization := "khajavi",
     homepage := Some(url("https://github.com/khajavi/zio-sbt")),
     developers := List(
       Developer(
@@ -20,7 +20,7 @@ inThisBuild(
     scmInfo := Some(
       ScmInfo(
         homepage.value.get,
-        "scm:git:git@github.com:zio/zio-sbt.git"
+        "scm:git:git@github.com:khajavi/zio-sbt.git"
       )
     ),
     licenses := Seq(
