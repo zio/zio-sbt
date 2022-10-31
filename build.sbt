@@ -8,7 +8,7 @@ inThisBuild(
   List(
     name := "zio-sbt",
     organization := "dev.zio",
-    homepage := Some(url("https://github.com/zio/zio-sbt")),
+    homepage := Some(url("https://github.com/khajavi/zio-sbt")),
     developers := List(
       Developer(
         "khajavi",
