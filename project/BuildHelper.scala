@@ -32,7 +32,6 @@ object BuildHelper {
   }
 
   val Scala212: String = versions("2.12")
-  val Scala3: String   = versions("3.1")
 
   val zioVersion        = "2.0.1"
   val zioJsonVersion    = "0.3.0-RC9"
@@ -50,32 +49,25 @@ object BuildHelper {
     Seq(
       scalacOptions += "-language:experimental.macros",
       libraryDependencies ++= {
-        if (scalaVersion.value == Scala3) Seq()
-        else
-          Seq(
-            "org.scala-lang" % "scala-reflect"  % scalaVersion.value % "provided",
-            "org.scala-lang" % "scala-compiler" % scalaVersion.value % "provided"
-          )
+        Seq(
+          "org.scala-lang" % "scala-reflect"  % scalaVersion.value % "provided",
+          "org.scala-lang" % "scala-compiler" % scalaVersion.value % "provided"
+        )
       }
     )
 
   private def compileOnlyDeps(scalaVersion: String) = {
-    val stdCompileOnlyDeps = {
-      if (scalaVersion == Scala3)
-        Seq(
-          "com.github.ghik"    % s"silencer-lib_$Scala213" % silencerVersion % Provided
-        )
-      else
-        Seq(
-          ("com.github.ghik"   % "silencer-lib"            % silencerVersion % Provided)
-            .cross(CrossVersion.full),
-          compilerPlugin(
-            ("com.github.ghik" % "silencer-plugin"         % silencerVersion).cross(
-              CrossVersion.full
-            )
+    val stdCompileOnlyDeps =
+      Seq(
+        ("com.github.ghik"   % "silencer-lib"    % silencerVersion % Provided)
+          .cross(CrossVersion.full),
+        compilerPlugin(
+          ("com.github.ghik" % "silencer-plugin" % silencerVersion).cross(
+            CrossVersion.full
           )
         )
-    }
+      )
+
     CrossVersion.partialVersion(scalaVersion) match {
       case Some((2, x)) if x <= 12 =>
         stdCompileOnlyDeps ++ Seq(
@@ -152,16 +144,6 @@ object BuildHelper {
     stdOptions ++ extraOptions
   }
 
-  val dottySettings = Seq(
-    crossScalaVersions += Scala3,
-    scalacOptions --= {
-      if (scalaVersion.value == Scala3)
-        Seq("-Xfatal-warnings")
-      else
-        Seq()
-    }
-  )
-
   def platformSpecificSources(
     platform: String,
     conf: String,
@@ -229,13 +211,13 @@ object BuildHelper {
     Seq(
       name := s"$prjName",
       crossScalaVersions := Seq(Scala212),
-      ThisBuild / scalaVersion := Scala212,                          //crossScalaVersions.value.head, //Scala3,
+      ThisBuild / scalaVersion := Scala212,
       scalacOptions := compilerOptions(
         scalaVersion.value,
         optimize = !isSnapshot.value
       ),
       libraryDependencies ++= compileOnlyDeps(scalaVersion.value) ++ testDeps,
-      ThisBuild / semanticdbEnabled := scalaVersion.value != Scala3, // enable SemanticDB,
+      ThisBuild / semanticdbEnabled := true, // enable SemanticDB,
       ThisBuild / semanticdbOptions += "-P:semanticdb:synthetics:on",
       ThisBuild / semanticdbVersion := scalafixSemanticdb.revision,
       ThisBuild / scalafixScalaBinaryVersion := CrossVersion.binaryScalaVersion(
