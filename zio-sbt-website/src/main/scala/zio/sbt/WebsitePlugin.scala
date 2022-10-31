@@ -27,7 +27,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
   override lazy val projectSettings =
     Seq(
       compileDocs := compileDocsTask.evaluated,
-      mdocOut := Paths.get("website/docs").toFile,
+      mdocOut := Paths.get("target/website/docs").toFile,
       installWebsite := installWebsiteTask.value,
       previewWebsite := previewWebsiteTask.value,
       publishToNpm := publishWebsiteTask.value,
@@ -55,7 +55,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
   lazy val docusaurusServerTask = Def.task {
     import sys.process.*
-    exit("yarn --cwd ./website run start" !)
+    exit("yarn --cwd ./target/website run start" !)
   }
 
   lazy val compileDocsTask =
@@ -89,9 +89,9 @@ object WebsitePlugin extends sbt.AutoPlugin {
       logger.info(s"installing website for ${normalizedName.value} ... \n$task")
       exit(task !)
 
-      exit(s"mv ${normalizedName.value} website" !)
+      exit(s"mv ${normalizedName.value} target/website" !)
 
-      exit("rm website/.git/ -rvf" !)
+      exit("rm target/website/.git/ -rvf" !)
     }
 
   lazy val publishWebsiteTask =
@@ -102,11 +102,11 @@ object WebsitePlugin extends sbt.AutoPlugin {
         ("git tag --sort=committerdate" !!).split("\n").last
         .replace("docs-", "")
 
-      exit(Process(s"npm version $version", new File("website/docs/")) !)
+      exit(Process(s"npm version $version", new File("target/website/docs/")) !)
 
       exit("npm config set access public" !)
 
-      exit(Process("npm publish", new File("website/docs/")).!)
+      exit(Process("npm publish", new File("target/website/docs/")).!)
 
     }
 
