@@ -4,8 +4,8 @@ import zio.test._
 
 object SampleSpec extends ZIOSpecDefault {
 
-  def spec =
-    test("UnitType default value") {
+  def spec: Spec[Environment with TestEnvironment with Scope, Any] =
+    test("assert true") {
       assertTrue(true)
     }
 }
