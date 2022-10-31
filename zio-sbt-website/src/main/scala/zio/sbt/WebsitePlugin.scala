@@ -89,7 +89,9 @@ object WebsitePlugin extends sbt.AutoPlugin {
       logger.info(s"installing website for ${normalizedName.value} ... \n$task")
       exit(task !)
 
-      exit(s"mv ${normalizedName.value} target/website" !)
+      exit(s"mv ${normalizedName.value} website" !)
+      
+      exit(s"mv ./website ./target" !)
 
       exit("rm target/website/.git/ -rvf" !)
     }
