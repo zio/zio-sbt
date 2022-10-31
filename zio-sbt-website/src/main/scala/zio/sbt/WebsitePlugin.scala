@@ -33,7 +33,19 @@ object WebsitePlugin extends sbt.AutoPlugin {
       publishToNpm := publishWebsiteTask.value,
       generateGithubWorkflow := generateGithubWorkflowTask.value,
       docsDependencies := Seq.empty,
-      libraryDependencies ++= docsDependencies.value
+      libraryDependencies ++= docsDependencies.value,
+      mdocVariables := {
+        import sys.process.*
+
+        val releaseVersion =
+          ("git tag --sort=committerdate" !!).split("\n").filter(_.startsWith("v")).last.tail
+
+        mdocVariables.value ++
+          Map(
+            "VERSION"          -> version.value,
+            "RELEASE_VERSION"  -> releaseVersion
+          )
+      }
     )
 
   private def exit(exitCode: Int) = if (exitCode != 0) sys.exit(exitCode)
@@ -87,7 +99,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
             |  --architecture=Linux""".stripMargin
 
       logger.info(s"installing website for ${normalizedName.value} ... \n$task")
-      
+
       exit(Process(task, new File("target/")) !)
 
       exit(Process(s"mv ${normalizedName.value}-website website", new File("target/")) !)
