@@ -116,8 +116,10 @@ object WebsitePlugin extends sbt.AutoPlugin {
         """|name: Documentation
            |
            |on:
-           |  - release
-           |  - workflow_dispatch
+           |  release:
+           |    types: [created]
+           |  workflow_dispatch:
+           |    branches: [ main ]
            |
            |jobs:
            |  publish-docs:
@@ -134,7 +136,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
            |        run: |
            |          git clone https://github.com/khajavi/zio-sbt.git
            |          cd zio-sbt
-           |          sbt website/publishLocal
+           |          sbt zioSbtWebsite/publishLocal
            |      - name: Compile Project's Documentation
            |        run: sbt compileDocs
            |      - uses: actions/setup-node@v3
