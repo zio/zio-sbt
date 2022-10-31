@@ -49,34 +49,21 @@ lazy val root = project
     publish / skip := true
   )
   .aggregate(
-    zioSbtWebsiteJVM,
-    zioSbtWebsiteJS,
-    testsJVM,
-    testsJS
+    zioSbtWebsite,
+    tests
   )
 
-lazy val zioSbtWebsiteJS = zioSbtWebsite.js
-  .settings(scalaJSUseMainModuleInitializer := true)
-
-lazy val zioSbtWebsiteJVM = zioSbtWebsite.jvm
-
-lazy val tests = crossProject(JSPlatform, JVMPlatform)
-  .in(file("tests"))
-  .settings(stdSettings("zio-sbt-tests"))
-  .settings(publish / skip := true)
-  .settings(crossProjectSettings)
-  .settings(buildInfoSettings("zio.sbt"))
-
-lazy val testsJS = tests.js
-  .settings(scalaJSUseMainModuleInitializer := true)
-
-lazy val testsJVM = tests.jvm
+lazy val tests =
+  project
+    .in(file("tests"))
+    .settings(stdSettings("zio-sbt-tests"))
+    .settings(publish / skip := true)
+    .settings(buildInfoSettings("zio.sbt"))
 
 lazy val zioSbtWebsite =
-  crossProject(JSPlatform, JVMPlatform)
+  project
     .in(file("zio-sbt-website"))
-    .settings(stdSettings("zio-sbt"))
-    .settings(crossProjectSettings)
+    .settings(stdSettings("zio-sbt-website"))
     .settings(buildInfoSettings("zio.sbt"))
     .enablePlugins(SbtPlugin)
 

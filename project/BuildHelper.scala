@@ -56,28 +56,14 @@ object BuildHelper {
       }
     )
 
-  private def compileOnlyDeps(scalaVersion: String) = {
-    val stdCompileOnlyDeps =
-      Seq(
-        ("com.github.ghik"   % "silencer-lib"    % silencerVersion % Provided)
-          .cross(CrossVersion.full),
-        compilerPlugin(
-          ("com.github.ghik" % "silencer-plugin" % silencerVersion).cross(
-            CrossVersion.full
-          )
-        )
-      )
-
+  private def compileOnlyDeps(scalaVersion: String) =
     CrossVersion.partialVersion(scalaVersion) match {
       case Some((2, x)) if x <= 12 =>
-        stdCompileOnlyDeps ++ Seq(
-          compilerPlugin(
-            ("org.scalamacros" % "paradise" % "2.1.1").cross(CrossVersion.full)
-          )
+        Seq(
+          compilerPlugin(("org.scalamacros" % "paradise" % "2.1.1").cross(CrossVersion.full))
         )
-      case _                       => stdCompileOnlyDeps
+      case _                       => Seq.empty
     }
-  }
 
   private def compilerOptions(scalaVersion: String, optimize: Boolean) = {
     val stdOptions = Seq(

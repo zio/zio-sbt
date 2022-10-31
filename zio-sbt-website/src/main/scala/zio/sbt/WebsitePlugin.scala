@@ -11,13 +11,13 @@ import scala.language.postfixOps
 object WebsitePlugin extends sbt.AutoPlugin {
 
   object autoImport {
-    val compileDocs = inputKey[Unit]("compile docs")
-    val installWebsite = taskKey[Unit]("install the website for the first time")
-    val previewWebsite = taskKey[Unit]("preview website")
-    val publishToNpm = inputKey[Unit]("publish website to the npm registry")
+    val compileDocs            = inputKey[Unit]("compile docs")
+    val installWebsite         = taskKey[Unit]("install the website for the first time")
+    val previewWebsite         = taskKey[Unit]("preview website")
+    val publishToNpm           = inputKey[Unit]("publish website to the npm registry")
     val generateGithubWorkflow = taskKey[Unit]("generate github workflow")
-    val npmToken = settingKey[String]("npm token")
-    val docsDependencies = settingKey[Seq[ModuleID]]("documentation project dependencies")
+    val npmToken               = settingKey[String]("npm token")
+    val docsDependencies       = settingKey[Seq[ModuleID]]("documentation project dependencies")
   }
 
   import autoImport.*
@@ -36,23 +36,21 @@ object WebsitePlugin extends sbt.AutoPlugin {
       libraryDependencies ++= docsDependencies.value
     )
 
-  private def exit(exitCode: Int) =
-    if (exitCode != 0) sys.exit(exitCode)
+  private def exit(exitCode: Int) = if (exitCode != 0) sys.exit(exitCode)
 
-  lazy val previewWebsiteTask = Def
-    .task {
-      import zio.*
+  lazy val previewWebsiteTask = Def.task {
+    import zio.*
 
-      val task =
-        for {
-          _ <- ZIO.attempt(compileDocsTask.toTask(" --watch").value).forkDaemon
-          _ <- ZIO.attempt(docusaurusServerTask.value)
-        } yield ()
+    val task =
+      for {
+        _ <- ZIO.attempt(compileDocsTask.toTask(" --watch").value).forkDaemon
+        _ <- ZIO.attempt(docusaurusServerTask.value)
+      } yield ()
 
-      Unsafe.unsafe { implicit unsafe =>
-        Runtime.default.unsafe.run(task).getOrThrowFiberFailure()
-      }
+    Unsafe.unsafe { implicit unsafe =>
+      Runtime.default.unsafe.run(task).getOrThrowFiberFailure()
     }
+  }
     .dependsOn(compileDocsTask.toTask(""))
 
   lazy val docusaurusServerTask = Def.task {
@@ -64,7 +62,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
     Def.inputTaskDyn {
       val parsed =
         sbt.complete.DefaultParsers.spaceDelimited("<arg>").parsed
-      val watch =
+      val watch  =
         parsed.headOption.getOrElse("").equalsIgnoreCase("--watch")
       val logger = streams.value.log
       logger.info("Compiling docs using mdoc ...")
@@ -112,7 +110,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
     }
 
-  lazy val generateGithubWorkflowTask = {
+  lazy val generateGithubWorkflowTask =
     Def.task {
       val template =
         """|name: Documentation
@@ -151,6 +149,5 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
       IO.write(new File(".github/workflows/documentation.yml"), template)
     }
-  }
 
 }
