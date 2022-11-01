@@ -37,14 +37,13 @@ object WebsitePlugin extends sbt.AutoPlugin {
       mdocVariables ++= {
         import sys.process.*
 
-        println(s"*************** ${mdocVariables.value}")
-         
+        "git fetch -- all -- tags" !
+
         val releaseVersion =
           ("git tag --sort=committerdate" !!).split("\n").filter(_.startsWith("v")).last.tail
-          
-        println(s"+++++++++ $releaseVersion")
 
         Map(
+          "VERSION"         -> version.value,
           "RELEASE_VERSION" -> releaseVersion
         )
       }
