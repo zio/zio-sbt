@@ -42,8 +42,8 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
         mdocVariables.value ++
           Map(
-            "VERSION"          -> version.value,
-            "RELEASE_VERSION"  -> releaseVersion
+            "VERSION"         -> releaseVersion,
+            "RELEASE_VERSION" -> releaseVersion
           )
       }
     )
