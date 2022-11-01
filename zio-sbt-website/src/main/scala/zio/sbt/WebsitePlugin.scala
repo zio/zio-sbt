@@ -5,7 +5,7 @@ import mdoc.MdocPlugin.autoImport.*
 import sbt.*
 import sbt.Keys.*
 
-import java.nio.file.{Path, Paths}
+import java.nio.file.{ Path, Paths }
 import scala.sys.process.*
 
 object WebsitePlugin extends sbt.AutoPlugin {
