@@ -34,7 +34,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
       generateGithubWorkflow := generateGithubWorkflowTask.value,
       docsDependencies := Seq.empty,
       libraryDependencies ++= docsDependencies.value,
-      mdocVariables := {
+      mdocVariables ++= {
         import sys.process.*
 
         println(s"*************** ${mdocVariables.value}")
@@ -42,7 +42,6 @@ object WebsitePlugin extends sbt.AutoPlugin {
         val releaseVersion =
           ("git tag --sort=committerdate" !!).split("\n").filter(_.startsWith("v")).last.tail
 
-        mdocVariables.value ++
           Map(
             "RELEASE_VERSION" -> releaseVersion
           )
