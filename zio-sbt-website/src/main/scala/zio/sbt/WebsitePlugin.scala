@@ -6,7 +6,7 @@ import sbt.*
 import sbt.Keys.*
 
 import java.nio.file.Paths
-import scala.language.postfixOps
+import scala.sys.process.*
 
 object WebsitePlugin extends sbt.AutoPlugin {
 
@@ -35,12 +35,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
       docsDependencies := Seq.empty,
       libraryDependencies ++= docsDependencies.value,
       mdocVariables ++= {
-        import sys.process.*
-
-        "git fetch --all --tags" !
-
-        val releaseVersion =
-          ("git tag --sort=committerdate" !!).split("\n").filter(_.startsWith("v")).last.tail
+        exit(fetchAllTags)
 
         Map(
           "VERSION"         -> version.value,
@@ -48,6 +43,10 @@ object WebsitePlugin extends sbt.AutoPlugin {
         )
       }
     )
+
+  private def fetchAllTags: Int = Process("git fetch --all --tags").!
+
+  private def releaseVersion: String = "git tag --sort=committerdate".!!.split("\n").filter(_.startsWith("v")).last.tail
 
   private def exit(exitCode: Int) = if (exitCode != 0) sys.exit(exitCode)
 
@@ -66,10 +65,10 @@ object WebsitePlugin extends sbt.AutoPlugin {
   }
     .dependsOn(compileDocsTask.toTask(""))
 
-  lazy val docusaurusServerTask = Def.task {
-    import sys.process.*
-    exit("yarn --cwd ./target/website run start" !)
-  }
+  lazy val docusaurusServerTask =
+    Def.task {
+      exit("yarn --cwd ./target/website run start".!)
+    }
 
   lazy val compileDocsTask =
     Def.inputTaskDyn {
@@ -88,7 +87,6 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
   lazy val installWebsiteTask =
     Def.task {
-      import sys.process.*
       val logger = streams.value.log
 
       val task: String =
@@ -101,27 +99,20 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
       logger.info(s"installing website for ${normalizedName.value} ... \n$task")
 
-      exit(Process(task, new File("target/")) !)
+      exit(Process(task, new File("target/")).!)
 
-      exit(Process(s"mv ${normalizedName.value}-website website", new File("target/")) !)
+      exit(Process(s"mv ${normalizedName.value}-website website", new File("target/")).!)
 
-      exit("rm target/website/.git/ -rvf" !)
+      exit("rm target/website/.git/ -rvf".!)
     }
 
   lazy val publishWebsiteTask =
     Def.task {
-      import sys.process.*
+      exit(Process(s"npm version $releaseVersion", new File("target/website/docs/")).!)
 
-      val version =
-        ("git tag --sort=committerdate" !!).split("\n").last
-        .replace("docs-", "")
-
-      exit(Process(s"npm version $version", new File("target/website/docs/")) !)
-
-      exit("npm config set access public" !)
+      exit("npm config set access public".!)
 
       exit(Process("npm publish", new File("target/website/docs/")).!)
-
     }
 
   lazy val generateGithubWorkflowTask =
