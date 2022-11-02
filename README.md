@@ -1,10 +1,24 @@
 # ZIO SBT
 
-| Project Stage | CI | Release | Issues |  Discord |
-| --- | --- | --- | --- | --- |
-| [![Project stage][Stage]][Stage-Page] | ![CI][Badge-CI] | [![Release Artifacts][Badge-SonatypeReleases]][Link-SonatypeReleases] | [![Average time to resolve an issue][badge-iim]][link-iim] | [![badge-discord]][link-discord] |
+| Project Stage                         | CI              | Release                                                               | Snapshot                                                                 | Issues                                                     | Discord                          |
+|---------------------------------------|-----------------|-----------------------------------------------------------------------|--------------------------------------------------------------------------|------------------------------------------------------------|----------------------------------|
+| [![Project stage][Stage]][Stage-Page] | ![CI][Badge-CI] | [![Release Artifacts][Badge-SonatypeReleases]][Link-SonatypeReleases] | [![Snapshot Artifacts][Badge-SonatypeSnapshots]][Link-SonatypeSnapshots] | [![Average time to resolve an issue][badge-iim]][link-iim] | [![badge-discord]][link-discord] |
 
 _ZIO SBT_ is an sbt plugin for ZIO projects. It provides high-level SBT utilities that simplify the development of ZIO applications.
+
+## Installation
+
+Add the following lines to your `plugin.sbt` file:
+
+```scala
+addSbtPlugin("dev.zio" % "zio-sbt-website" % "<version>")
+```
+
+Then you can enable it by using the following code in your `build.sbt` file:
+
+```scala
+enablePlugins(WebsitePlugin)
+```
 
 ## ZIO SBT Website
 
