@@ -12,14 +12,14 @@ import sbt.*
 object WebsitePlugin extends sbt.AutoPlugin {
 
   object autoImport {
-    val compileDocs: InputKey[Unit]            = inputKey[Unit]("compile docs")
-    val installWebsite: TaskKey[Unit]         = taskKey[Unit]("install the website for the first time")
-    val previewWebsite: TaskKey[Unit]         = taskKey[Unit]("preview website")
-    val publishToNpm: InputKey[Unit]           = inputKey[Unit]("publish website to the npm registry")
-    val generateGithubWorkflow: TaskKey[Unit] = taskKey[Unit]("generate github workflow")
-    val npmToken: SettingKey[String]               = settingKey[String]("npm token")
-    val docsDependencies: SettingKey[Seq[ModuleID]]       = settingKey[Seq[ModuleID]]("documentation project dependencies")
-    val websiteDir: SettingKey[Path]             = settingKey[Path]("website directory")
+    val compileDocs: InputKey[Unit]                 = inputKey[Unit]("compile docs")
+    val installWebsite: TaskKey[Unit]               = taskKey[Unit]("install the website for the first time")
+    val previewWebsite: TaskKey[Unit]               = taskKey[Unit]("preview website")
+    val publishToNpm: InputKey[Unit]                = inputKey[Unit]("publish website to the npm registry")
+    val generateGithubWorkflow: TaskKey[Unit]       = taskKey[Unit]("generate github workflow")
+    val npmToken: SettingKey[String]                = settingKey[String]("npm token")
+    val docsDependencies: SettingKey[Seq[ModuleID]] = settingKey[Seq[ModuleID]]("documentation project dependencies")
+    val websiteDir: SettingKey[Path]                = settingKey[Path]("website directory")
   }
 
   import autoImport.*
