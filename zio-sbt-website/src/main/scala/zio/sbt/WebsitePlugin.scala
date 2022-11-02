@@ -126,8 +126,6 @@ object WebsitePlugin extends sbt.AutoPlugin {
            |on:
            |  release:
            |    types: [created]
-           |  workflow_dispatch:
-           |    branches: [ main ]
            |
            |jobs:
            |  publish-docs:
