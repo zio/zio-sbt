@@ -7,7 +7,7 @@ sbtPlugin := true
 inThisBuild(
   List(
     name := "zio-sbt",
-    version := "0.0.1-SNAPSHOT",
+//    version := "0.0.1-SNAPSHOT",
     organization := "dev.zio",
     homepage := Some(url("https://github.com/zio/zio-sbt")),
     developers := List(
