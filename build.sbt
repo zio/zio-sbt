@@ -3,11 +3,11 @@ import BuildHelper.{ crossProjectSettings, _ }
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport.scalaJSUseMainModuleInitializer
 
 sbtPlugin := true
+publishMavenStyle := true
 
 inThisBuild(
   List(
     name := "zio-sbt",
-//    version := "0.0.1-SNAPSHOT",
     organization := "dev.zio",
     homepage := Some(url("https://github.com/zio/zio-sbt")),
     developers := List(
