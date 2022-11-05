@@ -140,11 +140,6 @@ object WebsitePlugin extends sbt.AutoPlugin {
            |      - name: Print Latest Tag For Debugging Purposes
            |        run: git tag --sort=committerdate | tail -1
            |      - uses: olafurpg/setup-scala@v13
-           |      - name: Compile zio-sbt
-           |        run: |
-           |          git clone https://github.com/zio/zio-sbt.git
-           |          cd zio-sbt
-           |          sbt zioSbtWebsite/publishLocal
            |      - name: Compile Project's Documentation
            |        run: sbt compileDocs
            |      - uses: actions/setup-node@v3
