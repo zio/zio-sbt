@@ -39,16 +39,15 @@ object WebsitePlugin extends sbt.AutoPlugin {
       libraryDependencies ++= docsDependencies.value,
       mdocVariables ++= {
         Map(
-          "VERSION"         -> version.value,
-          "RELEASE_VERSION" -> releaseVersion
+          "VERSION"          -> releaseVersion.getOrElse(version.value),
+          "RELEASE_VERSION"  -> releaseVersion.getOrElse("NOT RELEASED YET"),
+          "SNAPSHOT_VERSION" -> version.value
         )
       }
     )
 
-  private def releaseVersion: String = {
-    val tags = "git tag --sort=committerdate".!!.split("\n").filter(_.startsWith("v"))
-    if (tags.nonEmpty) tags.last.tail else "NOT RELEASED YET"
-  }
+  private def releaseVersion: Option[String] =
+    "git tag --sort=committerdate".!!.split("\n").filter(_.startsWith("v")).lastOption.map(_.tail)
 
   private def exit(exitCode: Int) = if (exitCode != 0) sys.exit(exitCode)
 
