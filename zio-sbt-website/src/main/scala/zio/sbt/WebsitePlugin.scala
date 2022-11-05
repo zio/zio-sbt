@@ -68,7 +68,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
   lazy val docusaurusServerTask: Def.Initialize[Task[Unit]] =
     Def.task {
-      exit(s"yarn --cwd ${websiteDir.value}/website run start".!)
+      exit(Process("npm run start", new File(s"${websiteDir.value}/website")).!)
     }
 
   lazy val compileDocsTask: Def.Initialize[InputTask[Unit]] =
