@@ -45,7 +45,10 @@ object WebsitePlugin extends sbt.AutoPlugin {
       }
     )
 
-  private def releaseVersion: String = "git tag --sort=committerdate".!!.split("\n").filter(_.startsWith("v")).last.tail
+  private def releaseVersion: String = {
+    val tags = "git tag --sort=committerdate".!!.split("\n").filter(_.startsWith("v"))
+    if (tags.nonEmpty) tags.last.tail else "NOT RELEASED YET"
+  }
 
   private def exit(exitCode: Int) = if (exitCode != 0) sys.exit(exitCode)
 
