@@ -157,8 +157,8 @@ object WebsitePlugin extends sbt.AutoPlugin {
             |          registry-url: 'https://registry.npmjs.org'
             |      - name: Publishing Docs to NPM Registry
             |        run: sbt publishToNpm
-            |        env: 
-            |          NODE_AUTH_TOKEN: $${{secrets.NPM_TOKEN}}
+            |        env:
+            |          NODE_AUTH_TOKEN: $${{ secrets.NPM_TOKEN }}
             |""".stripMargin
 
       IO.write(new File(".github/workflows/site.yml"), template)
