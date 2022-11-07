@@ -140,8 +140,6 @@ object WebsitePlugin extends sbt.AutoPlugin {
             |name: website
             |
             |on:
-            |  push: 
-            |    branches: [ ${defaultBranch.value} ]
             |  release:
             |    types: [ published ]
             |
