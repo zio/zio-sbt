@@ -111,15 +111,14 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
   lazy val publishWebsiteTask: Def.Initialize[Task[Unit]] =
     Def.task {
-      val refinedVersion =
-        if (version.value.endsWith("-SNAPSHOT"))
-          version.value.replace("+", "--")
-        else
-          version.value
+      val refinedNpmVersion = {
+        val v = releaseVersion.getOrElse(version.value)
+        if (v.endsWith("-SNAPSHOT")) v.replace("+", "--") else v
+      }
 
       exit(
         Process(
-          s"npm version --new-version $refinedVersion --no-git-tag-version",
+          s"npm version --new-version $refinedNpmVersion --no-git-tag-version",
           new File(s"${websiteDir.value.toString}/website/docs/")
         ).!
       )
