@@ -20,7 +20,6 @@ object WebsitePlugin extends sbt.AutoPlugin {
     val npmToken: SettingKey[String]                = settingKey[String]("npm token")
     val docsDependencies: SettingKey[Seq[ModuleID]] = settingKey[Seq[ModuleID]]("documentation project dependencies")
     val websiteDir: SettingKey[Path]                = settingKey[Path]("website directory")
-    val defaultBranch: SettingKey[String]           = settingKey[String]("default git branch (default is main)")
   }
 
   import autoImport.*
@@ -30,7 +29,6 @@ object WebsitePlugin extends sbt.AutoPlugin {
   override lazy val projectSettings: Seq[Setting[_ <: Object]] =
     Seq(
       compileDocs := compileDocsTask.evaluated,
-      defaultBranch := "main",
       websiteDir := Paths.get("target"),
       mdocOut := websiteDir.value.resolve("website/docs").toFile,
       installWebsite := installWebsiteTask.value,
