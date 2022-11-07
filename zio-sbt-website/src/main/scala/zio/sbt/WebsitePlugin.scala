@@ -134,7 +134,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
            |# task and should be included in the git repository. Please do not edit 
            |# it manually. 
            |
-           |name: Documentation
+           |name: website
            |
            |on:
            |  release:
@@ -163,7 +163,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
            |          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
            |""".stripMargin
 
-      IO.write(new File(".github/workflows/documentation.yml"), template)
+      IO.write(new File(".github/workflows/site.yml"), template)
     }
 
 }
