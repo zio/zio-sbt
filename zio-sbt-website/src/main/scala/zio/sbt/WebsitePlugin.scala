@@ -111,6 +111,8 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
   lazy val publishWebsiteTask: Def.Initialize[Task[Unit]] =
     Def.task {
+      compileDocsTask.toTask("").value
+
       val refinedNpmVersion = {
         val v = releaseVersion.getOrElse(version.value)
         if (v.endsWith("-SNAPSHOT")) v.replace("+", "--") else v
@@ -155,8 +157,6 @@ object WebsitePlugin extends sbt.AutoPlugin {
             |        run: git tag --sort=committerdate | tail -1
             |      - name: Setup Scala and Java
             |        uses: olafurpg/setup-scala@v13
-            |      - name: Compile Project's Documentation
-            |        run: sbt compileDocs
             |      - uses: actions/setup-node@v3
             |        with:
             |          node-version: '16.x'
