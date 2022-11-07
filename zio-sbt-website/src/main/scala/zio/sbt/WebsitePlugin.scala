@@ -151,8 +151,6 @@ object WebsitePlugin extends sbt.AutoPlugin {
             |      - uses: actions/checkout@v3.1.0
             |        with:
             |          fetch-depth: 0
-            |      - name: Print Latest Tag For Debugging Purposes
-            |        run: git tag --sort=committerdate | tail -1
             |      - name: Setup Scala and Java
             |        uses: olafurpg/setup-scala@v13
             |      - uses: actions/setup-node@v3
