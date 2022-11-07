@@ -153,7 +153,8 @@ object WebsitePlugin extends sbt.AutoPlugin {
             |          fetch-depth: 0
             |      - name: Print Latest Tag For Debugging Purposes
             |        run: git tag --sort=committerdate | tail -1
-            |      - uses: olafurpg/setup-scala@v13
+            |      - name: Setup Scala and Java
+            |        uses: olafurpg/setup-scala@v13
             |      - name: Compile Project's Documentation
             |        run: sbt compileDocs
             |      - uses: actions/setup-node@v3
