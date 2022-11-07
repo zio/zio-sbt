@@ -111,7 +111,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
   lazy val publishWebsiteTask: Def.Initialize[Task[Unit]] =
     Def.task {
-      compileDocsTask.toTask("").value
+      val _ = compileDocs.toTask("").value
 
       val refinedNpmVersion = {
         val v = releaseVersion.getOrElse(version.value)
