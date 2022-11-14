@@ -16,6 +16,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
     val installWebsite: TaskKey[Unit]               = taskKey[Unit]("install the website for the first time")
     val previewWebsite: TaskKey[Unit]               = taskKey[Unit]("preview website")
     val publishToNpm: InputKey[Unit]                = inputKey[Unit]("publish website to the npm registry")
+    val publishSnapshotToNpm: InputKey[Unit]        = inputKey[Unit]("publish snapshot version of website to the npm registry")
     val generateGithubWorkflow: TaskKey[Unit]       = taskKey[Unit]("generate github workflow")
     val npmToken: SettingKey[String]                = settingKey[String]("npm token")
     val docsDependencies: SettingKey[Seq[ModuleID]] = settingKey[Seq[ModuleID]]("documentation project dependencies")
@@ -34,6 +35,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
       installWebsite := installWebsiteTask.value,
       previewWebsite := previewWebsiteTask.value,
       publishToNpm := publishWebsiteTask.value,
+      publishSnapshotToNpm := publishSnapshotToNpmTask.value,
       generateGithubWorkflow := generateGithubWorkflowTask.value,
       docsDependencies := Seq.empty,
       libraryDependencies ++= docsDependencies.value,
@@ -119,6 +121,22 @@ object WebsitePlugin extends sbt.AutoPlugin {
       exit(
         Process(
           s"npm version --new-version $refinedNpmVersion --no-git-tag-version",
+          new File(s"${websiteDir.value.toString}/website/docs/")
+        ).!
+      )
+
+      exit("npm config set access public".!)
+
+      exit(Process("npm publish", new File(s"${websiteDir.value.toString}/website/docs/")).!)
+    }
+
+  lazy val publishSnapshotToNpmTask: Def.Initialize[Task[Unit]] =
+    Def.task {
+      val _ = compileDocs.toTask("").value
+
+      exit(
+        Process(
+          s"npm version --new-version ${version.value} --no-git-tag-version",
           new File(s"${websiteDir.value.toString}/website/docs/")
         ).!
       )
