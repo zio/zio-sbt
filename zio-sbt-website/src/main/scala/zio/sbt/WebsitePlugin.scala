@@ -134,9 +134,11 @@ object WebsitePlugin extends sbt.AutoPlugin {
     Def.task {
       val _ = compileDocs.toTask("").value
 
+      val refinedVersion = version.value.replace("+", "--")
+
       exit(
         Process(
-          s"npm version --new-version ${version.value} --no-git-tag-version",
+          s"npm version --new-version $refinedVersion --no-git-tag-version",
           new File(s"${websiteDir.value.toString}/website/docs/")
         ).!
       )
