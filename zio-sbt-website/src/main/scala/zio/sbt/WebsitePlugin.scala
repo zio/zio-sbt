@@ -17,6 +17,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
     val previewWebsite: TaskKey[Unit]               = taskKey[Unit]("preview website")
     val publishToNpm: InputKey[Unit]                = inputKey[Unit]("publish website to the npm registry")
     val publishSnapshotToNpm: InputKey[Unit]        = inputKey[Unit]("publish snapshot version of website to the npm registry")
+    val publishHashverToNpm: InputKey[Unit]         = inputKey[Unit]("publish hash version of website to the npm registry")
     val generateGithubWorkflow: TaskKey[Unit]       = taskKey[Unit]("generate github workflow")
     val npmToken: SettingKey[String]                = settingKey[String]("npm token")
     val docsDependencies: SettingKey[Seq[ModuleID]] = settingKey[Seq[ModuleID]]("documentation project dependencies")
@@ -36,6 +37,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
       previewWebsite := previewWebsiteTask.value,
       publishToNpm := publishWebsiteTask.value,
       publishSnapshotToNpm := publishSnapshotToNpmTask.value,
+      publishHashverToNpm := publishHashverToNpmTask.value,
       generateGithubWorkflow := generateGithubWorkflowTask.value,
       docsDependencies := Seq.empty,
       libraryDependencies ++= docsDependencies.value,
@@ -121,6 +123,28 @@ object WebsitePlugin extends sbt.AutoPlugin {
       exit(
         Process(
           s"npm version --new-version $refinedNpmVersion --no-git-tag-version",
+          new File(s"${websiteDir.value.toString}/website/docs/")
+        ).!
+      )
+
+      exit("npm config set access public".!)
+
+      exit(Process("npm publish", new File(s"${websiteDir.value.toString}/website/docs/")).!)
+    }
+
+  private def hashVersion: String = {
+    val hashPart = s"git rev-parse --short=12 HEAD".!!
+    val datePart = java.time.LocalDate.now().toString.replace("-", ".")
+    datePart + "-" + hashPart
+  }
+
+  lazy val publishHashverToNpmTask: Def.Initialize[Task[Unit]] =
+    Def.task {
+      val _ = compileDocs.toTask("").value
+
+      exit(
+        Process(
+          s"npm version --new-version $hashVersion --no-git-tag-version",
           new File(s"${websiteDir.value.toString}/website/docs/")
         ).!
       )
