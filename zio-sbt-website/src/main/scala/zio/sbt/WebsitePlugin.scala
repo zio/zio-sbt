@@ -6,7 +6,7 @@ import scala.sys.process.*
 
 import mdoc.MdocPlugin
 import mdoc.MdocPlugin.autoImport.*
-import sbt.Keys.*
+import sbt.Keys.{ streams, _ }
 import sbt.*
 
 object WebsitePlugin extends sbt.AutoPlugin {
@@ -43,15 +43,22 @@ object WebsitePlugin extends sbt.AutoPlugin {
       libraryDependencies ++= docsDependencies.value,
       mdocVariables ++= {
         Map(
-          "VERSION"          -> releaseVersion.getOrElse(version.value),
-          "RELEASE_VERSION"  -> releaseVersion.getOrElse("NOT RELEASED YET"),
+          "VERSION"          -> releaseVersion(sLog.value.warn(_)).getOrElse(version.value),
+          "RELEASE_VERSION"  -> releaseVersion(sLog.value.warn(_)).getOrElse("NOT RELEASED YET"),
           "SNAPSHOT_VERSION" -> version.value
         )
       }
     )
 
-  private def releaseVersion: Option[String] =
-    "git tag --sort=committerdate".!!.split("\n").filter(_.startsWith("v")).lastOption.map(_.tail)
+  def releaseVersion(logger: String => Unit): Option[String] =
+    try "git tag --sort=committerdate".!!.split("\n").filter(_.startsWith("v")).lastOption.map(_.tail)
+    catch {
+      case _: Exception =>
+        logger(
+          s"Could not determine release version from git tags, will return 'None' instead.  This is most likely a result of this project not having a git repo initialized.  See previous log messages for more detail."
+        )
+        None
+    }
 
   private def exit(exitCode: Int) = if (exitCode != 0) sys.exit(exitCode)
 
@@ -108,7 +115,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
       exit(Process(s"mv ${normalizedName.value}-website website", websiteDir.value.toFile).!)
 
-      exit(s"rm ${websiteDir.value.toString}/website/.git/ -rvf".!)
+      exit(s"rm -rvf ${websiteDir.value.toString}/website/.git/".!)
     }
 
   lazy val publishWebsiteTask: Def.Initialize[Task[Unit]] =
@@ -116,7 +123,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
       val _ = compileDocs.toTask("").value
 
       val refinedNpmVersion = {
-        val v = releaseVersion.getOrElse(version.value)
+        val v = releaseVersion(streams.value.log.warn(_)).getOrElse(version.value)
         if (v.endsWith("-SNAPSHOT")) v.replace("+", "--") else v
       }
 
