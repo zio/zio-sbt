@@ -41,7 +41,7 @@ Before you submit a PR, make sure your tests are passing, and that the code is p
 ```
 sbt prepare
 
-sbt test
+sbt testPlugin
 ```
 
 

@@ -37,6 +37,7 @@ inThisBuild(
 
 ThisBuild / publishTo := sonatypePublishToBundle.value
 
+addCommandAlias("testPlugin", "scripted; test")
 addCommandAlias("prepare", "fix; fmt")
 addCommandAlias("fmt", "all scalafmtSbt scalafmtAll")
 addCommandAlias("fmtCheck", "all scalafmtSbtCheck scalafmtCheckAll")
@@ -66,6 +67,13 @@ lazy val zioSbtWebsite =
     .in(file("zio-sbt-website"))
     .settings(stdSettings("zio-sbt-website"))
     .settings(buildInfoSettings("zio.sbt"))
+    .settings(
+      scriptedLaunchOpts := {
+        scriptedLaunchOpts.value ++
+          Seq("-Xmx1024M", "-Dplugin.version=" + version.value)
+      },
+      scriptedBufferLog := false
+    )
     .enablePlugins(SbtPlugin)
 
 lazy val docs = project
