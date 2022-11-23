@@ -201,13 +201,17 @@ object WebsitePlugin extends sbt.AutoPlugin {
             |        with:
             |          fetch-depth: 0
             |      - name: Setup Scala and Java
-            |        uses: olafurpg/setup-scala@v13
+            |        uses: actions/setup-java@v3.6.0
+            |        with:
+            |          distribution: temurin
+            |          java-version: 17
+            |          check-latest: true
             |      - uses: actions/setup-node@v3
             |        with:
             |          node-version: '16.x'
             |          registry-url: 'https://registry.npmjs.org'
             |      - name: Publishing Docs to NPM Registry
-            |        run: sbt publishToNpm
+            |        run: sbt docs/publishToNpm
             |        env:
             |          NODE_AUTH_TOKEN: $${{ secrets.NPM_TOKEN }}
             |""".stripMargin
