@@ -120,7 +120,6 @@ object Commands {
   import ComposableCommand._
 
   val quiet: Command = Command.single("quiet") { (state, arg) =>
-
     arg.trim.toLowerCase() match {
       case "on" | "true" | "1" =>
         println("Welcome banner is off.")
