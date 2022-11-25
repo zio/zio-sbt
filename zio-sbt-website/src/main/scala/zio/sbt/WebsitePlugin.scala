@@ -1,12 +1,28 @@
+/*
+ * Copyright 2022 dev.zio
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package zio.sbt
 
-import java.nio.file.{ Path, Paths }
+import java.nio.file.{Path, Paths}
 
 import scala.sys.process.*
 
 import mdoc.MdocPlugin
 import mdoc.MdocPlugin.autoImport.*
-import sbt.Keys.{ streams, _ }
+import sbt.Keys.{streams, _}
 import sbt.*
 
 object WebsitePlugin extends sbt.AutoPlugin {
@@ -30,16 +46,16 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
   override lazy val projectSettings: Seq[Setting[_ <: Object]] =
     Seq(
-      compileDocs := compileDocsTask.evaluated,
-      websiteDir := Paths.get("target"),
-      mdocOut := websiteDir.value.resolve("website/docs").toFile,
-      installWebsite := installWebsiteTask.value,
-      previewWebsite := previewWebsiteTask.value,
-      publishToNpm := publishWebsiteTask.value,
-      publishSnapshotToNpm := publishSnapshotToNpmTask.value,
-      publishHashverToNpm := publishHashverToNpmTask.value,
+      compileDocs            := compileDocsTask.evaluated,
+      websiteDir             := Paths.get("target"),
+      mdocOut                := websiteDir.value.resolve("website/docs").toFile,
+      installWebsite         := installWebsiteTask.value,
+      previewWebsite         := previewWebsiteTask.value,
+      publishToNpm           := publishWebsiteTask.value,
+      publishSnapshotToNpm   := publishSnapshotToNpmTask.value,
+      publishHashverToNpm    := publishHashverToNpmTask.value,
       generateGithubWorkflow := generateGithubWorkflowTask.value,
-      docsDependencies := Seq.empty,
+      docsDependencies       := Seq.empty,
       libraryDependencies ++= docsDependencies.value,
       mdocVariables ++= {
         Map(
@@ -86,7 +102,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
     Def.inputTaskDyn {
       val parsed =
         sbt.complete.DefaultParsers.spaceDelimited("<arg>").parsed
-      val watch  =
+      val watch =
         parsed.headOption.getOrElse("").equalsIgnoreCase("--watch")
       val logger = streams.value.log
       logger.info("Compiling docs using mdoc ...")
