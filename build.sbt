@@ -1,15 +1,17 @@
 import sbtcrossproject.CrossPlugin.autoImport.crossProject
-import BuildHelper.{ crossProjectSettings, _ }
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport.scalaJSUseMainModuleInitializer
 
-sbtPlugin := true
+sbtPlugin         := true
 publishMavenStyle := true
+
+enablePlugins(ZioEcosystemProjectPlugin)
+addCommand(List("scripted"), "testPlugin", "Runs the scripted SBT plugin tests.")
 
 inThisBuild(
   List(
-    name := "zio-sbt",
     organization := "dev.zio",
-    homepage := Some(url("https://github.com/zio/zio-sbt")),
+    startYear    := Some(2022),
+    homepage     := Some(url("https://github.com/zio/zio-sbt")),
     developers := List(
       Developer(
         "khajavi",
@@ -24,11 +26,6 @@ inThisBuild(
         "scm:git:git@github.com:zio/zio-sbt.git"
       )
     ),
-    licenses := Seq(
-      "Apache-2.0" -> url(
-        s"${scmInfo.value.map(_.browseUrl).get}/blob/v${version.value}/LICENSE"
-      )
-    ),
     pgpPassphrase := sys.env.get("PGP_PASSWORD").map(_.toArray),
     pgpPublicRing := file("/tmp/public.asc"),
     pgpSecretRing := file("/tmp/secret.asc")
@@ -37,44 +34,59 @@ inThisBuild(
 
 ThisBuild / publishTo := sonatypePublishToBundle.value
 
-addCommandAlias("testPlugin", "scripted; test")
-addCommandAlias("prepare", "fix; fmt")
-addCommandAlias("fmt", "all scalafmtSbt scalafmtAll")
-addCommandAlias("fmtCheck", "all scalafmtSbtCheck scalafmtCheckAll")
-addCommandAlias("fix", "scalafixAll")
-addCommandAlias("fixCheck", "scalafixAll --check")
-
 lazy val root = project
   .in(file("."))
   .settings(
-    name := "zio-sbt",
+    name           := "zio-sbt",
     publish / skip := true
   )
   .aggregate(
     zioSbtWebsite,
+    zioSbtEcosystem,
     tests
   )
 
 lazy val tests =
   project
     .in(file("tests"))
-    .settings(stdSettings("zio-sbt-tests"))
-    .settings(publish / skip := true)
+    .settings(Seq(name := "zio-sbt-tests", publish / skip := true))
     .settings(buildInfoSettings("zio.sbt"))
+    .enablePlugins(ZioEcosystemProjectPlugin)
 
 lazy val zioSbtWebsite =
   project
     .in(file("zio-sbt-website"))
-    .settings(stdSettings("zio-sbt-website"))
     .settings(buildInfoSettings("zio.sbt"))
+    .settings(addCommand(List("scripted"), "testPlugin", "Runs the scripted SBT plugin tests."))
     .settings(
+      name               := "zio-sbt-website",
+      crossScalaVersions := Seq.empty,
+      scalaVersion       := versions.Scala212,
       scriptedLaunchOpts := {
         scriptedLaunchOpts.value ++
           Seq("-Xmx1024M", "-Dplugin.version=" + version.value)
       },
       scriptedBufferLog := false
     )
-    .enablePlugins(SbtPlugin)
+    .enablePlugins(SbtPlugin, ZioEcosystemProjectPlugin)
+
+lazy val zioSbtEcosystem =
+  project
+    .in(file("zio-sbt-ecosystem"))
+    .settings(buildInfoSettings("zio.sbt"))
+    .settings(addCommand(List("scripted"), "testPlugin", "Runs the scripted SBT plugin tests."))
+    .settings(
+      name               := "zio-sbt-ecosystem",
+      crossScalaVersions := Seq.empty,
+      needsZio           := false,
+      scalaVersion       := versions.Scala212,
+      scriptedLaunchOpts := {
+        scriptedLaunchOpts.value ++
+          Seq("-Xmx1024M", "-Dplugin.version=" + version.value)
+      },
+      scriptedBufferLog := false
+    )
+    .enablePlugins(SbtPlugin, ZioEcosystemProjectPlugin)
 
 lazy val docs = project
   .in(file("zio-sbt-docs"))
@@ -82,21 +94,18 @@ lazy val docs = project
     publish / skip := true,
     mdocVariables := Map(
       "SNAPSHOT_VERSION" -> version.value,
-      "RELEASE_VERSION"  -> previousStableVersion.value.getOrElse(
+      "RELEASE_VERSION" -> previousStableVersion.value.getOrElse(
         "can't find release"
       ),
-      "ORG"              -> organization.value,
-      "NAME"             -> (root / name).value,
-      "CROSS_VERSIONS"   -> (root / crossScalaVersions).value.mkString(", ")
+      "ORG"            -> organization.value,
+      "NAME"           -> (root / name).value,
+      "CROSS_VERSIONS" -> (root / crossScalaVersions).value.mkString(", ")
     ),
     moduleName := "zio-sbt-docs",
     scalacOptions -= "-Yno-imports",
     scalacOptions -= "-Xfatal-warnings",
-    libraryDependencies ++= Seq(
-      "dev.zio" %% "zio" % zioVersion
-    ),
     ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(root),
-    ScalaUnidoc / unidoc / target := (LocalRootProject / baseDirectory).value / "website" / "static" / "api",
+    ScalaUnidoc / unidoc / target              := (LocalRootProject / baseDirectory).value / "website" / "static" / "api",
     cleanFiles += (ScalaUnidoc / unidoc / target).value,
     docusaurusCreateSite := docusaurusCreateSite
       .dependsOn(Compile / unidoc)
@@ -106,4 +115,4 @@ lazy val docs = project
       .value
   )
   .dependsOn(root)
-  .enablePlugins(MdocPlugin, DocusaurusPlugin, ScalaUnidocPlugin)
+  .enablePlugins(ZioEcosystemProjectPlugin, MdocPlugin, DocusaurusPlugin, ScalaUnidocPlugin)
