@@ -103,16 +103,7 @@ lazy val docs = project
     ),
     moduleName := "zio-sbt-docs",
     scalacOptions -= "-Yno-imports",
-    scalacOptions -= "-Xfatal-warnings",
-    ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(root),
-    ScalaUnidoc / unidoc / target              := (LocalRootProject / baseDirectory).value / "website" / "static" / "api",
-    cleanFiles += (ScalaUnidoc / unidoc / target).value,
-    docusaurusCreateSite := docusaurusCreateSite
-      .dependsOn(Compile / unidoc)
-      .value,
-    docusaurusPublishGhpages := docusaurusPublishGhpages
-      .dependsOn(Compile / unidoc)
-      .value
+    scalacOptions -= "-Xfatal-warnings"
   )
   .dependsOn(root)
-  .enablePlugins(ZioEcosystemProjectPlugin, MdocPlugin, DocusaurusPlugin, ScalaUnidocPlugin)
+  .enablePlugins(ZioEcosystemProjectPlugin, WebsitePlugin)
