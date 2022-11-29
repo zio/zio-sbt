@@ -47,8 +47,8 @@ object WebsitePlugin extends sbt.AutoPlugin {
   override lazy val projectSettings: Seq[Setting[_ <: Object]] =
     Seq(
       compileDocs            := compileDocsTask.evaluated,
-      websiteDir             := Paths.get("target"),
-      mdocOut                := websiteDir.value.resolve("website/docs").toFile,
+      websiteDir             := Paths.get("target", "website"),
+      mdocOut                := websiteDir.value.resolve("docs").toFile,
       installWebsite         := installWebsiteTask.value,
       previewWebsite         := previewWebsiteTask.value,
       publishToNpm           := publishWebsiteTask.value,
@@ -95,7 +95,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
   lazy val docusaurusServerTask: Def.Initialize[Task[Unit]] =
     Def.task {
-      exit(Process("npm run start", new File(s"${websiteDir.value}/website")).!)
+      exit(Process("npm run start", new File(s"${websiteDir.value}")).!)
     }
 
   lazy val compileDocsTask: Def.Initialize[InputTask[Unit]] =
@@ -117,6 +117,8 @@ object WebsitePlugin extends sbt.AutoPlugin {
     Def.task {
       val logger = streams.value.log
 
+      exit(Process(s"rm target/${normalizedName.value}-website -Rvf").!)
+
       val task: String =
         s"""|npx @zio.dev/create-zio-website@latest ${normalizedName.value}-website \\
             |  --description="${name.value}" \\
@@ -127,11 +129,11 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
       logger.info(s"installing website for ${normalizedName.value} ... \n$task")
 
-      exit(Process(task, websiteDir.value.toFile).!)
+      exit(Process(task, target.value).!)
 
-      exit(Process(s"mv ${normalizedName.value}-website website", websiteDir.value.toFile).!)
+      exit(Process(s"mv target/${normalizedName.value}-website ${websiteDir.value}").!)
 
-      exit(s"rm -rvf ${websiteDir.value.toString}/website/.git/".!)
+      exit(s"rm -rvf ${websiteDir.value.toString}/.git/".!)
     }
 
   lazy val publishWebsiteTask: Def.Initialize[Task[Unit]] =
@@ -146,13 +148,13 @@ object WebsitePlugin extends sbt.AutoPlugin {
       exit(
         Process(
           s"npm version --new-version $refinedNpmVersion --no-git-tag-version",
-          new File(s"${websiteDir.value.toString}/website/docs/")
+          new File(s"${websiteDir.value.toString}/docs/")
         ).!
       )
 
       exit("npm config set access public".!)
 
-      exit(Process("npm publish", new File(s"${websiteDir.value.toString}/website/docs/")).!)
+      exit(Process("npm publish", new File(s"${websiteDir.value.toString}/docs/")).!)
     }
 
   private def hashVersion: String = {
@@ -168,13 +170,13 @@ object WebsitePlugin extends sbt.AutoPlugin {
       exit(
         Process(
           s"npm version --new-version $hashVersion --no-git-tag-version",
-          new File(s"${websiteDir.value.toString}/website/docs/")
+          new File(s"${websiteDir.value.toString}/docs/")
         ).!
       )
 
       exit("npm config set access public".!)
 
-      exit(Process("npm publish", new File(s"${websiteDir.value.toString}/website/docs/")).!)
+      exit(Process("npm publish", new File(s"${websiteDir.value.toString}/docs/")).!)
     }
 
   lazy val publishSnapshotToNpmTask: Def.Initialize[Task[Unit]] =
@@ -186,13 +188,13 @@ object WebsitePlugin extends sbt.AutoPlugin {
       exit(
         Process(
           s"npm version --new-version $refinedVersion --no-git-tag-version",
-          new File(s"${websiteDir.value.toString}/website/docs/")
+          new File(s"${websiteDir.value.toString}/docs/")
         ).!
       )
 
       exit("npm config set access public".!)
 
-      exit(Process("npm publish", new File(s"${websiteDir.value.toString}/website/docs/")).!)
+      exit(Process("npm publish", new File(s"${websiteDir.value.toString}/docs/")).!)
     }
 
   lazy val generateGithubWorkflowTask: Def.Initialize[Task[Unit]] =
