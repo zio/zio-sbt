@@ -66,9 +66,7 @@ lazy val zioSbtWebsite =
         scriptedLaunchOpts.value ++
           Seq("-Xmx1024M", "-Dplugin.version=" + version.value)
       },
-      scriptedBufferLog                          := false,
-      libraryDependencies += "com.typesafe.play" %% "twirl-api" % "1.6.0-M7",
-        libraryDependencies += "com.typesafe.play" %% "twirl-compiler" % "1.6.0-M7"
+      scriptedBufferLog := false
     )
     .enablePlugins(SbtPlugin, ZioEcosystemProjectPlugin)
 
