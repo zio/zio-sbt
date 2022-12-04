@@ -16,13 +16,14 @@
 
 package zio.sbt
 
+import java.nio.file.{Files, Path, Paths}
+
+import scala.sys.process.*
+
 import mdoc.MdocPlugin
 import mdoc.MdocPlugin.autoImport.*
-import sbt.*
 import sbt.Keys.*
-
-import java.nio.file.{Files, Path, Paths}
-import scala.sys.process.*
+import sbt.*
 
 object WebsitePlugin extends sbt.AutoPlugin {
 
