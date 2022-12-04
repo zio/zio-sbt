@@ -49,6 +49,21 @@ jobs:
     - name: Run tests
       run: sbt ++${{ matrix.scala }}! test
 
+  docs:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v3.0.0
+        with:
+          fetch-depth: 0
+      - name: generate readme
+        run: sbt docs/generateReadme
+      - name: commit and push readme changes
+        run: |
+          git add README.md
+          git commit -m "update readme."
+          git push origin
+          
   publish:
     runs-on: ubuntu-20.04
     timeout-minutes: 30
