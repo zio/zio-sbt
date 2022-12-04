@@ -34,20 +34,6 @@ ZIO SBT Website is an SBT plugin that has the following tasks:
 - `sbt publishToNpm`— publishes documentation inside the `docs` directory to the npm registry.
 - `sbt generateGithubWorkflow`— generates GitHub workflow which publishes documentation for each library release.
 
-## Contributing
-
-For the general guidelines, see ZIO [contributor's guide](https://github.com/zio/zio/blob/master/docs/about/contributing.md).
-
-#### TL;DR
-
-Before you submit a PR, make sure your tests are passing, and that the code is properly formatted
-
-```
-sbt prepare
-
-sbt testPlugin
-```
-
 
 [Badge-CI]: https://github.com/zio/zio-sbt/workflows/CI/badge.svg
 [Badge-SonatypeReleases]: https://img.shields.io/nexus/r/https/oss.sonatype.org/dev.zio/zio-sbt-website_2.12.svg "Sonatype Releases"
