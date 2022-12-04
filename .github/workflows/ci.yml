@@ -60,6 +60,8 @@ jobs:
         run: sbt docs/generateReadme
       - name: commit and push readme changes
         run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
           git add README.md
           git commit -m "update readme."
           git push origin
