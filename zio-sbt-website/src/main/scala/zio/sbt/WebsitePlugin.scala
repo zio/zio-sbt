@@ -83,7 +83,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
   lazy val previewWebsiteTask: Def.Initialize[Task[Unit]] = Def.task {
     import zio.*
 
-    val task =
+    val task: Task[Unit] =
       for {
         _ <- ZIO.attempt(compileDocsTask.toTask(" --watch").value).forkDaemon
         _ <- ZIO.attempt(docusaurusServerTask.value)
