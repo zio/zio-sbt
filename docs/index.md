@@ -33,6 +33,7 @@ ZIO SBT Website is an SBT plugin that has the following tasks:
 - `sbt previewWebsite`— runs a local webserver that serves documentation locally on http://localhost:3000. By changing the documentation inside the `docs` directory, the website will be reloaded with new content.
 - `sbt publishToNpm`— publishes documentation inside the `docs` directory to the npm registry.
 - `sbt generateGithubWorkflow`— generates GitHub workflow which publishes documentation for each library release.
+- `sbt generateReadme`— generate README.md file using `README.template.md` and `docs/index.md` files.
 
 [Badge-CI]: https://github.com/zio/zio-sbt/workflows/CI/badge.svg
 [Badge-SonatypeReleases]: https://img.shields.io/nexus/r/https/oss.sonatype.org/dev.zio/zio-sbt-website_2.12.svg "Sonatype Releases"
