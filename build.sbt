@@ -92,16 +92,7 @@ lazy val docs = project
   .in(file("zio-sbt-docs"))
   .settings(
     publish / skip := true,
-    mdocVariables := Map(
-      "SNAPSHOT_VERSION" -> version.value,
-      "RELEASE_VERSION" -> previousStableVersion.value.getOrElse(
-        "can't find release"
-      ),
-      "ORG"            -> organization.value,
-      "NAME"           -> (root / name).value,
-      "CROSS_VERSIONS" -> (root / crossScalaVersions).value.mkString(", ")
-    ),
-    moduleName := "zio-sbt-docs",
+    moduleName     := "zio-sbt-docs",
     scalacOptions -= "-Yno-imports",
     scalacOptions -= "-Xfatal-warnings"
   )
