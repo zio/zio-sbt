@@ -16,13 +16,13 @@
 
 package zio.sbt
 
-import java.nio.file.{Files, Paths}
-
 import io.circe.syntax.*
+import io.circe.yaml.Printer.{LineBreak, YamlVersion}
 import sbt.File
-
 import zio.*
 import zio.sbt.githubactions.*
+
+import java.nio.file.{Files, Paths}
 
 object WebsiteUtils {
 
@@ -65,15 +65,25 @@ object WebsiteUtils {
 
   val websiteWorkflow: String =
     io.circe.yaml
-      .Printer(dropNullKeys = true)
+      .Printer(
+        preserveOrder = true,
+        dropNullKeys = true,
+        splitLines = true,
+        lineBreak = LineBreak.Unix,
+        version = YamlVersion.Auto
+      )
       .pretty(
         Workflow(
           name = "Website",
-          triggers = Seq(Trigger.Release(Seq("published"))),
+          triggers = Seq(
+            Trigger.Release(Seq("published")),
+            Trigger.Push(branches = Seq(Branch.Named("main")))
+          ),
           jobs = Seq(
             Job(
               id = "publish-docs",
               name = "Publish Docs to The NPM Registry",
+              condition = Some(Condition.Expression("github.event_name == 'published'")),
               steps = Seq(
                 Step.StepSequence(
                   Seq(
@@ -85,6 +95,15 @@ object WebsiteUtils {
                     Step.SingleStep(
                       name = "Setup Scala",
                       uses = Some(ActionRef("actions/setup-java@v3.6.0")),
+                      parameters = Map(
+                        "distribution" -> "temurin".asJson,
+                        "java-version" -> 17.asJson,
+                        "check-latest" -> true.asJson
+                      )
+                    ),
+                    Step.SingleStep(
+                      name = "Setup NodeJs",
+                      uses = Some(ActionRef("actions/setup-node@v3")),
                       parameters = Map(
                         "node-version" -> "16.x".asJson,
                         "registry-url" -> "https://registry.npmjs.org".asJson
@@ -100,9 +119,51 @@ object WebsiteUtils {
                   )
                 )
               )
+            ),
+            Job(
+              id = "generate-readme",
+              name = "Generate README.md",
+              condition = Some(Condition.Expression("github.event_name == 'push'")),
+              steps = Seq(
+                Step.SingleStep(
+                  name = "Git Checkout",
+                  uses = Some(ActionRef("actions/checkout@v3.1.0")),
+                  parameters = Map(
+                    "ref"         -> "${{ github.head_ref }}".asJson,
+                    "fetch-depth" -> "0".asJson
+                  )
+                ),
+                Step.SingleStep(
+                  name = "Setup Scala",
+                  uses = Some(ActionRef("actions/setup-java@v3.6.0")),
+                  parameters = Map(
+                    "distribution" -> "temurin".asJson,
+                    "java-version" -> 17.asJson,
+                    "check-latest" -> true.asJson
+                  )
+                ),
+                Step.SingleStep(
+                  name = "Generate Readme",
+                  run = Some("sbt docs/generateReadme")
+                ),
+                Step.SingleStep(
+                  name = "Commit Changes",
+                  run = Some("""|git config --local user.email "github-actions[bot]@users.noreply.github.com"
+                                |git config --local user.name "github-actions[bot]"
+                                |git add README.md
+                                |git commit -m "update readme." || echo "No changes to commit"
+                                |""".stripMargin)
+                ),
+                Step.SingleStep(
+                  name = "Push Changes",
+                  uses = Some(ActionRef("ad-m/github-push-action@master")),
+                  parameters = Map(
+                    "branch" -> "${{ github.head_ref }}".asJson
+                  )
+                )
+              )
             )
           )
         ).asJson
       )
-
 }
