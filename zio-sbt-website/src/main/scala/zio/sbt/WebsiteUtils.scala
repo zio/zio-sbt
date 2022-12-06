@@ -87,7 +87,7 @@ object WebsiteUtils {
           jobs = Seq(
             Job(
               id = "publish-docs",
-              name = "Publish Docs to The NPM Registry",
+              name = "Publish Docs",
               condition = Some(Condition.Expression("github.event_name == 'published'")),
               steps = Seq(
                 Step.StepSequence(
@@ -127,7 +127,7 @@ object WebsiteUtils {
             ),
             Job(
               id = "generate-readme",
-              name = "Generate README.md",
+              name = "Generate README",
               condition = Some(
                 Condition.Expression("github.event_name == 'push'") || Condition.Expression(
                   "github.event_name == 'published'"
