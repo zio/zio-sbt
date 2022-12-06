@@ -14,6 +14,7 @@ jobs:
   publish-docs:
     name: Publish Docs to The NPM Registry
     runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'published' }}
     steps:
     - name: Git Checkout
       uses: actions/checkout@v3.1.0
