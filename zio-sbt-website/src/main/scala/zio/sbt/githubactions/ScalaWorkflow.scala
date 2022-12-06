@@ -17,6 +17,7 @@
 package zio.sbt.githubactions
 
 import io.circe.syntax.*
+
 import zio.sbt.githubactions.ScalaWorkflow.JavaVersion.AdoptJDK18
 
 object ScalaWorkflow {

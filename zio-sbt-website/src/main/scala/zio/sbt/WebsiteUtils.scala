@@ -16,14 +16,18 @@
 
 package zio.sbt
 
+import java.nio.file.{Files, Paths}
+
+import scala.annotation.nowarn
+
 import io.circe.syntax.*
 import io.circe.yaml.Printer.{LineBreak, YamlVersion}
 import sbt.File
+
 import zio.*
 import zio.sbt.githubactions.*
 
-import java.nio.file.{Files, Paths}
-
+@nowarn("msg=detected an interpolated expression")
 object WebsiteUtils {
 
   import java.nio.charset.StandardCharsets
