@@ -38,7 +38,6 @@ jobs:
   generate-readme:
     name: Generate README
     runs-on: ubuntu-latest
-    if: ${{ (github.event_name == 'push') || (github.event_name == 'published') }}
     steps:
     - name: Git Checkout
       uses: actions/checkout@v3.1.0
