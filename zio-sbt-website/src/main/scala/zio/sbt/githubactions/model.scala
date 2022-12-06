@@ -109,6 +109,14 @@ object Condition {
           throw new IllegalArgumentException("Not supported currently")
       }
 
+    def ||(other: Condition): Condition =
+      other match {
+        case Expression(otherExpression: String) =>
+          Expression(s"($expression) || ($otherExpression)")
+        case Function(otherExpression: String) =>
+          throw new IllegalArgumentException("Not supported currently")
+      }
+
     def asString: String = s"$${{ $expression }}"
   }
 
