@@ -88,7 +88,10 @@ object WebsiteUtils {
             Job(
               id = "publish-docs",
               name = "Publish Docs",
-              condition = Some(Condition.Expression("github.event_name == 'published'")),
+              condition = Some(
+                Condition.Expression("github.event_name == 'release'") &&
+                  Condition.Expression("github.event.action = 'published'")
+              ),
               steps = Seq(
                 Step.StepSequence(
                   Seq(
