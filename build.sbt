@@ -68,7 +68,7 @@ lazy val zioSbtWebsite =
       },
       scriptedBufferLog := false
     )
-    .enablePlugins(SbtPlugin)
+    .enablePlugins(SbtPlugin, ZioEcosystemProjectPlugin)
 
 lazy val zioSbtEcosystem =
   project

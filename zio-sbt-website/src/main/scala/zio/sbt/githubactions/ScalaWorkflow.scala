@@ -16,6 +16,8 @@
 
 package zio.sbt.githubactions
 
+import scala.annotation.nowarn
+
 import io.circe.syntax.*
 
 import zio.sbt.githubactions.ScalaWorkflow.JavaVersion.AdoptJDK18
@@ -32,6 +34,7 @@ object ScalaWorkflow {
       )
     )
 
+  @nowarn("msg=detected an interpolated expression")
   def setupScala(javaVersion: Option[JavaVersion] = None): Step =
     SingleStep(
       name = "Setup Java and Scala",
@@ -63,6 +66,7 @@ object ScalaWorkflow {
       uses = Some(ActionRef("olafurpg/setup-gpg@v3"))
     )
 
+  @nowarn("msg=detected an interpolated expression")
   def cacheSBT(
     os: Option[OS] = None,
     scalaVersion: Option[ScalaVersion] = None
@@ -106,6 +110,7 @@ object ScalaWorkflow {
       env = env
     )
 
+  @nowarn("msg=detected an interpolated expression")
   def storeTargets(
     id: String,
     directories: List[String],
@@ -137,6 +142,7 @@ object ScalaWorkflow {
     )
   }
 
+  @nowarn("msg=detected an interpolated expression")
   def loadStoredTarget(
     id: String,
     os: Option[OS] = None,
@@ -176,6 +182,7 @@ object ScalaWorkflow {
       ids.map(loadStoredTarget(_, os, scalaVersion, javaVersion))
     )
 
+  @nowarn("msg=detected an interpolated expression")
   def loadPGPSecret(): Step =
     SingleStep(
       "Load PGP secret",
@@ -183,6 +190,7 @@ object ScalaWorkflow {
       env = Map("PGP_SECRET" -> "${{ secrets.PGP_SECRET }}")
     )
 
+  @nowarn("msg=detected an interpolated expression")
   def turnstyle(): Step =
     SingleStep(
       "Turnstyle",
@@ -228,6 +236,7 @@ object ScalaWorkflow {
   }
 
   implicit class JobOps(job: Job) {
+    @nowarn("msg=detected an interpolated expression")
     def matrix(
       scalaVersions: Seq[ScalaVersion],
       operatingSystems: Seq[OS] = Seq(OS.UbuntuLatest),
