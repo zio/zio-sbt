@@ -5,11 +5,12 @@
 
 # ZIO SBT
 
+
 _ZIO SBT_ is an sbt plugin for ZIO projects. It provides high-level SBT utilities that simplify the development of ZIO applications.
 
-| Project Stage                         | CI              | Release                                                               | Snapshot                                                                 | Issues                                                     | Discord                          |
-|---------------------------------------|-----------------|-----------------------------------------------------------------------|--------------------------------------------------------------------------|------------------------------------------------------------|----------------------------------|
-| [![Project stage][Stage]][Stage-Page] | ![CI][Badge-CI] | [![Release Artifacts][Badge-SonatypeReleases]][Link-SonatypeReleases] | [![Snapshot Artifacts][Badge-SonatypeSnapshots]][Link-SonatypeSnapshots] | [![Average time to resolve an issue][badge-iim]][link-iim] | [![badge-discord]][link-discord] |
+|Project Stage | CI | Release | Snapshot | Discord | Github |
+|--------------|----|---------|----------|---------|--------|
+|[![Production%20Ready](https://img.shields.io/badge/Project%20Stage-Production%20Ready-brightgreen.svg)](https://github.com/zio/zio/wiki/Project-Stages)        |![CI Badge](https://github.com/zio/zio-sbt/workflows/CI/badge.svg) |[![Sonatype Releases](https://img.shields.io/nexus/r/https/oss.sonatype.org/dev.zio/zio-query_2.12.svg)](https://oss.sonatype.org/content/repositories/releases/dev/zio/zio-query_2.12/) |[![Sonatype Snapshots](https://img.shields.io/nexus/s/https/oss.sonatype.org/dev.zio/zio-query_2.12.svg)](https://oss.sonatype.org/content/repositories/snapshots/dev/zio/zio-query_2.12/) |[![Chat on Discord!](https://img.shields.io/discord/629491597070827530?logo=discord)](https://discord.gg/2ccFBr4) |[![ZIO SBT](https://img.shields.io/github/stars/zio/zio-sbt?style=social)](https://github.com/zio/zio-sbt) |
 
 
 ## Installation
@@ -17,7 +18,7 @@ _ZIO SBT_ is an sbt plugin for ZIO projects. It provides high-level SBT utilitie
 Add the following lines to your `plugin.sbt` file:
 
 ```scala
-addSbtPlugin("dev.zio" % "zio-sbt-website" % "0.1.5")
+addSbtPlugin("dev.zio" % "zio-sbt-website" % "0.1.0")
 ```
 
 Then you can enable it by using the following code in your `build.sbt` file:

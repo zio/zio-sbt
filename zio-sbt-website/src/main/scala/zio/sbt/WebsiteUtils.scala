@@ -48,6 +48,66 @@ object WebsiteUtils {
       result
     }
 
+  def githubBadge(githubUser: String, githubRepo: String, projectName: String): String = {
+    val githubBadge = s"https://img.shields.io/github/stars/$githubUser/$githubRepo?style=social"
+    val repoUrl     = s"https://github.com/$githubUser/$githubRepo"
+    s"[![$projectName]($githubBadge)]($repoUrl)"
+  }
+
+  def discord =
+    "[![Chat on Discord!](https://img.shields.io/discord/629491597070827530?logo=discord)](https://discord.gg/2ccFBr4)"
+
+  def ciBadge(githubUser: String, githubRepo: String) =
+    s"![CI Badge](https://github.com/$githubUser/$githubRepo/workflows/CI/badge.svg)"
+
+  def snapshotBadge(groupId: String, artifact: String) = {
+    val badge = s"https://img.shields.io/nexus/s/https/oss.sonatype.org/$groupId/$artifact.svg"
+    val link  = s"https://oss.sonatype.org/content/repositories/snapshots/${groupId.replace('.', '/')}/$artifact/"
+    s"[![Sonatype Snapshots]($badge)]($link)"
+  }
+
+  def releaseBadge(groupId: String, artifact: String) = {
+    val badge = s"https://img.shields.io/nexus/r/https/oss.sonatype.org/$groupId/$artifact.svg"
+    val link  = s"https://oss.sonatype.org/content/repositories/releases/${groupId.replace('.', '/')}/$artifact/"
+    s"[![Sonatype Releases]($badge)]($link)"
+  }
+
+  sealed abstract class ProjectStage(name: String) {
+    override def toString: String = name.replace(" ", "%20")
+  }
+  object ProjectStage {
+    final case object Development     extends ProjectStage(name = "Development")
+    final case object ProductionReady extends ProjectStage(name = "Production Ready")
+    final case object Experimental    extends ProjectStage(name = "Experimental")
+    final case object Research        extends ProjectStage(name = "Research")
+    final case object Deprecated      extends ProjectStage(name = "Deprecated")
+  }
+
+  def projectStageBadge(stage: ProjectStage) = {
+    val stagePage  = "https://github.com/zio/zio/wiki/Project-Stages"
+    val stageBadge = s"https://img.shields.io/badge/Project%20Stage-$stage-brightgreen.svg"
+    s"[![$stage]($stageBadge)]($stagePage)"
+  }
+
+  def generateProjectBadges(
+    projectStage: ProjectStage,
+    groupId: String,
+    artifact: String,
+    githubUser: String,
+    githubRepo: String,
+    projectName: String
+  ) = {
+    val stage    = projectStageBadge(projectStage)
+    val ci       = ciBadge(githubUser, githubRepo)
+    val release  = releaseBadge(groupId, artifact)
+    val snapshot = snapshotBadge(groupId, artifact)
+    val github   = githubBadge(githubUser, githubRepo, projectName)
+    s"""||Project Stage | CI | Release | Snapshot | Discord | Github |
+        ||--------------|----|---------|----------|---------|--------|
+        ||$stage        |$ci |$release |$snapshot |$discord |$github |
+        |""".stripMargin
+  }
+
   def generateReadme(sourcePath: String): Task[Unit] =
     for {
       template    <- readFile("README.template.md")
