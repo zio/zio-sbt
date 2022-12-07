@@ -57,16 +57,16 @@ object WebsiteUtils {
   def discord =
     "[![Chat on Discord!](https://img.shields.io/discord/629491597070827530?logo=discord)](https://discord.gg/2ccFBr4)"
 
-  def ciBadge(githubUser: String, githubRepo: String) =
+  def ciBadge(githubUser: String, githubRepo: String): String =
     s"![CI Badge](https://github.com/$githubUser/$githubRepo/workflows/CI/badge.svg)"
 
-  def snapshotBadge(groupId: String, artifact: String) = {
+  def snapshotBadge(groupId: String, artifact: String): String = {
     val badge = s"https://img.shields.io/nexus/s/https/oss.sonatype.org/$groupId/$artifact.svg"
     val link  = s"https://oss.sonatype.org/content/repositories/snapshots/${groupId.replace('.', '/')}/$artifact/"
     s"[![Sonatype Snapshots]($badge)]($link)"
   }
 
-  def releaseBadge(groupId: String, artifact: String) = {
+  def releaseBadge(groupId: String, artifact: String): String = {
     val badge = s"https://img.shields.io/nexus/r/https/oss.sonatype.org/$groupId/$artifact.svg"
     val link  = s"https://oss.sonatype.org/content/repositories/releases/${groupId.replace('.', '/')}/$artifact/"
     s"[![Sonatype Releases]($badge)]($link)"
@@ -83,7 +83,7 @@ object WebsiteUtils {
     final case object Deprecated      extends ProjectStage(name = "Deprecated")
   }
 
-  def projectStageBadge(stage: ProjectStage) = {
+  def projectStageBadge(stage: ProjectStage): String = {
     val stagePage  = "https://github.com/zio/zio/wiki/Project-Stages"
     val stageBadge = s"https://img.shields.io/badge/Project%20Stage-$stage-brightgreen.svg"
     s"[![$stage]($stageBadge)]($stagePage)"
@@ -96,7 +96,7 @@ object WebsiteUtils {
     githubUser: String,
     githubRepo: String,
     projectName: String
-  ) = {
+  ): String = {
     val stage    = projectStageBadge(projectStage)
     val ci       = ciBadge(githubUser, githubRepo)
     val release  = releaseBadge(groupId, artifact)

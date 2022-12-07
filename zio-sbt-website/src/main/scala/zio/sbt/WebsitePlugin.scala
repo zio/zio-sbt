@@ -16,14 +16,16 @@
 
 package zio.sbt
 
+import java.nio.file.{Path, Paths}
+
+import scala.sys.process.*
+
 import mdoc.MdocPlugin
 import mdoc.MdocPlugin.autoImport.*
-import sbt.*
 import sbt.Keys.*
-import zio.sbt.WebsiteUtils.ProjectStage
+import sbt.*
 
-import java.nio.file.{Path, Paths}
-import scala.sys.process.*
+import zio.sbt.WebsiteUtils.ProjectStage
 
 case class BadgeInfo(
   projectName: String,
