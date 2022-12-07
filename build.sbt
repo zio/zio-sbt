@@ -95,7 +95,7 @@ lazy val docs = project
     badgeInfo := Some(
       BadgeInfo(
         projectName = "ZIO SBT",
-        artifact = "zio-query_2.12",
+        artifact = "zio-sbt-website_2.12",
         projectStage = ProjectStage.ProductionReady
       )
     )
