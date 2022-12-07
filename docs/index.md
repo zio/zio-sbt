@@ -5,10 +5,7 @@ title: "ZIO SBT"
 
 _ZIO SBT_ is an sbt plugin for ZIO projects. It provides high-level SBT utilities that simplify the development of ZIO applications.
 
-| Project Stage                         | CI              | Release                                                               | Snapshot                                                                 | Issues                                                     | Discord                          |
-|---------------------------------------|-----------------|-----------------------------------------------------------------------|--------------------------------------------------------------------------|------------------------------------------------------------|----------------------------------|
-| [![Project stage][Stage]][Stage-Page] | ![CI][Badge-CI] | [![Release Artifacts][Badge-SonatypeReleases]][Link-SonatypeReleases] | [![Snapshot Artifacts][Badge-SonatypeSnapshots]][Link-SonatypeSnapshots] | [![Average time to resolve an issue][badge-iim]][link-iim] | [![badge-discord]][link-discord] |
-
+@PROJECT_BADGES@
 
 ## Installation
 

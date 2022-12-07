@@ -1,6 +1,3 @@
-import sbtcrossproject.CrossPlugin.autoImport.crossProject
-import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport.scalaJSUseMainModuleInitializer
-
 sbtPlugin         := true
 publishMavenStyle := true
 
@@ -94,7 +91,14 @@ lazy val docs = project
     publish / skip := true,
     moduleName     := "zio-sbt-docs",
     scalacOptions -= "-Yno-imports",
-    scalacOptions -= "-Xfatal-warnings"
+    scalacOptions -= "-Xfatal-warnings",
+    badgeInfo := Some(
+      BadgeInfo(
+        projectName = "ZIO SBT",
+        artifact = "zio-sbt-website_2.12",
+        projectStage = ProjectStage.ProductionReady
+      )
+    )
   )
   .dependsOn(root)
   .enablePlugins(ZioEcosystemProjectPlugin, WebsitePlugin)

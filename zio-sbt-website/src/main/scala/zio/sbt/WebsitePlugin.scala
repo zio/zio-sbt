@@ -25,6 +25,14 @@ import mdoc.MdocPlugin.autoImport.*
 import sbt.Keys.*
 import sbt.*
 
+import zio.sbt.WebsiteUtils.ProjectStage
+
+case class BadgeInfo(
+  projectName: String,
+  artifact: String,
+  projectStage: ProjectStage
+)
+
 object WebsitePlugin extends sbt.AutoPlugin {
 
   object autoImport {
@@ -39,6 +47,14 @@ object WebsitePlugin extends sbt.AutoPlugin {
     val npmToken: SettingKey[String]                = settingKey[String]("npm token")
     val docsDependencies: SettingKey[Seq[ModuleID]] = settingKey[Seq[ModuleID]]("documentation project dependencies")
     val websiteDir: SettingKey[Path]                = settingKey[Path]("website directory")
+    val badgeInfo: SettingKey[Option[BadgeInfo]] =
+      settingKey[Option[BadgeInfo]]("information necessary to create badge")
+
+    val BadgeInfo = zio.sbt.BadgeInfo
+    type BadgeInfo = zio.sbt.BadgeInfo
+
+    val ProjectStage = zio.sbt.WebsiteUtils.ProjectStage
+    type ProjectStage = zio.sbt.WebsiteUtils.ProjectStage
   }
 
   import autoImport.*
@@ -57,13 +73,29 @@ object WebsitePlugin extends sbt.AutoPlugin {
       publishHashverToNpm    := publishHashverToNpmTask.value,
       generateGithubWorkflow := generateGithubWorkflowTask.value,
       generateReadme         := generateReadmeTask.value,
+      badgeInfo              := None,
       docsDependencies       := Seq.empty,
       libraryDependencies ++= docsDependencies.value,
       mdocVariables ++= {
         Map(
           "VERSION"          -> releaseVersion(sLog.value.warn(_)).getOrElse(version.value),
           "RELEASE_VERSION"  -> releaseVersion(sLog.value.warn(_)).getOrElse("NOT RELEASED YET"),
-          "SNAPSHOT_VERSION" -> version.value
+          "SNAPSHOT_VERSION" -> version.value,
+          "PROJECT_BADGES" -> {
+            badgeInfo.value match {
+              case Some(badge) =>
+                WebsiteUtils.generateProjectBadges(
+                  projectStage = badge.projectStage,
+                  groupId = organization.value,
+                  artifact = badge.artifact,
+                  githubUser = "zio",
+                  githubRepo =
+                    scmInfo.value.map(_.browseUrl.getPath.split('/').last).getOrElse("github repo not provided"),
+                  projectName = badge.projectName
+                )
+              case None => ""
+            }
+          }
         )
       }
     )
