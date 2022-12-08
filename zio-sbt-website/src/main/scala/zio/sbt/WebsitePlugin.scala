@@ -17,11 +17,14 @@
 package zio.sbt
 
 import java.nio.file.{Path, Paths}
+
 import scala.sys.process.*
+
 import mdoc.MdocPlugin
 import mdoc.MdocPlugin.autoImport.*
 import sbt.Keys.*
 import sbt.*
+
 import zio.sbt.WebsiteUtils.{ProjectStage, readFile, removeYamlHeader}
 
 case class BadgeInfo(
@@ -287,22 +290,22 @@ object WebsitePlugin extends sbt.AutoPlugin {
       IO.write(new File(".github/workflows/site.yml"), template)
     }
 
-  def readmeDocumentationSection(projectName: String, projectHomepageUrl: URL) =
+  def readmeDocumentationSection(projectName: String, projectHomepageUrl: URL): String =
     s"""Learn more on the [$projectName homepage]($projectHomepageUrl)!""".stripMargin
 
-  def readmeContributionSection =
+  def readmeContributionSection: String =
     """For the general guidelines, see ZIO [contributor's guide](https://zio.dev/about/contributing).""".stripMargin
 
-  def readmeCodeOfConductSection =
+  def readmeCodeOfConductSection: String =
     """See the [Code of Conduct](https://zio.dev/about/code-of-conduct)""".stripMargin
 
-  def readmeSupportSection =
+  def readmeSupportSection: String =
     """|Come chat with us on [![Badge-Discord]][Link-Discord].
        |
        |[Badge-Discord]: https://img.shields.io/discord/629491597070827530?logo=discord "chat on discord"
        |[Link-Discord]: https://discord.gg/2ccFBr4 "Discord"""".stripMargin
 
-  def readmeLicenseSection =
+  def readmeLicenseSection: String =
     """[License](LICENSE)""".stripMargin
 
 }
