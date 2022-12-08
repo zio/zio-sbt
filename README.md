@@ -9,7 +9,7 @@ _ZIO SBT_ is an sbt plugin for ZIO projects. It provides high-level SBT utilitie
 
 Project Stage | CI | Release | Snapshot | Discord | Github |
 --------------|----|---------|----------|---------|--------|
-[![Production%20Ready](https://img.shields.io/badge/Project%20Stage-Production%20Ready-brightgreen.svg)](https://github.com/zio/zio/wiki/Project-Stages)        |![CI Badge](https://github.com/zio/zio-sbt/workflows/CI/badge.svg) |[![Sonatype Releases](https://img.shields.io/nexus/r/https/oss.sonatype.org/dev.zio/zio-sbt-website_2.12.svg)](https://oss.sonatype.org/content/repositories/releases/dev/zio/zio-sbt-website_2.12/) |[![Sonatype Snapshots](https://img.shields.io/nexus/s/https/oss.sonatype.org/dev.zio/zio-sbt-website_2.12.svg)](https://oss.sonatype.org/content/repositories/snapshots/dev/zio/zio-sbt-website_2.12/) |[![Chat on Discord!](https://img.shields.io/discord/629491597070827530?logo=discord)](https://discord.gg/2ccFBr4) |[![ZIO SBT](https://img.shields.io/github/stars/zio/zio-sbt?style=social)](https://github.com/zio/zio-sbt) |
+[![Production Ready](https://img.shields.io/badge/Project%20Stage-Production%20Ready-brightgreen.svg)](https://github.com/zio/zio/wiki/Project-Stages)        |![CI Badge](https://github.com/zio/zio-sbt/workflows/CI/badge.svg) |[![Sonatype Releases](https://img.shields.io/nexus/r/https/oss.sonatype.org/dev.zio/zio-sbt-website_2.12.svg)](https://oss.sonatype.org/content/repositories/releases/dev/zio/zio-sbt-website_2.12/) |[![Sonatype Snapshots](https://img.shields.io/nexus/s/https/oss.sonatype.org/dev.zio/zio-sbt-website_2.12.svg)](https://oss.sonatype.org/content/repositories/snapshots/dev/zio/zio-sbt-website_2.12/) |[![Chat on Discord!](https://img.shields.io/discord/629491597070827530?logo=discord)](https://discord.gg/2ccFBr4) |[![ZIO SBT](https://img.shields.io/github/stars/zio/zio-sbt?style=social)](https://github.com/zio/zio-sbt) |
 
 
 ## Installation
@@ -56,8 +56,7 @@ Learn more on the [ZIO SBT homepage](https://github.com/zio/zio-sbt)!
 
 ## Contributing
 
-Learn more on the [ZIO SBT homepage](https://github.com/zio/zio-sbt)!
-#### TL;DR
+Learn more on the [ZIO SBT homepage](https://github.com/zio/zio-sbt)!#### TL;DR
 
 Before you submit a PR, make sure your tests are passing, and that the code is properly formatted
 

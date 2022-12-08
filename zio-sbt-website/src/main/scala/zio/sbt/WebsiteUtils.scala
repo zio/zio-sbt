@@ -70,22 +70,23 @@ object WebsiteUtils {
     s"[![Sonatype Releases]($badge)]($link)"
   }
 
-  sealed abstract class ProjectStage(name: String) {
-    override def toString: String = name.replace(" ", "%20")
+  sealed abstract class ProjectStage(val name: String, color: String) {
+    val stagePage: String =
+      "https://github.com/zio/zio/wiki/Project-Stages"
+    def badge: String =
+      s"https://img.shields.io/badge/Project%20Stage-${name.replace(" ", "%20") + '-' + color}.svg"
   }
   object ProjectStage {
-    final case object Development     extends ProjectStage(name = "Development")
-    final case object ProductionReady extends ProjectStage(name = "Production Ready")
-    final case object Experimental    extends ProjectStage(name = "Experimental")
-    final case object Research        extends ProjectStage(name = "Research")
-    final case object Deprecated      extends ProjectStage(name = "Deprecated")
+    final case object ProductionReady extends ProjectStage(name = "Production Ready", "brightgreen")
+    final case object Development     extends ProjectStage(name = "Development", "green")
+    final case object Experimental    extends ProjectStage(name = "Experimental", "yellowgreen")
+    final case object Research        extends ProjectStage(name = "Research", "yellow")
+    final case object Concept         extends ProjectStage(name = "Concept", "orange")
+    final case object Deprecated      extends ProjectStage(name = "Deprecated", "red")
   }
 
-  def projectStageBadge(stage: ProjectStage): String = {
-    val stagePage  = "https://github.com/zio/zio/wiki/Project-Stages"
-    val stageBadge = s"https://img.shields.io/badge/Project%20Stage-$stage-brightgreen.svg"
-    s"[![$stage]($stageBadge)]($stagePage)"
-  }
+  def projectStageBadge(stage: ProjectStage): String =
+    s"[![${stage.name}](${stage.badge})](${stage.stagePage})"
 
   def generateProjectBadges(
     projectStage: ProjectStage,
