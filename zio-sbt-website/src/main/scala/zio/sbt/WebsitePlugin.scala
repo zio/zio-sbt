@@ -17,18 +17,14 @@
 package zio.sbt
 
 import java.nio.file.{Path, Paths}
-
 import scala.sys.process.*
-
 import mdoc.MdocPlugin
 import mdoc.MdocPlugin.autoImport.*
 import sbt.Keys.*
 import sbt.*
-
-import zio.sbt.WebsiteUtils.ProjectStage
+import zio.sbt.WebsiteUtils.{ProjectStage, readFile, removeYamlHeader}
 
 case class BadgeInfo(
-  projectName: String,
   artifact: String,
   projectStage: ProjectStage
 )
@@ -50,6 +46,13 @@ object WebsitePlugin extends sbt.AutoPlugin {
     val docsPublishBranch: SettingKey[String]       = settingKey[String]("publish branch for documentation")
     val badgeInfo: SettingKey[Option[BadgeInfo]] =
       settingKey[Option[BadgeInfo]]("information necessary to create badge")
+    val projectName: SettingKey[String]         = settingKey[String]("project name e.g. ZIO SBT")
+    val projectHomePage: SettingKey[String]     = settingKey[String]("project home page url e.g. https://zio.dev/zio-sbt")
+    val readmeDocumentation: SettingKey[String] = settingKey[String]("readme documentation section")
+    val readmeContribution: SettingKey[String]  = settingKey[String]("readme contribution section")
+    val readmeCodeOfConduct: SettingKey[String] = settingKey[String]("readme code of conduct")
+    val readmeSupport: SettingKey[String]       = settingKey[String]("readme support section")
+    val readmeLicense: SettingKey[String]       = settingKey[String]("readme license section")
 
     val BadgeInfo = zio.sbt.BadgeInfo
     type BadgeInfo = zio.sbt.BadgeInfo
@@ -92,14 +95,23 @@ object WebsitePlugin extends sbt.AutoPlugin {
                   githubUser = "zio",
                   githubRepo =
                     scmInfo.value.map(_.browseUrl.getPath.split('/').last).getOrElse("github repo not provided"),
-                  projectName = badge.projectName
+                  projectName = projectName.value
                 )
               case None => ""
             }
           }
         )
       },
-      docsPublishBranch := "main"
+      docsPublishBranch := "main",
+      readmeDocumentation := readmeDocumentationSection(
+        projectName.value,
+        homepage.value.getOrElse(new URL(s"https://zio.dev/ecosystem/"))
+      ),
+      readmeContribution  := readmeContributionSection,
+      readmeSupport       := readmeSupportSection,
+      readmeLicense       := readmeLicenseSection,
+      readmeContribution  := readmeContributionSection,
+      readmeCodeOfConduct := readmeCodeOfConductSection
     )
 
   def releaseVersion(logger: String => Unit): Option[String] =
@@ -241,7 +253,20 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
       Unsafe.unsafe { implicit unsafe =>
         Runtime.default.unsafe
-          .run(WebsiteUtils.generateReadme(websiteDir.value.resolve("docs/index.md").toString))
+          .run(
+            readFile(websiteDir.value.resolve("docs/index.md").toString).map(md => removeYamlHeader(md).trim).flatMap {
+              introduction =>
+                WebsiteUtils.generateReadme(
+                  projectName.value,
+                  introduction,
+                  readmeDocumentation.value,
+                  readmeCodeOfConduct.value,
+                  readmeContribution.value,
+                  readmeSupport.value,
+                  readmeLicense.value
+                )
+            }
+          )
           .getOrThrowFiberFailure()
       }
       val logger = streams.value.log
@@ -261,5 +286,23 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
       IO.write(new File(".github/workflows/site.yml"), template)
     }
+
+  def readmeDocumentationSection(projectName: String, projectHomepageUrl: URL) =
+    s"""Learn more on the [$projectName homepage]($projectHomepageUrl)!""".stripMargin
+
+  def readmeContributionSection =
+    """For the general guidelines, see ZIO [contributor's guide](https://zio.dev/about/contributing).""".stripMargin
+
+  def readmeCodeOfConductSection =
+    """See the [Code of Conduct](https://zio.dev/about/code-of-conduct)""".stripMargin
+
+  def readmeSupportSection =
+    """|Come chat with us on [![Badge-Discord]][Link-Discord].
+       |
+       |[Badge-Discord]: https://img.shields.io/discord/629491597070827530?logo=discord "chat on discord"
+       |[Link-Discord]: https://discord.gg/2ccFBr4 "Discord"""".stripMargin
+
+  def readmeLicenseSection =
+    """[License](LICENSE)""".stripMargin
 
 }

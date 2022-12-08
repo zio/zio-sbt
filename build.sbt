@@ -92,13 +92,24 @@ lazy val docs = project
     moduleName     := "zio-sbt-docs",
     scalacOptions -= "-Yno-imports",
     scalacOptions -= "-Xfatal-warnings",
+    projectName := "ZIO SBT",
     badgeInfo := Some(
       BadgeInfo(
-        projectName = "ZIO SBT",
         artifact = "zio-sbt-website_2.12",
         projectStage = ProjectStage.ProductionReady
       )
-    )
+    ),
+    readmeContribution := readmeDocumentation.value +
+      """|#### TL;DR
+         |
+         |Before you submit a PR, make sure your tests are passing, and that the code is properly formatted
+         |
+         |```
+         |sbt prepare
+         |
+         |sbt testPlugin
+         |```
+         |""".stripMargin
   )
   .dependsOn(root)
   .enablePlugins(ZioEcosystemProjectPlugin, WebsitePlugin)
