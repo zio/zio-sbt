@@ -8,7 +8,7 @@ name: Website
     - published
   push:
     branches:
-    - master
+    - main
 jobs:
   publish-docs:
     name: Publish Docs

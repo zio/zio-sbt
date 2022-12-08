@@ -52,11 +52,12 @@ ZIO SBT Website is an SBT plugin that has the following tasks:
 
 ## Documentation
 
-Learn more on the [ZIO SBT homepage](https://github.com/zio/zio-sbt)!
+Learn more on the [ZIO SBT homepage](https://zio.dev/zio-sbt)!
 
 ## Contributing
 
-Learn more on the [ZIO SBT homepage](https://github.com/zio/zio-sbt)!#### TL;DR
+For the general guidelines, see ZIO [contributor's guide](https://zio.dev/about/contributing).
+#### TL;DR
 
 Before you submit a PR, make sure your tests are passing, and that the code is properly formatted
 
