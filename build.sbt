@@ -99,8 +99,9 @@ lazy val docs = project
         projectStage = ProjectStage.ProductionReady
       )
     ),
-    readmeContribution := readmeDocumentation.value +
-      """|#### TL;DR
+    readmeContribution := readmeContribution.value +
+      """|
+         |#### TL;DR
          |
          |Before you submit a PR, make sure your tests are passing, and that the code is properly formatted
          |
