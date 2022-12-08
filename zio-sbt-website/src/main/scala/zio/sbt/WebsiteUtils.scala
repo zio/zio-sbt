@@ -128,7 +128,7 @@ object WebsiteUtils {
     } yield ()
 
   @nowarn("msg=detected an interpolated expression")
-  def websiteWorkflow: String =
+  def websiteWorkflow(docsPublishBranch: String): String =
     io.circe.yaml
       .Printer(
         preserveOrder = true,
@@ -142,7 +142,7 @@ object WebsiteUtils {
           name = "Website",
           triggers = Seq(
             Trigger.Release(Seq("published")),
-            Trigger.Push(branches = Seq(Branch.Named("main")))
+            Trigger.Push(branches = Seq(Branch.Named(docsPublishBranch)))
           ),
           jobs = Seq(
             Job(

@@ -7,4 +7,5 @@ title: "Developer Notes"
 
 ### ZIO SBT Website
 - Add a command to make a version history page in documentation
+- Check if the committed workflow is valid or not.
 
