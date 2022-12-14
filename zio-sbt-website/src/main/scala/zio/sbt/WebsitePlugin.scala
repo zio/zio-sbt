@@ -248,6 +248,12 @@ object WebsitePlugin extends sbt.AutoPlugin {
       exit(Process("npm publish", new File(s"${websiteDir.value.toString}/docs/")).!)
     }
 
+  private def prefixUrlsWith(markdown: String, prefix: String): String = {
+    val regex = """\((.+?.md)\)""".r
+
+    regex.replaceAllIn(markdown, '(' + prefix + _.group(1) + ')')
+  }
+
   lazy val generateReadmeTask: Def.Initialize[Task[Unit]] = {
     Def.task {
       import zio.*
@@ -261,7 +267,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
               introduction =>
                 WebsiteUtils.generateReadme(
                   projectName.value,
-                  introduction,
+                  prefixUrlsWith(introduction, "docs/"),
                   readmeDocumentation.value,
                   readmeCodeOfConduct.value,
                   readmeContribution.value,
