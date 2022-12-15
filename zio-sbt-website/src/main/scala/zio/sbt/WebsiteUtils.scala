@@ -25,6 +25,7 @@ import io.circe.yaml.Printer.{LineBreak, YamlVersion}
 import sbt.File
 
 import zio.*
+import zio.sbt.WebsiteUtils.DocsVersioning.SemanticVersioning
 import zio.sbt.githubactions.*
 
 @nowarn("msg=detected an interpolated expression")
@@ -160,8 +161,18 @@ object WebsiteUtils {
            )
     } yield ()
 
+  abstract class DocsVersioning(val npmCommand: String)
+  object DocsVersioning {
+    object SemanticVersioning extends DocsVersioning("publishToNpm")
+    object HashVersioning     extends DocsVersioning("publishHashverToNpm")
+  }
+
   @nowarn("msg=detected an interpolated expression")
-  def websiteWorkflow(docsPublishBranch: String): String =
+  def websiteWorkflow(
+    docsPublishBranch: String,
+    sbtBuildOptions: List[String] = List.empty,
+    versioning: DocsVersioning = SemanticVersioning
+  ): String =
     io.circe.yaml
       .Printer(
         preserveOrder = true,
@@ -212,7 +223,7 @@ object WebsiteUtils {
                     ),
                     Step.SingleStep(
                       name = "Publish Docs to NPM Registry",
-                      run = Some("sbt docs/publishToNpm"),
+                      run = Some(s"sbt ${sbtBuildOptions.mkString(" ")} docs/${versioning.npmCommand}"),
                       env = Map(
                         "NODE_AUTH_TOKEN" -> "${{ secrets.NPM_TOKEN }}"
                       )
@@ -244,7 +255,7 @@ object WebsiteUtils {
                 ),
                 Step.SingleStep(
                   name = "Generate Readme",
-                  run = Some("sbt docs/generateReadme")
+                  run = Some(s"sbt ${sbtBuildOptions.mkString(" ")} docs/generateReadme")
                 ),
                 Step.SingleStep(
                   name = "Commit Changes",
