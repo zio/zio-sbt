@@ -112,13 +112,21 @@ object WebsiteUtils {
 
   def generateReadme(
     projectName: String,
-    introductionSection: String,
-    documentationSection: String,
-    codeOfConductSection: String,
-    contributionSection: String,
-    supportSection: String,
-    license: String
-  ): Task[Unit] =
+    introduction: String,
+    documentation: String,
+    codeOfConduct: String,
+    contribution: String,
+    support: String,
+    license: String,
+    acknowledgement: String
+  ): Task[Unit] = {
+    val acknowledgementSection = {
+      if (acknowledgement.nonEmpty)
+        s"""|## Acknowledgement
+            |
+            |$acknowledgement""".stripMargin
+      else ""
+    }
     for {
       _ <- ZIO.unit
       comment =
@@ -131,27 +139,29 @@ object WebsiteUtils {
             |
             |# $projectName
             |
-            |$introductionSection
+            |$introduction
             |
             |## Documentation
             |
-            |$documentationSection
+            |$documentation
             |
             |## Contributing
             |
-            |$contributionSection
+            |$contribution
             |
             |## Code of Conduct
             |
-            |$codeOfConductSection
+            |$codeOfConduct
             |
             |## Support
             |
-            |$supportSection
+            |$support
             |
             |## License
             |
             |$license
+            |
+            |$acknowledgementSection
             |""".stripMargin
       _ <- ZIO.attemptBlocking(
              Files.write(
@@ -160,6 +170,7 @@ object WebsiteUtils {
              )
            )
     } yield ()
+  }
 
   abstract class DocsVersioning(val npmCommand: String)
   object DocsVersioning {

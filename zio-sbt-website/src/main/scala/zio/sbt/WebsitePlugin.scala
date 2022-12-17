@@ -56,6 +56,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
     val readmeCodeOfConduct: SettingKey[String]    = settingKey[String]("readme code of conduct")
     val readmeSupport: SettingKey[String]          = settingKey[String]("readme support section")
     val readmeLicense: SettingKey[String]          = settingKey[String]("readme license section")
+    val readmeAcknowledgement: SettingKey[String]  = settingKey[String]("acknowledgement section")
     val docsVersioning: SettingKey[DocsVersioning] = settingKey[DocsVersioning]("docs versioning style")
     val sbtBuildOptions: SettingKey[List[String]]  = settingKey[List[String]]("sbt build options")
 
@@ -115,13 +116,14 @@ object WebsitePlugin extends sbt.AutoPlugin {
         projectName.value,
         homepage.value.getOrElse(new URL(s"https://zio.dev/ecosystem/"))
       ),
-      readmeContribution  := readmeContributionSection,
-      readmeSupport       := readmeSupportSection,
-      readmeLicense       := readmeLicenseSection,
-      readmeContribution  := readmeContributionSection,
-      readmeCodeOfConduct := readmeCodeOfConductSection,
-      docsVersioning      := DocsVersioning.SemanticVersioning,
-      sbtBuildOptions     := List.empty[String]
+      readmeContribution    := readmeContributionSection,
+      readmeSupport         := readmeSupportSection,
+      readmeLicense         := readmeLicenseSection,
+      readmeAcknowledgement := "",
+      readmeContribution    := readmeContributionSection,
+      readmeCodeOfConduct   := readmeCodeOfConductSection,
+      docsVersioning        := DocsVersioning.SemanticVersioning,
+      sbtBuildOptions       := List.empty[String]
     )
 
   def releaseVersion(logger: String => Unit): Option[String] =
@@ -279,7 +281,8 @@ object WebsitePlugin extends sbt.AutoPlugin {
                   readmeCodeOfConduct.value,
                   readmeContribution.value,
                   readmeSupport.value,
-                  readmeLicense.value
+                  readmeLicense.value,
+                  readmeAcknowledgement.value
                 )
             }
           )
