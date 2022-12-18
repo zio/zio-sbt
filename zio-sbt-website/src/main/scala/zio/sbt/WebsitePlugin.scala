@@ -277,15 +277,15 @@ object WebsitePlugin extends sbt.AutoPlugin {
             readFile(websiteDir.value.resolve("docs/index.md").toString).map(md => removeYamlHeader(md).trim).flatMap {
               introduction =>
                 WebsiteUtils.generateReadme(
-                  projectName.value,
-                  prefixUrlsWith(introduction, "docs/"),
-                  readmeDocumentation.value,
-                  readmeCodeOfConduct.value,
-                  readmeContribution.value,
-                  readmeSupport.value,
-                  readmeLicense.value,
-                  readmeAcknowledgement.value,
-                  readmeCredits.value
+                  projectName = projectName.value,
+                  introduction = prefixUrlsWith(introduction, "docs/").strip(),
+                  documentation = readmeDocumentation.value.strip(),
+                  codeOfConduct = readmeCodeOfConduct.value.strip(),
+                  contribution = readmeContribution.value.strip(),
+                  support = readmeSupport.value.strip(),
+                  license = readmeLicense.value.strip(),
+                  acknowledgement = readmeAcknowledgement.value.strip(),
+                  credits = readmeCredits.value.strip()
                 )
             }
           )
