@@ -118,15 +118,12 @@ object WebsiteUtils {
     contribution: String,
     support: String,
     license: String,
-    acknowledgement: String
+    acknowledgement: String,
+    credits: String
   ): Task[Unit] = {
-    val acknowledgementSection = {
-      if (acknowledgement.nonEmpty)
-        s"""|## Acknowledgement
-            |
-            |$acknowledgement""".stripMargin
-      else ""
-    }
+    val acknowledgementSection = if (acknowledgement.nonEmpty) s"## Acknowledgement\n\n$acknowledgement" else ""
+    val creditsSection         = if (credits.nonEmpty) s"## Credits\n\n$credits" else ""
+
     for {
       _ <- ZIO.unit
       comment =
@@ -157,11 +154,13 @@ object WebsiteUtils {
             |
             |$support
             |
+            |$creditsSection
+            |
+            |$acknowledgementSection
+            |
             |## License
             |
             |$license
-            |
-            |$acknowledgementSection
             |""".stripMargin
       _ <- ZIO.attemptBlocking(
              Files.write(

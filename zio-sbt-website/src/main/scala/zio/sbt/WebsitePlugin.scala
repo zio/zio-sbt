@@ -57,6 +57,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
     val readmeSupport: SettingKey[String]          = settingKey[String]("readme support section")
     val readmeLicense: SettingKey[String]          = settingKey[String]("readme license section")
     val readmeAcknowledgement: SettingKey[String]  = settingKey[String]("acknowledgement section")
+    val readmeCredits: SettingKey[String]          = settingKey[String]("credits section")
     val docsVersioning: SettingKey[DocsVersioning] = settingKey[DocsVersioning]("docs versioning style")
     val sbtBuildOptions: SettingKey[List[String]]  = settingKey[List[String]]("sbt build options")
 
@@ -122,6 +123,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
       readmeAcknowledgement := "",
       readmeContribution    := readmeContributionSection,
       readmeCodeOfConduct   := readmeCodeOfConductSection,
+      readmeCredits         := "",
       docsVersioning        := DocsVersioning.SemanticVersioning,
       sbtBuildOptions       := List.empty[String]
     )
@@ -282,7 +284,8 @@ object WebsitePlugin extends sbt.AutoPlugin {
                   readmeContribution.value,
                   readmeSupport.value,
                   readmeLicense.value,
-                  readmeAcknowledgement.value
+                  readmeAcknowledgement.value,
+                  readmeCredits.value
                 )
             }
           )
