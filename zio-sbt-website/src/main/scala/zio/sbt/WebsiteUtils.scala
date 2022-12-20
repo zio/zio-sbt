@@ -106,8 +106,7 @@ object WebsiteUtils {
     val github   = githubBadge(githubUser, githubRepo, projectName)
     s"""||Project Stage | CI | Release | Snapshot | Discord | Github |
         ||--------------|----|---------|----------|---------|--------|
-        ||$stage        |$ci |$release |$snapshot |$discord |$github |
-        |""".stripMargin
+        ||$stage        |$ci |$release |$snapshot |$discord |$github |""".stripMargin
   }
 
   def generateReadme(
@@ -126,24 +125,17 @@ object WebsiteUtils {
          |[//]: # (So please do not edit it manually. Instead, change "docs/index.md" file or sbt setting keys)
          |[//]: # (e.g. "readmeDocumentation" and "readmeSupport".)
          |""".stripMargin
-    val introductionSection    = s"# $projectName\n\n$introduction\n"
-    val creditsSection         = if (credits.nonEmpty) s"## Credits\n\n$credits\n" else ""
-    val supportSection         = s"## Support\n\n$support"
-    val codeOfConductSection   = s"## Code of Conduct\n\n$codeOfConduct\n"
-    val contributingSection    = s"## Contributing\n\n$contribution\n"
-    val documentationSection   = s"## Documentation\n\n$documentation\n"
-    val acknowledgementSection = if (acknowledgement.nonEmpty) s"## Acknowledgement\n\n$acknowledgement\n" else ""
-    val licenseSection         = s"## License\n\n$license\n"
+    val introductionSection    = s"\n# $projectName\n\n$introduction\n"
+    val creditsSection         = if (credits.nonEmpty) s"\n## Credits\n\n$credits\n" else ""
+    val supportSection         = s"\n## Support\n\n$support\n"
+    val codeOfConductSection   = s"\n## Code of Conduct\n\n$codeOfConduct\n"
+    val contributingSection    = s"\n## Contributing\n\n$contribution\n"
+    val documentationSection   = s"\n## Documentation\n\n$documentation\n"
+    val acknowledgementSection = if (acknowledgement.nonEmpty) s"\n## Acknowledgement\n\n$acknowledgement\n" else ""
+    val licenseSection         = s"\n## License\n\n$license\n"
     val readme =
-      s"""|$commentSection
-          |$introductionSection
-          |$documentationSection
-          |$contributingSection
-          |$codeOfConductSection
-          |$supportSection
-          |$creditsSection
-          |$acknowledgementSection
-          |$licenseSection""".stripMargin
+      commentSection + introductionSection + documentationSection + contributingSection + codeOfConductSection +
+        supportSection + creditsSection + acknowledgementSection + licenseSection
 
     ZIO.attemptBlocking(
       Files.write(
