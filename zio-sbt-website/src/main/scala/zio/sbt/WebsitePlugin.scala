@@ -278,14 +278,14 @@ object WebsitePlugin extends sbt.AutoPlugin {
               introduction =>
                 WebsiteUtils.generateReadme(
                   projectName = projectName.value,
-                  introduction = prefixUrlsWith(introduction, "docs/").strip(),
-                  documentation = readmeDocumentation.value.strip(),
-                  codeOfConduct = readmeCodeOfConduct.value.strip(),
-                  contribution = readmeContribution.value.strip(),
-                  support = readmeSupport.value.strip(),
-                  license = readmeLicense.value.strip(),
-                  acknowledgement = readmeAcknowledgement.value.strip(),
-                  credits = readmeCredits.value.strip()
+                  introduction = prefixUrlsWith(introduction, "docs/").trim,
+                  documentation = readmeDocumentation.value.trim,
+                  codeOfConduct = readmeCodeOfConduct.value.trim,
+                  contribution = readmeContribution.value.trim,
+                  support = readmeSupport.value.trim,
+                  license = readmeLicense.value.trim,
+                  acknowledgement = readmeAcknowledgement.value.trim,
+                  credits = readmeCredits.value.trim
                 )
             }
           )
