@@ -112,6 +112,7 @@ object ActionRef {
 
 sealed trait Condition {
   def &&(other: Condition): Condition
+  def ||(other: Condition): Condition
   def asString: String
 }
 
@@ -137,9 +138,11 @@ object Condition {
   }
 
   case class Function(expression: String) extends Condition {
-    def &&(other: Condition): Condition = throw new IllegalArgumentException(
-      "Not supported currently"
-    )
+    def &&(other: Condition): Condition =
+      throw new IllegalArgumentException("Not supported currently")
+
+    def ||(other: Condition): Condition =
+      throw new IllegalArgumentException("Not supported currently")
 
     def asString: String = expression
   }

@@ -179,7 +179,9 @@ object WebsiteUtils {
               name = "Publish Docs",
               condition = Some(
                 Condition.Expression("github.event_name == 'release'") &&
-                  Condition.Expression("github.event.action == 'published'")
+                  Condition.Expression("github.event.action == 'published'") || Condition.Expression(
+                    "github.event_name == 'workflow_dispatch'"
+                  )
               ),
               steps = Seq(
                 Step.StepSequence(
