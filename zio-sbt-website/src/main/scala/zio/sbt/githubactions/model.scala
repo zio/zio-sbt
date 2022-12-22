@@ -45,25 +45,12 @@ sealed trait Trigger {
 
 case class Input(key: String, description: String, required: Boolean, defaultValue: String)
 
-object Input {
-  implicit def input: Encoder[Input] = new Encoder[Input] {
-    override def apply(a: Input): Json =
-      Json.obj(
-        a.key := Json.obj(
-          ("description", a.description.asJson),
-          ("required", a.required.asJson),
-          ("default", a.defaultValue.asJson)
-        )
-      )
-  }
-}
-
 object Trigger {
   case class WorkflowDispatch(
     inputs: Seq[Input] = Seq.empty
   ) extends Trigger {
     override def toKeyValuePair: (String, Json) =
-      "workflow_dispatch" := inputs.asJson
+      ("workflow_dispatch", "".asJson)
   }
 
   case class Release(

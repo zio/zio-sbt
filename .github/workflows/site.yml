@@ -3,7 +3,7 @@
 
 name: Website
 'on':
-  workflow_dispatch: []
+  workflow_dispatch: ''
   release:
     types:
     - published
