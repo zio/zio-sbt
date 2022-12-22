@@ -161,7 +161,7 @@ object WebsiteUtils {
       .Printer(
         preserveOrder = true,
         dropNullKeys = true,
-        splitLines = true,
+        splitLines = false,
         lineBreak = LineBreak.Unix,
         version = YamlVersion.Auto
       )
