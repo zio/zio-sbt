@@ -17,13 +17,10 @@
 package zio.sbt
 
 import java.nio.file.{Files, Paths}
-
 import scala.annotation.nowarn
-
 import io.circe.syntax.*
 import io.circe.yaml.Printer.{LineBreak, YamlVersion}
 import sbt.File
-
 import zio.*
 import zio.sbt.WebsiteUtils.DocsVersioning.SemanticVersioning
 import zio.sbt.githubactions.*
@@ -169,6 +166,7 @@ object WebsiteUtils {
         Workflow(
           name = "Website",
           triggers = Seq(
+            Trigger.WorkflowDispatch(),
             Trigger.Release(Seq("published")),
             Trigger.Push(branches = Seq(Branch.Named(docsPublishBranch)))
           ),

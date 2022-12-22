@@ -18,7 +18,6 @@ package zio.sbt.githubactions
 
 import io.circe.*
 import io.circe.syntax.*
-
 import zio.sbt.githubactions.Step.StepSequence
 
 sealed trait OS {
@@ -42,7 +41,29 @@ object Branch {
 sealed trait Trigger {
   def toKeyValuePair: (String, Json)
 }
+
+case class Input(key: String, description: String, required: Boolean, defaultValue: String)
+
+object Input {
+  implicit def input = new Encoder[Input] {
+    override def apply(a: Input): Json =
+      Json.obj(
+        a.key := Json.obj(
+          ("description", a.description.asJson),
+          ("required", a.required.asJson),
+          ("default", a.defaultValue.asJson)
+        )
+      )
+  }
+}
+
 object Trigger {
+  case class WorkflowDispatch(
+    inputs: Seq[Input] = Seq.empty
+  ) extends Trigger {
+    override def toKeyValuePair: (String, Json) =
+      "workflow_dispatch" := inputs.asJson
+  }
 
   case class Release(
     releaseTypes: Seq[String] = Seq.empty
