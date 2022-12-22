@@ -50,7 +50,14 @@ object Trigger {
     inputs: Seq[Input] = Seq.empty
   ) extends Trigger {
     override def toKeyValuePair: (String, Json) =
-      ("workflow_dispatch", "".asJson)
+      "workflow_dispatch" := inputs.map { i =>
+        i.key ->
+          Json.obj(
+            ("description", i.description.asJson),
+            ("required", i.required.asJson),
+            ("default", i.defaultValue.asJson)
+          )
+      }.toMap.asJson
   }
 
   case class Release(
