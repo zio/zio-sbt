@@ -18,6 +18,7 @@ package zio.sbt.githubactions
 
 import io.circe.*
 import io.circe.syntax.*
+
 import zio.sbt.githubactions.Step.StepSequence
 
 sealed trait OS {
@@ -45,7 +46,7 @@ sealed trait Trigger {
 case class Input(key: String, description: String, required: Boolean, defaultValue: String)
 
 object Input {
-  implicit def input = new Encoder[Input] {
+  implicit def input: Encoder[Input] = new Encoder[Input] {
     override def apply(a: Input): Json =
       Json.obj(
         a.key := Json.obj(
