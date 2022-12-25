@@ -264,8 +264,7 @@ object WebsiteUtils {
                          |
                          |I will automatically update the README.md file whenever there is new change for README.md, e.g.
                          |  - After each release, I will update the version in the installation section.
-                         |  - After any changes to the "docs/index.md" file, I will update the README.md file accordingly.
-                         |""".stripMargin.asJson
+                         |  - After any changes to the "docs/index.md" file, I will update the README.md file accordingly.""".stripMargin.asJson
                   )
                 )
               )
