@@ -188,7 +188,7 @@ object WebsiteUtils {
                   Seq(
                     Step.SingleStep(
                       name = "Git Checkout",
-                      uses = Some(ActionRef("actions/checkout@v3.1.0")),
+                      uses = Some(ActionRef("actions/checkout@v3.2.0")),
                       parameters = Map("fetch-depth" -> "0".asJson)
                     ),
                     Step.SingleStep(
@@ -225,7 +225,7 @@ object WebsiteUtils {
               steps = Seq(
                 Step.SingleStep(
                   name = "Git Checkout",
-                  uses = Some(ActionRef("actions/checkout@v3.1.0")),
+                  uses = Some(ActionRef("actions/checkout@v3.2.0")),
                   parameters = Map(
                     "ref"         -> "${{ github.head_ref }}".asJson,
                     "fetch-depth" -> "0".asJson
@@ -264,8 +264,7 @@ object WebsiteUtils {
                          |
                          |I will automatically update the README.md file whenever there is new change for README.md, e.g.
                          |  - After each release, I will update the version in the installation section.
-                         |  - After any changes to the "docs/index.md" file, I will update the README.md file accordingly.
-                         |""".stripMargin.asJson
+                         |  - After any changes to the "docs/index.md" file, I will update the README.md file accordingly.""".stripMargin.asJson
                   )
                 )
               )
