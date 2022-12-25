@@ -188,7 +188,7 @@ object WebsiteUtils {
                   Seq(
                     Step.SingleStep(
                       name = "Git Checkout",
-                      uses = Some(ActionRef("actions/checkout@v3.1.0")),
+                      uses = Some(ActionRef("actions/checkout@v3.2.0")),
                       parameters = Map("fetch-depth" -> "0".asJson)
                     ),
                     Step.SingleStep(
@@ -225,7 +225,7 @@ object WebsiteUtils {
               steps = Seq(
                 Step.SingleStep(
                   name = "Git Checkout",
-                  uses = Some(ActionRef("actions/checkout@v3.1.0")),
+                  uses = Some(ActionRef("actions/checkout@v3.2.0")),
                   parameters = Map(
                     "ref"         -> "${{ github.head_ref }}".asJson,
                     "fetch-depth" -> "0".asJson
