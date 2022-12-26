@@ -111,6 +111,7 @@ object WebsiteUtils {
 
   def generateReadme(
     projectName: String,
+    banner: String,
     introduction: String,
     documentation: String,
     codeOfConduct: String,
@@ -136,7 +137,7 @@ object WebsiteUtils {
     val acknowledgementSection = if (acknowledgement.nonEmpty) s"\n## Acknowledgement\n\n$acknowledgement\n" else ""
     val licenseSection         = s"\n## License\n\n$license\n"
     val readme =
-      commentSection + introductionSection + documentationSection + contributingSection + codeOfConductSection +
+      commentSection + banner + introductionSection + documentationSection + contributingSection + codeOfConductSection +
         supportSection + maintainersSection + creditsSection + acknowledgementSection + licenseSection
 
     ZIO.attemptBlocking(

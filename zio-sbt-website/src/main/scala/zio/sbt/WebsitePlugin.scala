@@ -51,6 +51,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
       settingKey[Option[BadgeInfo]]("information necessary to create badge")
     val projectName: SettingKey[String]            = settingKey[String]("project name e.g. ZIO SBT")
     val projectHomePage: SettingKey[String]        = settingKey[String]("project home page url e.g. https://zio.dev/zio-sbt")
+    val readmeBanner: SettingKey[String]           = settingKey[String]("readme banner section")
     val readmeDocumentation: SettingKey[String]    = settingKey[String]("readme documentation section")
     val readmeContribution: SettingKey[String]     = settingKey[String]("readme contribution section")
     val readmeCodeOfConduct: SettingKey[String]    = settingKey[String]("readme code of conduct")
@@ -125,6 +126,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
       readmeContribution    := readmeContributionSection,
       readmeCodeOfConduct   := readmeCodeOfConductSection,
       readmeCredits         := "",
+      readmeBanner          := "",
       readmeMaintainers     := "",
       docsVersioning        := DocsVersioning.SemanticVersioning,
       sbtBuildOptions       := List.empty[String]
@@ -280,6 +282,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
               introduction =>
                 WebsiteUtils.generateReadme(
                   projectName = projectName.value,
+                  banner = readmeBanner.value,
                   introduction = prefixUrlsWith(introduction, "docs/").trim,
                   documentation = readmeDocumentation.value.trim,
                   codeOfConduct = readmeCodeOfConduct.value.trim,
