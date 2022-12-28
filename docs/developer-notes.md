@@ -10,4 +10,5 @@ title: "Developer Notes"
 - Check if the committed workflow is valid or not.
 - To generate README.md file, it doesn't need to compile all docs.
 - Add env variable for zio version (ZIO_VERSION).
+- Support for various scala versions
 
