@@ -269,11 +269,29 @@ object WebsitePlugin extends sbt.AutoPlugin {
     regex.replaceAllIn(markdown, '(' + prefix + _.group(1) + ')')
   }
 
+  lazy val ignoreIndexSnapshotVersion = Def.task {
+    if (version.value.endsWith("-SNAPSHOT"))
+      exit("sed -i.bak s/@VERSION@/<version>/g docs/index.md".!)
+  }
+
+  lazy val revertIndexChanges = Def.task {
+    if (version.value.endsWith("-SNAPSHOT")) {
+      exit("rm docs/index.md".!)
+      exit("cp docs/index.md.bak docs/index.md".!)
+    }
+  }
+
   lazy val generateReadmeTask: Def.Initialize[Task[Unit]] = {
     Def.task {
       import zio.*
 
-      val _ = compileDocs.toTask("").value
+      val _ = Def
+        .sequential(
+          ignoreIndexSnapshotVersion,
+          compileDocs.toTask(""),
+          revertIndexChanges
+        )
+        .value
 
       Unsafe.unsafe { implicit unsafe =>
         Runtime.default.unsafe
