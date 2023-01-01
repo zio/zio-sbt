@@ -269,12 +269,12 @@ object WebsitePlugin extends sbt.AutoPlugin {
     regex.replaceAllIn(markdown, '(' + prefix + _.group(1) + ')')
   }
 
-  lazy val ignoreIndexSnapshotVersion = Def.task {
+  lazy val ignoreIndexSnapshotVersion: Def.Initialize[Task[Unit]] = Def.task {
     if (version.value.endsWith("-SNAPSHOT"))
       exit("sed -i.bak s/@VERSION@/<version>/g docs/index.md".!)
   }
 
-  lazy val revertIndexChanges = Def.task {
+  lazy val revertIndexChanges: Def.Initialize[Task[Unit]] = Def.task {
     if (version.value.endsWith("-SNAPSHOT")) {
       exit("rm docs/index.md".!)
       exit("cp docs/index.md.bak docs/index.md".!)
