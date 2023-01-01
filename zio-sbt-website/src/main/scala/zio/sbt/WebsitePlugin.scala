@@ -269,7 +269,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
     regex.replaceAllIn(markdown, '(' + prefix + _.group(1) + ')')
   }
 
-  lazy val normalizedVersion = Def.task(releaseVersion(sLog.value.warn(_)).getOrElse(version.value))
+  lazy val normalizedVersion: Def.Initialize[Task[String]] = Def.task(releaseVersion(sLog.value.warn(_)).getOrElse(version.value))
 
   lazy val ignoreIndexSnapshotVersion: Def.Initialize[Task[Unit]] = Def.task {
     if (normalizedVersion.value.endsWith("-SNAPSHOT"))
