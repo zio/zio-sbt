@@ -94,7 +94,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
       libraryDependencies ++= docsDependencies.value,
       mdocVariables ++= {
         Map(
-          "VERSION"          -> releaseVersion(sLog.value.warn(_)).getOrElse(version.value),
+          "VERSION"          -> normalizedVersion,
           "RELEASE_VERSION"  -> releaseVersion(sLog.value.warn(_)).getOrElse("NOT RELEASED YET"),
           "SNAPSHOT_VERSION" -> version.value,
           "PROJECT_BADGES" -> {
@@ -131,6 +131,8 @@ object WebsitePlugin extends sbt.AutoPlugin {
       docsVersioning        := DocsVersioning.SemanticVersioning,
       sbtBuildOptions       := List.empty[String]
     )
+
+  def normalizedVersion = releaseVersion(sLog.value.warn(_)).getOrElse(version.value)
 
   def releaseVersion(logger: String => Unit): Option[String] =
     try "git tag --sort=committerdate".!!.split("\n").filter(_.startsWith("v")).lastOption.map(_.tail)
@@ -270,12 +272,12 @@ object WebsitePlugin extends sbt.AutoPlugin {
   }
 
   lazy val ignoreIndexSnapshotVersion: Def.Initialize[Task[Unit]] = Def.task {
-    if (version.value.endsWith("-SNAPSHOT"))
+    if (normalizedVersion.endsWith("-SNAPSHOT"))
       exit("sed -i.bak s/@VERSION@/<version>/g docs/index.md".!)
   }
 
   lazy val revertIndexChanges: Def.Initialize[Task[Unit]] = Def.task {
-    if (version.value.endsWith("-SNAPSHOT")) {
+    if (normalizedVersion.endsWith("-SNAPSHOT")) {
       exit("rm docs/index.md".!)
       exit("cp docs/index.md.bak docs/index.md".!)
     }
