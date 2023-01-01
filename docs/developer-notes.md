@@ -11,4 +11,5 @@ title: "Developer Notes"
 - To generate README.md file, it doesn't need to compile all docs.
 - Add env variable for zio version (ZIO_VERSION).
 - Support for various scala versions
+- Support for auto update PRs
 
