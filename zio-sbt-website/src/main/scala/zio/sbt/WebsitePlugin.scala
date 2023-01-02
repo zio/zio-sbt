@@ -75,7 +75,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
   import autoImport.*
 
-  override def requires = MdocPlugin
+  override def requires: Plugins = MdocPlugin && UnifiedScaladocPlugin
 
   override lazy val projectSettings: Seq[Setting[_ <: Object]] =
     Seq(
