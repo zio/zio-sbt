@@ -42,6 +42,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
     val publishSnapshotToNpm: InputKey[Unit]        = inputKey[Unit]("publish snapshot version of website to the npm registry")
     val publishHashverToNpm: InputKey[Unit]         = inputKey[Unit]("publish hash version of website to the npm registry")
     val generateGithubWorkflow: TaskKey[Unit]       = taskKey[Unit]("generate github workflow")
+    val checkGithubWorkflow: TaskKey[Unit]          = taskKey[Unit]("Make sure the site.yml file is up-to-date")
     val generateReadme: TaskKey[Unit]               = taskKey[Unit]("generate readme file")
     val npmToken: SettingKey[String]                = settingKey[String]("npm token")
     val docsDependencies: SettingKey[Seq[ModuleID]] = settingKey[Seq[ModuleID]]("documentation project dependencies")
@@ -88,6 +89,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
       publishSnapshotToNpm   := publishSnapshotToNpmTask.value,
       publishHashverToNpm    := publishHashverToNpmTask.value,
       generateGithubWorkflow := generateGithubWorkflowTask.value,
+      checkGithubWorkflow    := checkGithubWorkflowTask.value,
       generateReadme         := generateReadmeTask.value,
       badgeInfo              := None,
       docsDependencies       := Seq.empty,
@@ -335,6 +337,14 @@ object WebsitePlugin extends sbt.AutoPlugin {
             |$workflow""".stripMargin
 
       IO.write(new File(".github/workflows/site.yml"), template)
+    }
+
+  lazy val checkGithubWorkflowTask =
+    Def.task {
+      val _ = generateGithubWorkflow.value
+      if ("git diff --exit-code".! == 1) {
+        state.value.log.err("The site.yml workflow is not up-to-date!")
+      }
     }
 
   def readmeDocumentationSection(projectName: String, projectHomepageUrl: URL): String =
