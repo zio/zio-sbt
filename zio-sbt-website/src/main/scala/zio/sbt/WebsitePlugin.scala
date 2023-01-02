@@ -339,11 +339,13 @@ object WebsitePlugin extends sbt.AutoPlugin {
       IO.write(new File(".github/workflows/site.yml"), template)
     }
 
-  lazy val checkGithubWorkflowTask =
+  lazy val checkGithubWorkflowTask: Def.Initialize[Task[Unit]] =
     Def.task {
       val _ = generateGithubWorkflow.value
+      val log = state.value.log
+      
       if ("git diff --exit-code".! == 1) {
-        state.value.log.err("The site.yml workflow is not up-to-date!")
+        log.err("The site.yml workflow is not up-to-date!")
       }
     }
 
