@@ -104,9 +104,8 @@ object WebsiteUtils {
     val release  = releaseBadge(groupId, artifact)
     val snapshot = snapshotBadge(groupId, artifact)
     val github   = githubBadge(githubUser, githubRepo, projectName)
-    s"""||Project Stage | CI | Release | Snapshot | Discord | Github |
-        ||--------------|----|---------|----------|---------|--------|
-        ||$stage        |$ci |$release |$snapshot |$discord |$github |""".stripMargin
+
+    s"$stage $ci $release $snapshot $github"
   }
 
   def generateReadme(
