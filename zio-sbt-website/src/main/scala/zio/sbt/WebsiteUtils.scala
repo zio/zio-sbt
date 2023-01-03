@@ -62,13 +62,14 @@ object WebsiteUtils {
     s"![CI Badge](https://github.com/$githubUser/$githubRepo/workflows/CI/badge.svg)"
 
   def snapshotBadge(groupId: String, artifact: String): String = {
-    val badge = s"https://img.shields.io/nexus/s/https/oss.sonatype.org/$groupId/$artifact.svg"
-    val link  = s"https://oss.sonatype.org/content/repositories/snapshots/${groupId.replace('.', '/')}/$artifact/"
+    val badge =
+      s"https://img.shields.io/nexus/s/https/oss.sonatype.org/$groupId/$artifact.svg?label=Sonatype%20Snapshot"
+    val link = s"https://oss.sonatype.org/content/repositories/snapshots/${groupId.replace('.', '/')}/$artifact/"
     s"[![Sonatype Snapshots]($badge)]($link)"
   }
 
   def releaseBadge(groupId: String, artifact: String): String = {
-    val badge = s"https://img.shields.io/nexus/r/https/oss.sonatype.org/$groupId/$artifact.svg"
+    val badge = s"https://img.shields.io/nexus/r/https/oss.sonatype.org/$groupId/$artifact.svg?label=Sonatype%20Release"
     val link  = s"https://oss.sonatype.org/content/repositories/releases/${groupId.replace('.', '/')}/$artifact/"
     s"[![Sonatype Releases]($badge)]($link)"
   }
