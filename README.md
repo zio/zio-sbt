@@ -15,7 +15,7 @@ _ZIO SBT_ is an sbt plugin for ZIO projects. It provides high-level SBT utilitie
 Add the following lines to your `plugin.sbt` file:
 
 ```scala
-addSbtPlugin("dev.zio" % "zio-sbt-website" % "0.2.2")
+addSbtPlugin("dev.zio" % "zio-sbt-website" % "0.2.4")
 ```
 
 Then you can enable it by using the following code in your `build.sbt` file:
