@@ -344,7 +344,10 @@ object WebsitePlugin extends sbt.AutoPlugin {
       val _ = generateGithubWorkflow.value
 
       if ("git diff --exit-code".! == 1) {
-        sys.error("The site.yml workflow is not up-to-date!")
+        sys.error(
+          "The site.yml workflow is not up-to-date!\n" +
+            "Please run `sbt docs/generateGithubWorkflow` and commit new changes."
+        )
       }
     }
 
