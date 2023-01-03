@@ -203,7 +203,7 @@ object WebsiteUtils {
                     ),
                     Step.SingleStep(
                       name = "Check that site workflow is up to date",
-                      run = Some(s"sbt ${sbtBuildOptions.mkString(" ")} docs/checkGithubWorkflow"),
+                      run = Some(s"sbt ${sbtBuildOptions.mkString(" ")} docs/checkGithubWorkflow")
                     )
                   )
                 )

@@ -27,7 +27,7 @@ jobs:
         distribution: temurin
         java-version: 17
         check-latest: true
-    - name: Check that site workflow is up to date
+    - name: Check that site workflow is up-to-date
       run: sbt  docs/checkGithubWorkflow
   publish-docs:
     name: Publish Docs
