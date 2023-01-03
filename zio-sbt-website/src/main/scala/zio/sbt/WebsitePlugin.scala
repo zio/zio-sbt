@@ -144,7 +144,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
         None
     }
 
-  private def exit(exitCode: Int) = if (exitCode != 0) sys.exit(exitCode)
+  private def exit(exitCode: Int, errorMessage: String = "") = if (exitCode != 0) sys.error(errorMessage: String)
 
   lazy val previewWebsiteTask: Def.Initialize[Task[Unit]] = Def.task {
     import zio.*
@@ -163,7 +163,8 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
   lazy val docusaurusServerTask: Def.Initialize[Task[Unit]] =
     Def.task {
-      exit(Process("npm run start", new File(s"${websiteDir.value}")).!)
+      val p = Process("npm run start", new File(s"${websiteDir.value}")).!
+      exit(p, "Failed to run start command!")
     }
 
   lazy val compileDocsTask: Def.Initialize[InputTask[Unit]] =
