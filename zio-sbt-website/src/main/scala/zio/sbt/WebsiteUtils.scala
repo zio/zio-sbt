@@ -174,9 +174,41 @@ object WebsiteUtils {
           triggers = Seq(
             Trigger.WorkflowDispatch(),
             Trigger.Release(Seq("published")),
-            Trigger.Push(branches = Seq(Branch.Named(docsPublishBranch)))
+            Trigger.Push(branches = Seq(Branch.Named(docsPublishBranch))),
+            Trigger.PullRequest()
           ),
           jobs = Seq(
+            Job(
+              id = "check-workflow",
+              name = "Check Workflow",
+              condition = Some(
+                Condition.Expression("github.event_name == 'pull_request'")
+              ),
+              steps = Seq(
+                Step.StepSequence(
+                  Seq(
+                    Step.SingleStep(
+                      name = "Git Checkout",
+                      uses = Some(ActionRef("actions/checkout@v3.2.0")),
+                      parameters = Map("fetch-depth" -> "0".asJson)
+                    ),
+                    Step.SingleStep(
+                      name = "Setup Scala",
+                      uses = Some(ActionRef("actions/setup-java@v3.6.0")),
+                      parameters = Map(
+                        "distribution" -> "temurin".asJson,
+                        "java-version" -> 17.asJson,
+                        "check-latest" -> true.asJson
+                      )
+                    ),
+                    Step.SingleStep(
+                      name = "Check that site workflow is up to date",
+                      run = Some(s"sbt ${sbtBuildOptions.mkString(" ")} docs/checkGithubWorkflow"),
+                    )
+                  )
+                )
+              )
+            ),
             Job(
               id = "publish-docs",
               name = "Publish Docs",
@@ -225,6 +257,7 @@ object WebsiteUtils {
             Job(
               id = "generate-readme",
               name = "Generate README",
+              condition = Some(Condition.Expression("github.event_name == 'push'")),
               steps = Seq(
                 Step.SingleStep(
                   name = "Git Checkout",
