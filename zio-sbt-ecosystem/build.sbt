@@ -17,4 +17,4 @@ addSbtPlugin("org.scalameta"                     % "sbt-scalafmt"              %
 // addSbtPlugin("org.scala-native"                  % "sbt-scala-native"              % "0.4.0")
 
 // addSbtPlugin("com.geirsson"                      % "sbt-ci-release"            % "1.5.7")
-libraryDependencies ++= Seq("org.snakeyaml" % "snakeyaml-engine" % "2.3")
+libraryDependencies ++= Seq("org.snakeyaml" % "snakeyaml-engine" % "2.5")
