@@ -6,10 +6,9 @@ addCommand(List("scripted"), "testPlugin", "Runs the scripted SBT plugin tests."
 
 inThisBuild(
   List(
-    organization  := "dev.zio",
-    startYear     := Some(2022),
-    headerEndYear := Some(2023),
-    homepage      := Some(url("https://zio.dev/zio-sbt")),
+    organization := "dev.zio",
+    startYear    := Some(2022),
+    homepage     := Some(url("https://zio.dev/zio-sbt")),
     developers := List(
       Developer(
         "khajavi",
