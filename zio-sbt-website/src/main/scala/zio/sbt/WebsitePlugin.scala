@@ -23,7 +23,7 @@ import scala.sys.process.*
 import mdoc.MdocPlugin
 import mdoc.MdocPlugin.autoImport.*
 import sbt.Keys.*
-import sbt.*
+import sbt.{Def, *}
 
 import zio.sbt.WebsiteUtils.{ProjectStage, readFile, removeYamlHeader}
 
@@ -35,34 +35,35 @@ case class BadgeInfo(
 object WebsitePlugin extends sbt.AutoPlugin {
 
   object autoImport {
-    val compileDocs: InputKey[Unit]                 = inputKey[Unit]("compile docs")
-    val installWebsite: TaskKey[Unit]               = taskKey[Unit]("install the website for the first time")
+    val compileDocs: InputKey[Unit]                 = inputKey[Unit]("Compile docs")
+    val installWebsite: TaskKey[Unit]               = taskKey[Unit]("Install the website for the first time")
+    val buildWebsite: TaskKey[Unit]                 = taskKey[Unit]("Build website (default output: target/website/build)")
     val previewWebsite: TaskKey[Unit]               = taskKey[Unit]("preview website")
-    val publishToNpm: InputKey[Unit]                = inputKey[Unit]("publish website to the npm registry")
-    val publishSnapshotToNpm: InputKey[Unit]        = inputKey[Unit]("publish snapshot version of website to the npm registry")
-    val publishHashverToNpm: InputKey[Unit]         = inputKey[Unit]("publish hash version of website to the npm registry")
-    val generateGithubWorkflow: TaskKey[Unit]       = taskKey[Unit]("generate github workflow")
+    val publishToNpm: InputKey[Unit]                = inputKey[Unit]("Publish website to the npm registry")
+    val publishSnapshotToNpm: InputKey[Unit]        = inputKey[Unit]("Publish snapshot version of website to the npm registry")
+    val publishHashverToNpm: InputKey[Unit]         = inputKey[Unit]("Publish hash version of website to the npm registry")
+    val generateGithubWorkflow: TaskKey[Unit]       = taskKey[Unit]("Generate github workflow")
     val checkGithubWorkflow: TaskKey[Unit]          = taskKey[Unit]("Make sure the site.yml file is up-to-date")
-    val generateReadme: TaskKey[Unit]               = taskKey[Unit]("generate readme file")
-    val npmToken: SettingKey[String]                = settingKey[String]("npm token")
+    val generateReadme: TaskKey[Unit]               = taskKey[Unit]("Generate readme file")
+    val npmToken: SettingKey[String]                = settingKey[String]("NPM Token")
     val docsDependencies: SettingKey[Seq[ModuleID]] = settingKey[Seq[ModuleID]]("documentation project dependencies")
-    val websiteDir: SettingKey[Path]                = settingKey[Path]("website directory")
-    val docsPublishBranch: SettingKey[String]       = settingKey[String]("publish branch for documentation")
+    val websiteDir: SettingKey[Path]                = settingKey[Path]("Website directory")
+    val docsPublishBranch: SettingKey[String]       = settingKey[String]("Publish branch for documentation")
     val badgeInfo: SettingKey[Option[BadgeInfo]] =
-      settingKey[Option[BadgeInfo]]("information necessary to create badge")
-    val projectName: SettingKey[String]            = settingKey[String]("project name e.g. ZIO SBT")
-    val projectHomePage: SettingKey[String]        = settingKey[String]("project home page url e.g. https://zio.dev/zio-sbt")
-    val readmeBanner: SettingKey[String]           = settingKey[String]("readme banner section")
-    val readmeDocumentation: SettingKey[String]    = settingKey[String]("readme documentation section")
-    val readmeContribution: SettingKey[String]     = settingKey[String]("readme contribution section")
-    val readmeCodeOfConduct: SettingKey[String]    = settingKey[String]("readme code of conduct")
-    val readmeSupport: SettingKey[String]          = settingKey[String]("readme support section")
-    val readmeLicense: SettingKey[String]          = settingKey[String]("readme license section")
-    val readmeAcknowledgement: SettingKey[String]  = settingKey[String]("acknowledgement section")
-    val readmeCredits: SettingKey[String]          = settingKey[String]("credits section")
-    val readmeMaintainers: SettingKey[String]      = settingKey[String]("maintainers section")
-    val docsVersioning: SettingKey[DocsVersioning] = settingKey[DocsVersioning]("docs versioning style")
-    val sbtBuildOptions: SettingKey[List[String]]  = settingKey[List[String]]("sbt build options")
+      settingKey[Option[BadgeInfo]]("Information necessary to create badge")
+    val projectName: SettingKey[String]            = settingKey[String]("Project name e.g. ZIO SBT")
+    val projectHomePage: SettingKey[String]        = settingKey[String]("Project home page url e.g. https://zio.dev/zio-sbt")
+    val readmeBanner: SettingKey[String]           = settingKey[String]("Readme banner section")
+    val readmeDocumentation: SettingKey[String]    = settingKey[String]("Readme documentation section")
+    val readmeContribution: SettingKey[String]     = settingKey[String]("Readme contribution section")
+    val readmeCodeOfConduct: SettingKey[String]    = settingKey[String]("Readme code of conduct")
+    val readmeSupport: SettingKey[String]          = settingKey[String]("Readme support section")
+    val readmeLicense: SettingKey[String]          = settingKey[String]("Readme license section")
+    val readmeAcknowledgement: SettingKey[String]  = settingKey[String]("Acknowledgement section")
+    val readmeCredits: SettingKey[String]          = settingKey[String]("Credits section")
+    val readmeMaintainers: SettingKey[String]      = settingKey[String]("Maintainers section")
+    val docsVersioning: SettingKey[DocsVersioning] = settingKey[DocsVersioning]("Docs versioning style")
+    val sbtBuildOptions: SettingKey[List[String]]  = settingKey[List[String]]("SBT build options")
 
     val BadgeInfo = zio.sbt.BadgeInfo
     type BadgeInfo = zio.sbt.BadgeInfo
@@ -84,6 +85,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
       websiteDir             := Paths.get(target.value.getPath, "website"),
       mdocOut                := websiteDir.value.resolve("docs").toFile,
       installWebsite         := installWebsiteTask.value,
+      buildWebsite           := buildWebsiteTask.value,
       previewWebsite         := previewWebsiteTask.value,
       publishToNpm           := publishWebsiteTask.value,
       publishSnapshotToNpm   := publishSnapshotToNpmTask.value,
@@ -203,6 +205,14 @@ object WebsitePlugin extends sbt.AutoPlugin {
       exit(Process(s"mv ${target.value}/${normalizedName.value}-website ${websiteDir.value}").!)
 
       exit(s"rm -rvf ${websiteDir.value.toString}/.git/".!)
+    }
+
+  lazy val buildWebsiteTask: Def.Initialize[Task[Unit]] =
+    Def.task {
+      val _ = Def.sequential(installWebsiteTask, compileDocs.toTask("")).value
+
+      val p = Process("npm run build", new File(s"${websiteDir.value}")).!
+      exit(p, "Failed to build the website!")
     }
 
   lazy val publishWebsiteTask: Def.Initialize[Task[Unit]] =
