@@ -1,5 +1,5 @@
 addSbtPlugin("com.github.sbt"                    % "sbt-pgp"                   % "2.1.2")
-addSbtPlugin("ch.epfl.scala"                     % "sbt-bloop"                 % "1.4.9")
+addSbtPlugin("ch.epfl.scala"                     % "sbt-bloop"                 % "1.5.6-61-e5171d3c")
 addSbtPlugin("ch.epfl.scala"                     % "sbt-scalafix"              % "0.10.4")
 addSbtPlugin("com.eed3si9n"                      % "sbt-buildinfo"             % "0.10.0")
 addSbtPlugin("com.eed3si9n"                      % "sbt-unidoc"                % "0.4.3")
