@@ -194,7 +194,7 @@ object WebsiteUtils {
                     ),
                     Step.SingleStep(
                       name = "Setup Scala",
-                      uses = Some(ActionRef("actions/setup-java@v3.6.0")),
+                      uses = Some(ActionRef("actions/setup-java@v3.9.0")),
                       parameters = Map(
                         "distribution" -> "temurin".asJson,
                         "java-version" -> 17.asJson,
@@ -232,7 +232,7 @@ object WebsiteUtils {
                     ),
                     Step.SingleStep(
                       name = "Setup Scala",
-                      uses = Some(ActionRef("actions/setup-java@v3.6.0")),
+                      uses = Some(ActionRef("actions/setup-java@v3.9.0")),
                       parameters = Map(
                         "distribution" -> "temurin".asJson,
                         "java-version" -> 17.asJson,
@@ -273,7 +273,7 @@ object WebsiteUtils {
                 ),
                 Step.SingleStep(
                   name = "Setup Scala",
-                  uses = Some(ActionRef("actions/setup-java@v3.6.0")),
+                  uses = Some(ActionRef("actions/setup-java@v3.9.0")),
                   parameters = Map(
                     "distribution" -> "temurin".asJson,
                     "java-version" -> 17.asJson,
