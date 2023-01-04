@@ -1,7 +1,7 @@
 addSbtPlugin("com.github.sbt"                    % "sbt-pgp"                   % "2.1.2")
 addSbtPlugin("ch.epfl.scala"                     % "sbt-bloop"                 % "1.4.9")
 addSbtPlugin("ch.epfl.scala"                     % "sbt-scalafix"              % "0.10.4")
-addSbtPlugin("com.eed3si9n"                      % "sbt-buildinfo"             % "0.10.0")
+addSbtPlugin("com.eed3si9n"                      % "sbt-buildinfo"             % "0.11.0")
 addSbtPlugin("com.eed3si9n"                      % "sbt-unidoc"                % "0.4.3")
 addSbtPlugin("com.github.cb372"                  % "sbt-explicit-dependencies" % "0.2.16")
 addSbtPlugin("com.thoughtworks.sbt-api-mappings" % "sbt-api-mappings"          % "3.0.0")
