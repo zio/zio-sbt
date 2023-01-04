@@ -8,7 +8,7 @@ addSbtPlugin("com.thoughtworks.sbt-api-mappings" % "sbt-api-mappings"          %
 addSbtPlugin("com.typesafe"                      % "sbt-mima-plugin"           % "0.9.0")
 addSbtPlugin("de.heikoseeberger"                 % "sbt-header"                % "5.6.0")
 addSbtPlugin("org.scalameta"                     % "sbt-mdoc"                  % "2.3.6")
-addSbtPlugin("org.scalameta"                     % "sbt-scalafmt"              % "2.4.3")
+addSbtPlugin("org.scalameta"                     % "sbt-scalafmt"              % "2.5.0")
 // addSbtPlugin("pl.project13.scala" % "sbt-jcstress" % "0.2.0")
 // addSbtPlugin("pl.project13.scala" % "sbt-jmh"      % "0.4.3")
 // addSbtPlugin("org.portable-scala"                % "sbt-scala-native-crossproject" % "1.0.0")
