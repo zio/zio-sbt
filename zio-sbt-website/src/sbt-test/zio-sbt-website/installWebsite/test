@@ -1,0 +1,5 @@
+> clean
+> installWebsite
+$ exists target/website/src 
+$ exists target/website/static 
+$ exists target/website/LICENSE 

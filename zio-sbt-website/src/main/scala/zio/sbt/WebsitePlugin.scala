@@ -1,57 +1,155 @@
+/*
+ * Copyright 2022-2023 dev.zio
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package zio.sbt
+
+import java.nio.file.{Path, Paths}
+
+import scala.sys.process.*
 
 import mdoc.MdocPlugin
 import mdoc.MdocPlugin.autoImport.*
-import sbt.*
 import sbt.Keys.*
+import sbt.*
 
-import java.nio.file.{ Path, Paths }
-import scala.sys.process.*
+import zio.sbt.WebsiteUtils.{ProjectStage, readFile, removeYamlHeader}
+
+case class BadgeInfo(
+  artifact: String,
+  projectStage: ProjectStage
+)
 
 object WebsitePlugin extends sbt.AutoPlugin {
 
   object autoImport {
-    val compileDocs            = inputKey[Unit]("compile docs")
-    val installWebsite         = taskKey[Unit]("install the website for the first time")
-    val previewWebsite         = taskKey[Unit]("preview website")
-    val publishToNpm           = inputKey[Unit]("publish website to the npm registry")
-    val generateGithubWorkflow = taskKey[Unit]("generate github workflow")
-    val npmToken               = settingKey[String]("npm token")
-    val docsDependencies       = settingKey[Seq[ModuleID]]("documentation project dependencies")
-    val websiteDir             = settingKey[Path]("website directory")
+    val compileDocs: InputKey[Unit]                 = inputKey[Unit]("compile docs")
+    val installWebsite: TaskKey[Unit]               = taskKey[Unit]("install the website for the first time")
+    val previewWebsite: TaskKey[Unit]               = taskKey[Unit]("preview website")
+    val publishToNpm: InputKey[Unit]                = inputKey[Unit]("publish website to the npm registry")
+    val publishSnapshotToNpm: InputKey[Unit]        = inputKey[Unit]("publish snapshot version of website to the npm registry")
+    val publishHashverToNpm: InputKey[Unit]         = inputKey[Unit]("publish hash version of website to the npm registry")
+    val generateGithubWorkflow: TaskKey[Unit]       = taskKey[Unit]("generate github workflow")
+    val checkGithubWorkflow: TaskKey[Unit]          = taskKey[Unit]("Make sure the site.yml file is up-to-date")
+    val generateReadme: TaskKey[Unit]               = taskKey[Unit]("generate readme file")
+    val npmToken: SettingKey[String]                = settingKey[String]("npm token")
+    val docsDependencies: SettingKey[Seq[ModuleID]] = settingKey[Seq[ModuleID]]("documentation project dependencies")
+    val websiteDir: SettingKey[Path]                = settingKey[Path]("website directory")
+    val docsPublishBranch: SettingKey[String]       = settingKey[String]("publish branch for documentation")
+    val badgeInfo: SettingKey[Option[BadgeInfo]] =
+      settingKey[Option[BadgeInfo]]("information necessary to create badge")
+    val projectName: SettingKey[String]            = settingKey[String]("project name e.g. ZIO SBT")
+    val projectHomePage: SettingKey[String]        = settingKey[String]("project home page url e.g. https://zio.dev/zio-sbt")
+    val readmeBanner: SettingKey[String]           = settingKey[String]("readme banner section")
+    val readmeDocumentation: SettingKey[String]    = settingKey[String]("readme documentation section")
+    val readmeContribution: SettingKey[String]     = settingKey[String]("readme contribution section")
+    val readmeCodeOfConduct: SettingKey[String]    = settingKey[String]("readme code of conduct")
+    val readmeSupport: SettingKey[String]          = settingKey[String]("readme support section")
+    val readmeLicense: SettingKey[String]          = settingKey[String]("readme license section")
+    val readmeAcknowledgement: SettingKey[String]  = settingKey[String]("acknowledgement section")
+    val readmeCredits: SettingKey[String]          = settingKey[String]("credits section")
+    val readmeMaintainers: SettingKey[String]      = settingKey[String]("maintainers section")
+    val docsVersioning: SettingKey[DocsVersioning] = settingKey[DocsVersioning]("docs versioning style")
+    val sbtBuildOptions: SettingKey[List[String]]  = settingKey[List[String]]("sbt build options")
+
+    val BadgeInfo = zio.sbt.BadgeInfo
+    type BadgeInfo = zio.sbt.BadgeInfo
+
+    val ProjectStage = zio.sbt.WebsiteUtils.ProjectStage
+    type ProjectStage = zio.sbt.WebsiteUtils.ProjectStage
+
+    val DocsVersioning = zio.sbt.WebsiteUtils.DocsVersioning
+    type DocsVersioning = zio.sbt.WebsiteUtils.DocsVersioning
   }
 
   import autoImport.*
 
-  override def requires = MdocPlugin
+  override def requires: Plugins = MdocPlugin && UnifiedScaladocPlugin
 
-  override lazy val projectSettings =
+  override lazy val projectSettings: Seq[Setting[_ <: Object]] =
     Seq(
-      compileDocs := compileDocsTask.evaluated,
-      websiteDir := Paths.get("target"),
-      mdocOut := websiteDir.value.resolve("website/docs").toFile,
-      installWebsite := installWebsiteTask.value,
-      previewWebsite := previewWebsiteTask.value,
-      publishToNpm := publishWebsiteTask.value,
+      compileDocs            := compileDocsTask.evaluated,
+      websiteDir             := Paths.get(target.value.getPath, "website"),
+      mdocOut                := websiteDir.value.resolve("docs").toFile,
+      installWebsite         := installWebsiteTask.value,
+      previewWebsite         := previewWebsiteTask.value,
+      publishToNpm           := publishWebsiteTask.value,
+      publishSnapshotToNpm   := publishSnapshotToNpmTask.value,
+      publishHashverToNpm    := publishHashverToNpmTask.value,
       generateGithubWorkflow := generateGithubWorkflowTask.value,
-      docsDependencies := Seq.empty,
+      checkGithubWorkflow    := checkGithubWorkflowTask.value,
+      generateReadme         := generateReadmeTask.value,
+      badgeInfo              := None,
+      docsDependencies       := Seq.empty,
       libraryDependencies ++= docsDependencies.value,
       mdocVariables ++= {
         Map(
-          "VERSION"         -> version.value,
-          "RELEASE_VERSION" -> releaseVersion
+          "VERSION"          -> releaseVersion(sLog.value.warn(_)).getOrElse(version.value),
+          "RELEASE_VERSION"  -> releaseVersion(sLog.value.warn(_)).getOrElse("NOT RELEASED YET"),
+          "SNAPSHOT_VERSION" -> version.value,
+          "PROJECT_BADGES" -> {
+            badgeInfo.value match {
+              case Some(badge) =>
+                WebsiteUtils.generateProjectBadges(
+                  projectStage = badge.projectStage,
+                  groupId = organization.value,
+                  artifact = badge.artifact,
+                  githubUser = "zio",
+                  githubRepo =
+                    scmInfo.value.map(_.browseUrl.getPath.split('/').last).getOrElse("github repo not provided"),
+                  projectName = projectName.value
+                )
+              case None => ""
+            }
+          }
         )
-      }
+      },
+      docsPublishBranch := "main",
+      readmeDocumentation := readmeDocumentationSection(
+        projectName.value,
+        homepage.value.getOrElse(new URL(s"https://zio.dev/ecosystem/"))
+      ),
+      readmeContribution    := readmeContributionSection,
+      readmeSupport         := readmeSupportSection,
+      readmeLicense         := readmeLicenseSection,
+      readmeAcknowledgement := "",
+      readmeContribution    := readmeContributionSection,
+      readmeCodeOfConduct   := readmeCodeOfConductSection,
+      readmeCredits         := "",
+      readmeBanner          := "",
+      readmeMaintainers     := "",
+      docsVersioning        := DocsVersioning.SemanticVersioning,
+      sbtBuildOptions       := List.empty[String]
     )
 
-  private def releaseVersion: String = "git tag --sort=committerdate".!!.split("\n").filter(_.startsWith("v")).last.tail
+  def releaseVersion(logger: String => Unit): Option[String] =
+    try "git tag --sort=committerdate".!!.split("\n").filter(_.startsWith("v")).lastOption.map(_.tail)
+    catch {
+      case _: Exception =>
+        logger(
+          s"Could not determine release version from git tags, will return 'None' instead.  This is most likely a result of this project not having a git repo initialized.  See previous log messages for more detail."
+        )
+        None
+    }
 
-  private def exit(exitCode: Int) = if (exitCode != 0) sys.exit(exitCode)
+  private def exit(exitCode: Int, errorMessage: String = "") = if (exitCode != 0) sys.error(errorMessage: String)
 
-  lazy val previewWebsiteTask = Def.task {
+  lazy val previewWebsiteTask: Def.Initialize[Task[Unit]] = Def.task {
     import zio.*
 
-    val task =
+    val task: Task[Unit] =
       for {
         _ <- ZIO.attempt(compileDocsTask.toTask(" --watch").value).forkDaemon
         _ <- ZIO.attempt(docusaurusServerTask.value)
@@ -63,16 +161,17 @@ object WebsitePlugin extends sbt.AutoPlugin {
   }
     .dependsOn(compileDocsTask.toTask(""))
 
-  lazy val docusaurusServerTask =
+  lazy val docusaurusServerTask: Def.Initialize[Task[Unit]] =
     Def.task {
-      exit(s"yarn --cwd ${websiteDir.value}/website run start".!)
+      val p = Process("npm run start", new File(s"${websiteDir.value}")).!
+      exit(p, "Failed to run start command!")
     }
 
-  lazy val compileDocsTask =
+  lazy val compileDocsTask: Def.Initialize[InputTask[Unit]] =
     Def.inputTaskDyn {
       val parsed =
         sbt.complete.DefaultParsers.spaceDelimited("<arg>").parsed
-      val watch  =
+      val watch =
         parsed.headOption.getOrElse("").equalsIgnoreCase("--watch")
       val logger = streams.value.log
       logger.info("Compiling docs using mdoc ...")
@@ -83,9 +182,11 @@ object WebsitePlugin extends sbt.AutoPlugin {
         mdoc.toTask("")
     }
 
-  lazy val installWebsiteTask =
+  lazy val installWebsiteTask: Def.Initialize[Task[Unit]] =
     Def.task {
       val logger = streams.value.log
+
+      exit(Process(s"rm ${target.value}/${normalizedName.value}-website -Rvf").!)
 
       val task: String =
         s"""|npx @zio.dev/create-zio-website@latest ${normalizedName.value}-website \\
@@ -97,66 +198,176 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
       logger.info(s"installing website for ${normalizedName.value} ... \n$task")
 
-      exit(Process(task, websiteDir.value.toFile).!)
+      exit(Process(task, target.value).!)
 
-      exit(Process(s"mv ${normalizedName.value}-website website", websiteDir.value.toFile).!)
+      exit(Process(s"mv ${target.value}/${normalizedName.value}-website ${websiteDir.value}").!)
 
-      exit(s"rm ${websiteDir.value.toString}/website/.git/ -rvf".!)
+      exit(s"rm -rvf ${websiteDir.value.toString}/.git/".!)
     }
 
-  lazy val publishWebsiteTask =
+  lazy val publishWebsiteTask: Def.Initialize[Task[Unit]] =
     Def.task {
-      exit(Process(s"npm version $releaseVersion", new File(s"${websiteDir.value.toString}/website/docs/")).!)
+      val _ = compileDocs.toTask("").value
+
+      val refinedNpmVersion = {
+        val v = releaseVersion(streams.value.log.warn(_)).getOrElse(version.value)
+        if (v.endsWith("-SNAPSHOT")) v.replace("+", "--") else v
+      }
+
+      exit(
+        Process(
+          s"npm version --new-version $refinedNpmVersion --no-git-tag-version",
+          new File(s"${websiteDir.value.toString}/docs/")
+        ).!
+      )
 
       exit("npm config set access public".!)
 
-      exit(Process("npm publish", new File(s"${websiteDir.value.toString}/website/docs/")).!)
+      exit(Process("npm publish", new File(s"${websiteDir.value.toString}/docs/")).!)
     }
 
-  lazy val generateGithubWorkflowTask =
+  private def hashVersion: String = {
+    val hashPart = s"git rev-parse --short=12 HEAD".!!
+    val datePart = java.time.LocalDate.now().toString.replace("-", ".")
+    datePart + "-" + hashPart
+  }
+
+  lazy val publishHashverToNpmTask: Def.Initialize[Task[Unit]] =
     Def.task {
-      val template =
-        """|# This file was autogenerated using `zio-sbt` via `sbt generateGithubWorkflow` 
-           |# task and should be included in the git repository. Please do not edit 
-           |# it manually. 
-           |
-           |name: Documentation
-           |
-           |on:
-           |  release:
-           |    types: [created]
-           |  workflow_dispatch:
-           |    branches: [ main ]
-           |
-           |jobs:
-           |  publish-docs:
-           |    runs-on: ubuntu-20.04
-           |    timeout-minutes: 30
-           |    steps:
-           |      - uses: actions/checkout@v3.1.0
-           |        with:
-           |          fetch-depth: 0
-           |      - name: Print Latest Tag For Debugging Purposes
-           |        run: git tag --sort=committerdate | tail -1
-           |      - uses: olafurpg/setup-scala@v13
-           |      - name: Compile zio-sbt
-           |        run: |
-           |          git clone https://github.com/khajavi/zio-sbt.git
-           |          cd zio-sbt
-           |          sbt zioSbtWebsite/publishLocal
-           |      - name: Compile Project's Documentation
-           |        run: sbt compileDocs
-           |      - uses: actions/setup-node@v3
-           |        with:
-           |          node-version: '16.x'
-           |          registry-url: 'https://registry.npmjs.org'
-           |      - name: Publishing Docs to NPM Registry
-           |        run: sbt publishToNpm
-           |        env:
-           |          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-           |""".stripMargin
+      val _ = compileDocs.toTask("").value
 
-      IO.write(new File(".github/workflows/documentation.yml"), template)
+      exit(
+        Process(
+          s"npm version --new-version $hashVersion --no-git-tag-version",
+          new File(s"${websiteDir.value.toString}/docs/")
+        ).!
+      )
+
+      exit("npm config set access public".!)
+
+      exit(Process("npm publish", new File(s"${websiteDir.value.toString}/docs/")).!)
     }
+
+  lazy val publishSnapshotToNpmTask: Def.Initialize[Task[Unit]] =
+    Def.task {
+      val _ = compileDocs.toTask("").value
+
+      val refinedVersion = version.value.replace("+", "--")
+
+      exit(
+        Process(
+          s"npm version --new-version $refinedVersion --no-git-tag-version",
+          new File(s"${websiteDir.value.toString}/docs/")
+        ).!
+      )
+
+      exit("npm config set access public".!)
+
+      exit(Process("npm publish", new File(s"${websiteDir.value.toString}/docs/")).!)
+    }
+
+  private def prefixUrlsWith(markdown: String, prefix: String): String = {
+    val regex = """\((.+?.md)\)""".r
+
+    regex.replaceAllIn(markdown, '(' + prefix + _.group(1) + ')')
+  }
+
+  lazy val normalizedVersion: Def.Initialize[Task[String]] =
+    Def.task(releaseVersion(sLog.value.warn(_)).getOrElse(version.value))
+
+  lazy val ignoreIndexSnapshotVersion: Def.Initialize[Task[Unit]] = Def.task {
+    if (normalizedVersion.value.endsWith("-SNAPSHOT"))
+      exit("sed -i.bak s/@VERSION@/<version>/g docs/index.md".!)
+  }
+
+  lazy val revertIndexChanges: Def.Initialize[Task[Unit]] = Def.task {
+    if (normalizedVersion.value.endsWith("-SNAPSHOT")) {
+      exit("rm docs/index.md".!)
+      exit("cp docs/index.md.bak docs/index.md".!)
+    }
+  }
+
+  lazy val generateReadmeTask: Def.Initialize[Task[Unit]] = {
+    Def.task {
+      import zio.*
+
+      val _ = Def
+        .sequential(
+          ignoreIndexSnapshotVersion,
+          compileDocs.toTask(""),
+          revertIndexChanges
+        )
+        .value
+
+      Unsafe.unsafe { implicit unsafe =>
+        Runtime.default.unsafe
+          .run(
+            readFile(websiteDir.value.resolve("docs/index.md").toString).map(md => removeYamlHeader(md).trim).flatMap {
+              introduction =>
+                WebsiteUtils.generateReadme(
+                  projectName = projectName.value,
+                  banner = readmeBanner.value,
+                  introduction = prefixUrlsWith(introduction, "docs/").trim,
+                  documentation = readmeDocumentation.value.trim,
+                  codeOfConduct = readmeCodeOfConduct.value.trim,
+                  contribution = readmeContribution.value.trim,
+                  support = readmeSupport.value.trim,
+                  license = readmeLicense.value.trim,
+                  acknowledgement = readmeAcknowledgement.value.trim,
+                  credits = readmeCredits.value.trim,
+                  maintainers = readmeMaintainers.value.trim
+                )
+            }
+          )
+          .getOrThrowFiberFailure()
+      }
+      val logger = streams.value.log
+
+      logger.info("The new README.md file generated")
+    }
+  }
+
+  lazy val generateGithubWorkflowTask: Def.Initialize[Task[Unit]] =
+    Def.task {
+      val workflow = WebsiteUtils.websiteWorkflow(docsPublishBranch.value, sbtBuildOptions.value, docsVersioning.value)
+
+      val template =
+        s"""|# This file was autogenerated using `zio-sbt-website` via `sbt generateGithubWorkflow` 
+            |# task and should be included in the git repository. Please do not edit it manually.
+            |
+            |$workflow""".stripMargin
+
+      IO.write(new File(".github/workflows/site.yml"), template)
+    }
+
+  lazy val checkGithubWorkflowTask: Def.Initialize[Task[Unit]] =
+    Def.task {
+      val _ = generateGithubWorkflow.value
+
+      if ("git diff --exit-code".! == 1) {
+        sys.error(
+          "The site.yml workflow is not up-to-date!\n" +
+            "Please run `sbt docs/generateGithubWorkflow` and commit new changes."
+        )
+      }
+    }
+
+  def readmeDocumentationSection(projectName: String, projectHomepageUrl: URL): String =
+    s"""Learn more on the [$projectName homepage]($projectHomepageUrl)!""".stripMargin
+
+  def readmeContributionSection: String =
+    """For the general guidelines, see ZIO [contributor's guide](https://zio.dev/about/contributing).""".stripMargin
+
+  def readmeCodeOfConductSection: String =
+    """See the [Code of Conduct](https://zio.dev/about/code-of-conduct)""".stripMargin
+
+  def readmeSupportSection: String =
+    """|Come chat with us on [![Badge-Discord]][Link-Discord].
+       |
+       |[Badge-Discord]: https://img.shields.io/discord/629491597070827530?logo=discord "chat on discord"
+       |[Link-Discord]: https://discord.gg/2ccFBr4 "Discord"""".stripMargin
+
+  def readmeLicenseSection: String =
+    """[License](LICENSE)""".stripMargin
 
 }

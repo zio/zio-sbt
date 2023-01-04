@@ -1,0 +1,8 @@
+> clean
+> compile
+> compileDocs
+$ exists target/website/docs
+$ exists target/website/docs/index.md
+$ exists target/website/docs/package.json
+$ exists target/website/docs/sidebar.js
+ 

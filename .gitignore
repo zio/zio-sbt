@@ -2,3 +2,7 @@
 .idea
 project/target
 target
+.bloop
+.vscode
+.metals
+metals.sbt
