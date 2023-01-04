@@ -6,9 +6,10 @@ addCommand(List("scripted"), "testPlugin", "Runs the scripted SBT plugin tests."
 
 inThisBuild(
   List(
-    organization := "dev.zio",
-    startYear    := Some(2022),
-    homepage     := Some(url("https://zio.dev/zio-sbt")),
+    organization  := "dev.zio",
+    startYear     := Some(2022),
+    headerEndYear := Some(2023),
+    homepage      := Some(url("https://zio.dev/zio-sbt")),
     developers := List(
       Developer(
         "khajavi",
@@ -35,6 +36,7 @@ lazy val root = project
   .in(file("."))
   .settings(
     name           := "zio-sbt",
+    headerEndYear  := Some(2023),
     publish / skip := true
   )
   .aggregate(
@@ -46,7 +48,11 @@ lazy val root = project
 lazy val tests =
   project
     .in(file("tests"))
-    .settings(Seq(name := "zio-sbt-tests", publish / skip := true))
+    .settings(
+      name           := "zio-sbt-tests",
+      publish / skip := true,
+      headerEndYear  := Some(2023)
+    )
     .settings(buildInfoSettings("zio.sbt"))
     .enablePlugins(ZioEcosystemProjectPlugin)
 
@@ -57,6 +63,7 @@ lazy val zioSbtWebsite =
     .settings(addCommand(List("scripted"), "testPlugin", "Runs the scripted SBT plugin tests."))
     .settings(
       name               := "zio-sbt-website",
+      headerEndYear      := Some(2023),
       crossScalaVersions := Seq.empty,
       scalaVersion       := versions.Scala212,
       scriptedLaunchOpts := {
@@ -74,6 +81,7 @@ lazy val zioSbtEcosystem =
     .settings(addCommand(List("scripted"), "testPlugin", "Runs the scripted SBT plugin tests."))
     .settings(
       name               := "zio-sbt-ecosystem",
+      headerEndYear      := Some(2023),
       crossScalaVersions := Seq.empty,
       needsZio           := false,
       scalaVersion       := versions.Scala212,
@@ -89,6 +97,7 @@ lazy val docs = project
   .in(file("zio-sbt-docs"))
   .settings(
     publish / skip := true,
+    headerEndYear  := Some(2023),
     moduleName     := "zio-sbt-docs",
     scalacOptions -= "-Yno-imports",
     scalacOptions -= "-Xfatal-warnings",
