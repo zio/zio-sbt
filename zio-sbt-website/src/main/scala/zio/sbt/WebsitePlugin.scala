@@ -107,7 +107,8 @@ object WebsitePlugin extends sbt.AutoPlugin {
                 WebsiteUtils.generateProjectBadges(
                   projectStage = badge.projectStage,
                   groupId = organization.value,
-                  artifact = badge.artifact,
+                  artifactId = badge.artifact,
+                  docsArtifactId = moduleName.value,
                   githubUser = "zio",
                   githubRepo =
                     scmInfo.value.map(_.browseUrl.getPath.split('/').last).getOrElse("github repo not provided"),

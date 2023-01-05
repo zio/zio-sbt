@@ -55,6 +55,12 @@ object WebsiteUtils {
     s"[![$projectName]($githubBadge)]($repoUrl)"
   }
 
+  def javadocBadge(groupId: String, artifactId: String): String = {
+    val badge      = s"https://javadoc.io/badge2/$groupId/$artifactId/javadoc.svg"
+    val javadocUrl = s"https://javadoc.io/doc/$groupId/$artifactId"
+    s"[![javadoc]($badge)]($javadocUrl)"
+  }
+
   def discord =
     "[![Chat on Discord!](https://img.shields.io/discord/629491597070827530?logo=discord)](https://discord.gg/2ccFBr4)"
 
@@ -95,18 +101,20 @@ object WebsiteUtils {
   def generateProjectBadges(
     projectStage: ProjectStage,
     groupId: String,
-    artifact: String,
+    artifactId: String,
+    docsArtifactId: String,
     githubUser: String,
     githubRepo: String,
     projectName: String
   ): String = {
     val stage    = projectStageBadge(projectStage)
     val ci       = ciBadge(githubUser, githubRepo)
-    val release  = releaseBadge(groupId, artifact)
-    val snapshot = snapshotBadge(groupId, artifact)
+    val release  = releaseBadge(groupId, artifactId)
+    val snapshot = snapshotBadge(groupId, artifactId)
     val github   = githubBadge(githubUser, githubRepo, projectName)
+    val javadoc  = javadocBadge(groupId, docsArtifactId)
 
-    s"$stage $ci $release $snapshot $github"
+    s"$stage $ci $release $snapshot $javadoc $github"
   }
 
   def generateReadme(
