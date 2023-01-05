@@ -79,6 +79,13 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
   override def requires: Plugins = MdocPlugin && UnifiedScaladocPlugin
 
+  private def artifactVersion(version: String): String = {
+    val array = version.split('.')
+    if (array.head != "3") {
+      array.dropRight(1).mkString(".")
+    } else "3"
+  }
+
   override lazy val projectSettings: Seq[Setting[_ <: Object]] =
     Seq(
       compileDocs            := compileDocsTask.evaluated,
@@ -108,7 +115,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
                   projectStage = badge.projectStage,
                   groupId = organization.value,
                   artifactId = badge.artifact,
-                  docsArtifactId = moduleName.value,
+                  docsArtifactId = moduleName.value + '_' + artifactVersion(scalaVersion.value),
                   githubUser = "zio",
                   githubRepo =
                     scmInfo.value.map(_.browseUrl.getPath.split('/').last).getOrElse("github repo not provided"),
