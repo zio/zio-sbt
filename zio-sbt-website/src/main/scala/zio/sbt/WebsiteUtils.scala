@@ -17,6 +17,7 @@
 package zio.sbt
 
 import java.nio.file.{Files, Paths}
+import scala.sys.process.*
 
 import scala.annotation.nowarn
 
@@ -109,12 +110,17 @@ object WebsiteUtils {
   ): String = {
     val stage    = projectStageBadge(projectStage)
     val ci       = ciBadge(githubUser, githubRepo)
-    val release  = releaseBadge(groupId, artifactId)
     val snapshot = snapshotBadge(groupId, artifactId)
     val github   = githubBadge(githubUser, githubRepo, projectName)
-    val javadoc  = javadocBadge(groupId, docsArtifactId)
 
-    s"$stage $ci $release $snapshot $javadoc $github"
+    releaseVersion(_ => ()) match {
+      case Some(_) =>
+        val release = releaseBadge(groupId, artifactId)
+        val javadoc = javadocBadge(groupId, docsArtifactId)
+        s"$stage $ci $release $snapshot $javadoc $github"
+      case None =>
+        s"$stage $ci $snapshot $github"
+    }
   }
 
   def generateReadme(
@@ -321,4 +327,14 @@ object WebsiteUtils {
           )
         ).asJson
       )
+
+  def releaseVersion(logger: String => Unit): Option[String] =
+    try "git tag --sort=committerdate".!!.split("\n").filter(_.startsWith("v")).lastOption.map(_.tail)
+    catch {
+      case _: Exception =>
+        logger(
+          s"Could not determine release version from git tags, will return 'None' instead.  This is most likely a result of this project not having a git repo initialized.  See previous log messages for more detail."
+        )
+        None
+    }
 }
