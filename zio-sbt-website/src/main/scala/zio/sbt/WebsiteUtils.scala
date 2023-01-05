@@ -179,8 +179,8 @@ object WebsiteUtils {
           ),
           jobs = Seq(
             Job(
-              id = "check-workflow",
-              name = "Check Workflow",
+              id = "build",
+              name = "Build and Test",
               condition = Some(
                 Condition.Expression("github.event_name == 'pull_request'")
               ),

@@ -12,8 +12,8 @@ name: Website
     - main
   pull_request: {}
 jobs:
-  check-workflow:
-    name: Check Workflow
+  build:
+    name: Build and Test
     runs-on: ubuntu-latest
     if: ${{ github.event_name == 'pull_request' }}
     steps:
