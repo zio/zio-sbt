@@ -12,4 +12,5 @@ title: "Developer Notes"
 - Add env variable for zio version (ZIO_VERSION).
 - Support for various scala versions
 - Support for auto update PRs
+- Add workflow for header checker
 
