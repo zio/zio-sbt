@@ -100,13 +100,9 @@ lazy val docs = project
     moduleName     := "zio-sbt-docs",
     scalacOptions -= "-Yno-imports",
     scalacOptions -= "-Xfatal-warnings",
-    projectName := "ZIO SBT",
-    badgeInfo := Some(
-      BadgeInfo(
-        artifact = "zio-sbt-website_2.12",
-        projectStage = ProjectStage.ProductionReady
-      )
-    ),
+    projectName    := "ZIO SBT",
+    mainModuleName := (zioSbtWebsite / moduleName).value,
+    projectStage   := ProjectStage.ProductionReady,
     readmeContribution := readmeContribution.value +
       """|
          |#### TL;DR

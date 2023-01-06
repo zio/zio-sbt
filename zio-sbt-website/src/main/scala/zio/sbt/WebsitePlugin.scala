@@ -25,12 +25,7 @@ import mdoc.MdocPlugin.autoImport.*
 import sbt.Keys.*
 import sbt.{Def, *}
 
-import zio.sbt.WebsiteUtils.{ProjectStage, readFile, removeYamlHeader}
-
-case class BadgeInfo(
-  artifact: String,
-  projectStage: ProjectStage
-)
+import zio.sbt.WebsiteUtils.{readFile, removeYamlHeader}
 
 object WebsitePlugin extends sbt.AutoPlugin {
 
@@ -49,24 +44,21 @@ object WebsitePlugin extends sbt.AutoPlugin {
     val docsDependencies: SettingKey[Seq[ModuleID]] = settingKey[Seq[ModuleID]]("documentation project dependencies")
     val websiteDir: SettingKey[Path]                = settingKey[Path]("Website directory")
     val docsPublishBranch: SettingKey[String]       = settingKey[String]("Publish branch for documentation")
-    val badgeInfo: SettingKey[Option[BadgeInfo]] =
-      settingKey[Option[BadgeInfo]]("Information necessary to create badge")
-    val projectName: SettingKey[String]            = settingKey[String]("Project name e.g. ZIO SBT")
-    val projectHomePage: SettingKey[String]        = settingKey[String]("Project home page url e.g. https://zio.dev/zio-sbt")
-    val readmeBanner: SettingKey[String]           = settingKey[String]("Readme banner section")
-    val readmeDocumentation: SettingKey[String]    = settingKey[String]("Readme documentation section")
-    val readmeContribution: SettingKey[String]     = settingKey[String]("Readme contribution section")
-    val readmeCodeOfConduct: SettingKey[String]    = settingKey[String]("Readme code of conduct")
-    val readmeSupport: SettingKey[String]          = settingKey[String]("Readme support section")
-    val readmeLicense: SettingKey[String]          = settingKey[String]("Readme license section")
-    val readmeAcknowledgement: SettingKey[String]  = settingKey[String]("Acknowledgement section")
-    val readmeCredits: SettingKey[String]          = settingKey[String]("Credits section")
-    val readmeMaintainers: SettingKey[String]      = settingKey[String]("Maintainers section")
-    val docsVersioning: SettingKey[DocsVersioning] = settingKey[DocsVersioning]("Docs versioning style")
-    val sbtBuildOptions: SettingKey[List[String]]  = settingKey[List[String]]("SBT build options")
-
-    val BadgeInfo = zio.sbt.BadgeInfo
-    type BadgeInfo = zio.sbt.BadgeInfo
+    val projectStage: SettingKey[ProjectStage]      = settingKey[ProjectStage]("Project stage")
+    val projectName: SettingKey[String]             = settingKey[String]("Project name e.g. ZIO SBT")
+    val mainModuleName: SettingKey[String]          = settingKey[String]("Main Module Name e.g. zio-sbt")
+    val projectHomePage: SettingKey[String]         = settingKey[String]("Project home page url e.g. https://zio.dev/zio-sbt")
+    val readmeBanner: SettingKey[String]            = settingKey[String]("Readme banner section")
+    val readmeDocumentation: SettingKey[String]     = settingKey[String]("Readme documentation section")
+    val readmeContribution: SettingKey[String]      = settingKey[String]("Readme contribution section")
+    val readmeCodeOfConduct: SettingKey[String]     = settingKey[String]("Readme code of conduct")
+    val readmeSupport: SettingKey[String]           = settingKey[String]("Readme support section")
+    val readmeLicense: SettingKey[String]           = settingKey[String]("Readme license section")
+    val readmeAcknowledgement: SettingKey[String]   = settingKey[String]("Acknowledgement section")
+    val readmeCredits: SettingKey[String]           = settingKey[String]("Credits section")
+    val readmeMaintainers: SettingKey[String]       = settingKey[String]("Maintainers section")
+    val docsVersioning: SettingKey[DocsVersioning]  = settingKey[DocsVersioning]("Docs versioning style")
+    val sbtBuildOptions: SettingKey[List[String]]   = settingKey[List[String]]("SBT build options")
 
     val ProjectStage = zio.sbt.WebsiteUtils.ProjectStage
     type ProjectStage = zio.sbt.WebsiteUtils.ProjectStage
@@ -93,7 +85,6 @@ object WebsitePlugin extends sbt.AutoPlugin {
       generateGithubWorkflow := generateGithubWorkflowTask.value,
       checkGithubWorkflow    := checkGithubWorkflowTask.value,
       generateReadme         := generateReadmeTask.value,
-      badgeInfo              := None,
       docsDependencies       := Seq.empty,
       libraryDependencies ++= docsDependencies.value,
       mdocVariables ++= {
@@ -102,20 +93,15 @@ object WebsitePlugin extends sbt.AutoPlugin {
           "RELEASE_VERSION"  -> WebsiteUtils.releaseVersion(sLog.value.warn(_)).getOrElse("NOT RELEASED YET"),
           "SNAPSHOT_VERSION" -> version.value,
           "PROJECT_BADGES" -> {
-            badgeInfo.value match {
-              case Some(badge) =>
-                WebsiteUtils.generateProjectBadges(
-                  projectStage = badge.projectStage,
-                  groupId = organization.value,
-                  artifactId = badge.artifact,
-                  docsArtifactId = moduleName.value + '_' + scalaBinaryVersion.value,
-                  githubUser = "zio",
-                  githubRepo =
-                    scmInfo.value.map(_.browseUrl.getPath.split('/').last).getOrElse("github repo not provided"),
-                  projectName = projectName.value
-                )
-              case None => ""
-            }
+            WebsiteUtils.generateProjectBadges(
+              projectStage = projectStage.value,
+              groupId = organization.value,
+              artifactId = mainModuleName.value + '_' + scalaBinaryVersion.value,
+              docsArtifactId = moduleName.value + '_' + scalaBinaryVersion.value,
+              githubUser = "zio",
+              githubRepo = scmInfo.value.map(_.browseUrl.getPath.split('/').last).getOrElse("github repo not provided"),
+              projectName = projectName.value
+            )
           }
         )
       },
