@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 dev.zio
+ * Copyright 2022-2023 dev.zio
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,8 @@ import io.circe.syntax.*
 
 import zio.sbt.githubactions.ScalaWorkflow.JavaVersion.AdoptJDK18
 
+// The original code of the githubactions package was originally copied from the zio-aws-codegen project:
+// https://github.com/zio/zio-aws/tree/master/zio-aws-codegen/src/main/scala/zio/aws/codegen/githubactions
 object ScalaWorkflow {
   import Step.*
 
