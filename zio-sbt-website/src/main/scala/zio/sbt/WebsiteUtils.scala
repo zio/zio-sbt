@@ -16,18 +16,16 @@
 
 package zio.sbt
 
-import java.nio.file.{Files, Paths}
-
-import scala.annotation.nowarn
-import scala.sys.process.*
-
 import io.circe.syntax.*
 import io.circe.yaml.Printer.{LineBreak, YamlVersion}
 import sbt.File
-
 import zio.*
 import zio.sbt.WebsiteUtils.DocsVersioning.SemanticVersioning
 import zio.sbt.githubactions.*
+
+import java.nio.file.{Files, Paths}
+import scala.annotation.nowarn
+import scala.sys.process.*
 
 @nowarn("msg=detected an interpolated expression")
 object WebsiteUtils {
@@ -173,7 +171,68 @@ object WebsiteUtils {
     docsPublishBranch: String,
     sbtBuildOptions: List[String] = List.empty,
     versioning: DocsVersioning = SemanticVersioning
-  ): String =
+  ): String = {
+    object Actions {
+      val checkout: ActionRef     = ActionRef("actions/checkout@v3.3.0")
+      val `setup-java`: ActionRef = ActionRef("actions/setup-java@v3.9.0")
+      val `setup-node`: ActionRef = ActionRef("actions/setup-node@v3")
+    }
+
+    import Actions.*
+
+    object Steps {
+      val Checkout: Step.SingleStep = Step.SingleStep(
+        name = "Git Checkout",
+        uses = Some(checkout),
+        parameters = Map("fetch-depth" -> "0".asJson)
+      )
+
+      val SetupJava: Step.SingleStep = Step.SingleStep(
+        name = "Setup Scala",
+        uses = Some(`setup-java`),
+        parameters = Map(
+          "distribution" -> "temurin".asJson,
+          "java-version" -> 17.asJson,
+          "check-latest" -> true.asJson
+        )
+      )
+
+      val SetupNodeJs: Step.SingleStep = Step.SingleStep(
+        name = "Setup NodeJs",
+        uses = Some(`setup-node`),
+        parameters = Map(
+          "node-version" -> "16.x".asJson,
+          "registry-url" -> "https://registry.npmjs.org".asJson
+        )
+      )
+
+      val GenerateReadme: Step.SingleStep = Step.SingleStep(
+        name = "Generate Readme",
+        run = Some(s"sbt ${sbtBuildOptions.mkString(" ")} docs/generateReadme")
+      )
+
+      val CheckWebsiteBuildProcess: Step.SingleStep = Step.SingleStep(
+        name = "Check website build process",
+        run = Some(s"sbt ${sbtBuildOptions.mkString(" ")} docs/buildWebsite")
+      )
+
+      val CheckGithubWorkflow: Step.SingleStep = Step.SingleStep(
+        name = "Check that site workflow is up to date",
+        run = Some(s"sbt ${sbtBuildOptions.mkString(" ")} docs/checkGithubWorkflow")
+      )
+
+      val PublishToNpmRegistry: Step.SingleStep =
+        Step.SingleStep(
+          name = "Publish Docs to NPM Registry",
+          run = Some(s"sbt ${sbtBuildOptions.mkString(" ")} docs/${versioning.npmCommand}"),
+          env = Map(
+            "NODE_AUTH_TOKEN" -> "${{ secrets.NPM_TOKEN }}"
+          )
+        )
+    }
+
+    import Steps.*
+
     io.circe.yaml
       .Printer(
         preserveOrder = true,
@@ -201,28 +260,10 @@ object WebsiteUtils {
               steps = Seq(
                 Step.StepSequence(
                   Seq(
-                    Step.SingleStep(
-                      name = "Git Checkout",
-                      uses = Some(ActionRef("actions/checkout@v3.2.0")),
-                      parameters = Map("fetch-depth" -> "0".asJson)
-                    ),
-                    Step.SingleStep(
-                      name = "Setup Scala",
-                      uses = Some(ActionRef("actions/setup-java@v3.9.0")),
-                      parameters = Map(
-                        "distribution" -> "temurin".asJson,
-                        "java-version" -> 17.asJson,
-                        "check-latest" -> true.asJson
-                      )
-                    ),
-                    Step.SingleStep(
-                      name = "Check that site workflow is up to date",
-                      run = Some(s"sbt ${sbtBuildOptions.mkString(" ")} docs/checkGithubWorkflow")
-                    ),
-                    Step.SingleStep(
-                      name = "Check website build process",
-                      run = Some(s"sbt ${sbtBuildOptions.mkString(" ")} docs/buildWebsite")
-                    )
+                    Checkout,
+                    SetupJava,
+                    CheckGithubWorkflow,
+                    CheckWebsiteBuildProcess
                   )
                 )
               )
@@ -239,35 +280,10 @@ object WebsiteUtils {
               steps = Seq(
                 Step.StepSequence(
                   Seq(
-                    Step.SingleStep(
-                      name = "Git Checkout",
-                      uses = Some(ActionRef("actions/checkout@v3.2.0")),
-                      parameters = Map("fetch-depth" -> "0".asJson)
-                    ),
-                    Step.SingleStep(
-                      name = "Setup Scala",
-                      uses = Some(ActionRef("actions/setup-java@v3.9.0")),
-                      parameters = Map(
-                        "distribution" -> "temurin".asJson,
-                        "java-version" -> 17.asJson,
-                        "check-latest" -> true.asJson
-                      )
-                    ),
-                    Step.SingleStep(
-                      name = "Setup NodeJs",
-                      uses = Some(ActionRef("actions/setup-node@v3")),
-                      parameters = Map(
-                        "node-version" -> "16.x".asJson,
-                        "registry-url" -> "https://registry.npmjs.org".asJson
-                      )
-                    ),
-                    Step.SingleStep(
-                      name = "Publish Docs to NPM Registry",
-                      run = Some(s"sbt ${sbtBuildOptions.mkString(" ")} docs/${versioning.npmCommand}"),
-                      env = Map(
-                        "NODE_AUTH_TOKEN" -> "${{ secrets.NPM_TOKEN }}"
-                      )
-                    )
+                    Checkout,
+                    SetupJava,
+                    SetupNodeJs,
+                    PublishToNpmRegistry
                   )
                 )
               )
@@ -279,25 +295,14 @@ object WebsiteUtils {
               steps = Seq(
                 Step.SingleStep(
                   name = "Git Checkout",
-                  uses = Some(ActionRef("actions/checkout@v3.2.0")),
+                  uses = Some(checkout),
                   parameters = Map(
                     "ref"         -> "${{ github.head_ref }}".asJson,
                     "fetch-depth" -> "0".asJson
                   )
                 ),
-                Step.SingleStep(
-                  name = "Setup Scala",
-                  uses = Some(ActionRef("actions/setup-java@v3.9.0")),
-                  parameters = Map(
-                    "distribution" -> "temurin".asJson,
-                    "java-version" -> 17.asJson,
-                    "check-latest" -> true.asJson
-                  )
-                ),
-                Step.SingleStep(
-                  name = "Generate Readme",
-                  run = Some(s"sbt ${sbtBuildOptions.mkString(" ")} docs/generateReadme")
-                ),
+                SetupJava,
+                GenerateReadme,
                 Step.SingleStep(
                   name = "Commit Changes",
                   run = Some("""|git config --local user.email "github-actions[bot]@users.noreply.github.com"
@@ -327,6 +332,7 @@ object WebsiteUtils {
           )
         ).asJson
       )
+  }
 
   def releaseVersion(logger: String => Unit): Option[String] =
     try "git tag --sort=committerdate".!!.split("\n").filter(_.startsWith("v")).lastOption.map(_.tail)
