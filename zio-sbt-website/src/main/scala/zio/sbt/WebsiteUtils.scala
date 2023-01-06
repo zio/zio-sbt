@@ -17,9 +17,9 @@
 package zio.sbt
 
 import java.nio.file.{Files, Paths}
-import scala.sys.process.*
 
 import scala.annotation.nowarn
+import scala.sys.process.*
 
 import io.circe.syntax.*
 import io.circe.yaml.Printer.{LineBreak, YamlVersion}
