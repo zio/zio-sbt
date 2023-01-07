@@ -20,6 +20,7 @@ import java.nio.file.{Path, Paths}
 
 import scala.sys.process.*
 
+import _root_.java.nio.file.Files
 import mdoc.MdocPlugin
 import mdoc.MdocPlugin.autoImport.*
 import sbt.Keys.*
@@ -165,7 +166,10 @@ object WebsitePlugin extends sbt.AutoPlugin {
     Def.task {
       val logger = streams.value.log
 
-      exit(Process(s"rm ${target.value}/${normalizedName.value}-website -Rvf").!)
+      val siteTarget = s"${target.value}/${normalizedName.value}-website"
+
+      if (Files.exists(Paths.get(siteTarget)))
+        exit(Process(s"rm $siteTarget -Rvf").!)
 
       val task: String =
         s"""|npx @zio.dev/create-zio-website@latest ${normalizedName.value}-website \\

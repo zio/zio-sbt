@@ -1,8 +1,15 @@
+import zio.sbt.Commands._
 sbtPlugin         := true
 publishMavenStyle := true
 
 enablePlugins(ZioEcosystemProjectPlugin)
-addCommand(List("scripted"), "testPlugin", "Runs the scripted SBT plugin tests.")
+
+addCommand(
+  (ComposableCommand
+    .make(
+      "project zioSbtEcosystem"
+    ) >> "scripted" >> "project zioSbtWebsite" >> "scripted" >> "project root") ?? ("testPlugins", "Runs the scripted SBT plugin tests.")
+)
 
 inThisBuild(
   List(
@@ -59,7 +66,6 @@ lazy val zioSbtWebsite =
   project
     .in(file("zio-sbt-website"))
     .settings(buildInfoSettings("zio.sbt"))
-    .settings(addCommand(List("scripted"), "testPlugin", "Runs the scripted SBT plugin tests."))
     .settings(
       name               := "zio-sbt-website",
       headerEndYear      := Some(2023),
@@ -77,7 +83,6 @@ lazy val zioSbtEcosystem =
   project
     .in(file("zio-sbt-ecosystem"))
     .settings(buildInfoSettings("zio.sbt"))
-    .settings(addCommand(List("scripted"), "testPlugin", "Runs the scripted SBT plugin tests."))
     .settings(
       name               := "zio-sbt-ecosystem",
       headerEndYear      := Some(2023),

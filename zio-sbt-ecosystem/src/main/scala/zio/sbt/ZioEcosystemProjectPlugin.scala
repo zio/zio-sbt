@@ -65,11 +65,14 @@ object ZioEcosystemProjectPlugin extends AutoPlugin {
 
     def addCommand(commandString: List[String], name: String, description: String): Seq[Setting[_]] = {
       val cCommand = Commands.ComposableCommand(commandString, name, description)
-      Seq(
-        commands += cCommand.toCommand,
-        usefulTasksAndSettings += cCommand.toItem
-      )
+      addCommand(cCommand)
     }
+
+    def addCommand(command: Commands.ComposableCommand): Seq[Setting[_]] =
+      Seq(
+        commands += command.toCommand,
+        usefulTasksAndSettings += command.toItem
+      )
 
     val zioSeries: SettingKey[ZIOSeries] = settingKey[ZIOSeries]("Indicates whether to use ZIO 2.x or ZIO 1.x.")
 

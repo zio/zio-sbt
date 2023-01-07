@@ -21,9 +21,9 @@ trait Versions {
   object versions {
 
     val cassandraDriverVersion               = "4.14.1"
-    val scala213Version                      = "2.13.8"
-    val scala212Version                      = "2.12.16"
-    val scala3Version                        = "3.1.3"
+    val scala213Version                      = "2.13.10"
+    val scala212Version                      = "2.12.17"
+    val scala3Version                        = "3.2.1"
     val supportedScalaVersions: List[String] = List(scala213Version, scala212Version, scala3Version)
     val zio1xVersion                         = "1.0.15"
     val zio2xVersion                         = "2.0.4"
@@ -34,23 +34,33 @@ trait Versions {
       import java.util.{List => JList, Map => JMap}
       import scala.jdk.CollectionConverters._
 
-      val doc = new Load(LoadSettings.builder().build())
-        .loadFromReader(scala.io.Source.fromFile(".github/workflows/ci.yml").bufferedReader())
-      val yaml = doc.asInstanceOf[JMap[String, JMap[String, JMap[String, JMap[String, JMap[String, JList[String]]]]]]]
+      try {
+        val doc = new Load(LoadSettings.builder().build())
+          .loadFromReader(scala.io.Source.fromFile(".github/workflows/ci.yml").bufferedReader())
+        val yaml = doc.asInstanceOf[JMap[String, JMap[String, JMap[String, JMap[String, JMap[String, JList[String]]]]]]]
 
-      val list = yaml
-        .getOrDefault("jobs", Map.empty.asJava)
-        .getOrDefault("build", Map.empty.asJava)
-        .getOrDefault("strategy", Map.empty.asJava)
-        .getOrDefault("matrix", Map.empty.asJava)
-        .getOrDefault("scala", List.empty.asJava)
-        .asScala
-      list.map(v => (v.split('.').take(2).mkString("."), v)).toMap
+        val list = yaml
+          .getOrDefault("jobs", Map.empty.asJava)
+          .getOrDefault("build", Map.empty.asJava)
+          .getOrDefault("strategy", Map.empty.asJava)
+          .getOrDefault("matrix", Map.empty.asJava)
+          .getOrDefault("scala", List.empty.asJava)
+          .asScala
+
+        val m1 = list.filter(_.startsWith("2")).map(v => (v.split('.').take(2).mkString("."), v)).toMap
+        val m2 = list
+          .filter(_.startsWith("3"))
+          .map("3.x" -> _)
+          .toMap
+        m1 ++ m2
+      } catch {
+        case _: java.io.FileNotFoundException => Map.empty[String, String]
+      }
     }
 
     val Scala212: String = versions.getOrElse("2.12", scala212Version)
     val Scala213: String = versions.getOrElse("2.13", scala213Version)
-    val Scala3: String   = versions.getOrElse("3.1", scala3Version)
+    val Scala3: String   = versions.getOrElse("3.x", scala3Version)
   }
 }
 
