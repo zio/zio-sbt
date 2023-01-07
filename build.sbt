@@ -100,14 +100,14 @@ lazy val zioSbtEcosystem =
 lazy val docs = project
   .in(file("zio-sbt-docs"))
   .settings(
-    publish / skip := true,
-    headerEndYear  := Some(2023),
-    moduleName     := "zio-sbt-docs",
+    headerEndYear := Some(2023),
+    moduleName    := "zio-sbt-docs",
     scalacOptions -= "-Yno-imports",
     scalacOptions -= "-Xfatal-warnings",
-    projectName    := "ZIO SBT",
-    mainModuleName := (zioSbtWebsite / moduleName).value,
-    projectStage   := ProjectStage.ProductionReady,
+    projectName                                := "ZIO SBT",
+    mainModuleName                             := (zioSbtWebsite / moduleName).value,
+    projectStage                               := ProjectStage.ProductionReady,
+    ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(zioSbtEcosystem, zioSbtWebsite),
     readmeContribution := readmeContribution.value +
       """|
          |#### TL;DR
