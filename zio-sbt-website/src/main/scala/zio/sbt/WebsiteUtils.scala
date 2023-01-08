@@ -293,7 +293,10 @@ object WebsiteUtils {
             Job(
               id = "generate-readme",
               name = "Generate README",
-              condition = Some(Condition.Expression("github.event_name == 'push'")),
+              condition = Some(
+                Condition.Expression("github.event_name == 'push'") ||
+                  Condition.Expression("github.event_name == 'published'")
+              ),
               steps = Seq(
                 Step.SingleStep(
                   name = "Git Checkout",
