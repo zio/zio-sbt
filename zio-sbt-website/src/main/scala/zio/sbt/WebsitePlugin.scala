@@ -17,12 +17,15 @@
 package zio.sbt
 
 import java.nio.file.{Path, Paths}
+
 import scala.sys.process._
+
 import _root_.java.nio.file.Files
 import mdoc.MdocPlugin
 import mdoc.MdocPlugin.autoImport._
 import sbt.Keys._
 import sbt.{Def, _}
+
 import zio.sbt.WebsiteUtils.{readFile, removeYamlHeader}
 import zio.sbt.githubactions.Condition
 
