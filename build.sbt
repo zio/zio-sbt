@@ -102,8 +102,7 @@ lazy val zioSbtEcosystem =
 lazy val docs = project
   .in(file("zio-sbt-docs"))
   .settings(
-    headerEndYear := Some(2023),
-    moduleName    := "zio-sbt-docs",
+    moduleName := "zio-sbt-docs",
     scalacOptions -= "-Yno-imports",
     scalacOptions -= "-Xfatal-warnings",
     crossScalaVersions                         := Seq.empty,

@@ -172,7 +172,8 @@ object WebsiteUtils {
   def websiteWorkflow(
     docsPublishBranch: String,
     sbtBuildOptions: List[String] = List.empty,
-    versioning: DocsVersioning = SemanticVersioning
+    versioning: DocsVersioning = SemanticVersioning,
+    updateReadmeCondition: Option[Condition] = None
   ): String = {
     object Actions {
       val checkout: ActionRef     = ActionRef("actions/checkout@v3.3.0")
@@ -293,7 +294,10 @@ object WebsiteUtils {
             Job(
               id = "generate-readme",
               name = "Generate README",
-              condition = Some(Condition.Expression("github.event_name == 'push'")),
+              condition = updateReadmeCondition orElse Some(
+                Condition.Expression("github.event_name == 'push'") ||
+                  Condition.Expression("github.event_name == 'published'")
+              ),
               steps = Seq(
                 Step.SingleStep(
                   name = "Git Checkout",
