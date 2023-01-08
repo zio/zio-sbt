@@ -19,15 +19,15 @@ package zio.sbt
 import java.nio.file.{Files, Paths}
 
 import scala.annotation.nowarn
-import scala.sys.process.*
+import scala.sys.process._
 
-import io.circe.syntax.*
+import io.circe.syntax._
 import io.circe.yaml.Printer.{LineBreak, YamlVersion}
 import sbt.File
 
-import zio.*
+import zio._
 import zio.sbt.WebsiteUtils.DocsVersioning.SemanticVersioning
-import zio.sbt.githubactions.*
+import zio.sbt.githubactions._
 
 @nowarn("msg=detected an interpolated expression")
 object WebsiteUtils {
@@ -180,7 +180,7 @@ object WebsiteUtils {
       val `setup-node`: ActionRef = ActionRef("actions/setup-node@v3")
     }
 
-    import Actions.*
+    import Actions._
 
     object Steps {
       val Checkout: Step.SingleStep = Step.SingleStep(
@@ -233,7 +233,7 @@ object WebsiteUtils {
         )
     }
 
-    import Steps.*
+    import Steps._
 
     io.circe.yaml
       .Printer(

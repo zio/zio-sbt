@@ -18,14 +18,14 @@ package zio.sbt.githubactions
 
 import scala.annotation.nowarn
 
-import io.circe.syntax.*
+import io.circe.syntax._
 
 import zio.sbt.githubactions.ScalaWorkflow.JavaVersion.AdoptJDK18
 
 // The original code of the githubactions package was originally copied from the zio-aws-codegen project:
 // https://github.com/zio/zio-aws/tree/master/zio-aws-codegen/src/main/scala/zio/aws/codegen/githubactions
 object ScalaWorkflow {
-  import Step.*
+  import Step._
 
   def checkoutCurrentBranch(fetchDepth: Int = 0): Step =
     SingleStep(

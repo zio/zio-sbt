@@ -18,13 +18,13 @@ package zio.sbt
 
 import java.nio.file.{Path, Paths}
 
-import scala.sys.process.*
+import scala.sys.process._
 
 import _root_.java.nio.file.Files
 import mdoc.MdocPlugin
-import mdoc.MdocPlugin.autoImport.*
-import sbt.Keys.*
-import sbt.{Def, *}
+import mdoc.MdocPlugin.autoImport._
+import sbt.Keys._
+import sbt.{Def, _}
 
 import zio.sbt.WebsiteUtils.{readFile, removeYamlHeader}
 
@@ -68,7 +68,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
     type DocsVersioning = zio.sbt.WebsiteUtils.DocsVersioning
   }
 
-  import autoImport.*
+  import autoImport._
 
   override def requires: Plugins = MdocPlugin && UnifiedScaladocPlugin
 
@@ -127,7 +127,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
   private def exit(exitCode: Int, errorMessage: String = "") = if (exitCode != 0) sys.error(errorMessage: String)
 
   lazy val previewWebsiteTask: Def.Initialize[Task[Unit]] = Def.task {
-    import zio.*
+    import zio._
 
     val task: Task[Unit] =
       for {
@@ -280,7 +280,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
   lazy val generateReadmeTask: Def.Initialize[Task[Unit]] = {
     Def.task {
-      import zio.*
+      import zio._
 
       val _ = Def
         .sequential(
