@@ -48,8 +48,7 @@ lazy val root = project
   .aggregate(
     zioSbtWebsite,
     zioSbtEcosystem,
-    tests,
-    docs
+    tests
   )
 
 lazy val tests =
@@ -112,6 +111,7 @@ lazy val docs = project
     mainModuleName                             := (zioSbtWebsite / moduleName).value,
     projectStage                               := ProjectStage.ProductionReady,
     ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(zioSbtEcosystem, zioSbtWebsite),
+    headerLicense                              := None,
     readmeContribution := readmeContribution.value +
       """|
          |#### TL;DR
