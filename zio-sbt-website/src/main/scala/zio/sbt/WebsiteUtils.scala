@@ -296,6 +296,7 @@ object WebsiteUtils {
               name = "Generate README",
               condition = updateReadmeCondition orElse Some(
                 Condition.Expression("github.event_name == 'push'") ||
+                  Condition.Expression("github.event_name == 'release'") &&
                   Condition.Expression("github.event_name == 'published'")
               ),
               steps = Seq(
@@ -340,7 +341,7 @@ object WebsiteUtils {
       )
   }
 
-  def releaseVersion(logger: String => Unit): Option[String] =
+  def releaseVersion(logger: String => Unit) =
     try "git tag --sort=committerdate".!!.split("\n").filter(_.startsWith("v")).lastOption.map(_.tail)
     catch {
       case _: Exception =>
