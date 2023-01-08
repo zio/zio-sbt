@@ -81,9 +81,8 @@ object Commands {
     def scalafix(scalaVersion: String, args: String = ""): ComposableCommand =
       setScalaVersion(scalaVersion) >> s"scalafix ${args}".trim() >> s"Test / scalafix ${args}".trim()
 
-    val fix: ComposableCommand = quietOn >> scalafix(versions.Scala213) >> scalafix(
-      versions.Scala212
-    ) >> quietOff ?? ("fix", "Fixes source files using using scalafix")
+    val fix: ComposableCommand =
+      quietOn >> scalafix(versions.Scala212) >> quietOff ?? ("fix", "Fixes source files using using scalafix")
 
     val fixLint: ComposableCommand =
       quietOn >> scalafix(versions.Scala213, "--check") >> scalafix(versions.Scala212, "--check") >> quietOff
