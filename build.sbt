@@ -48,7 +48,8 @@ lazy val root = project
   .aggregate(
     zioSbtWebsite,
     zioSbtEcosystem,
-    tests
+    tests,
+    docs
   )
 
 lazy val tests =
@@ -71,6 +72,7 @@ lazy val zioSbtWebsite =
       headerEndYear      := Some(2023),
       crossScalaVersions := Seq.empty,
       scalaVersion       := versions.Scala212,
+      buildInfoPackage   := "zio.sbt.website",
       scriptedLaunchOpts := {
         scriptedLaunchOpts.value ++
           Seq("-Xmx1024M", "-Dplugin.version=" + version.value)
@@ -89,6 +91,7 @@ lazy val zioSbtEcosystem =
       crossScalaVersions := Seq.empty,
       needsZio           := false,
       scalaVersion       := versions.Scala212,
+      buildInfoPackage   := "zio.sbt.ecosystem",
       scriptedLaunchOpts := {
         scriptedLaunchOpts.value ++
           Seq("-Xmx1024M", "-Dplugin.version=" + version.value)
@@ -104,6 +107,7 @@ lazy val docs = project
     moduleName    := "zio-sbt-docs",
     scalacOptions -= "-Yno-imports",
     scalacOptions -= "-Xfatal-warnings",
+    crossScalaVersions                         := Seq.empty,
     projectName                                := "ZIO SBT",
     mainModuleName                             := (zioSbtWebsite / moduleName).value,
     projectStage                               := ProjectStage.ProductionReady,
@@ -121,5 +125,5 @@ lazy val docs = project
          |```
          |""".stripMargin
   )
-  .dependsOn(root)
-  .enablePlugins(ZioEcosystemProjectPlugin, WebsitePlugin)
+  .dependsOn(zioSbtWebsite, zioSbtEcosystem)
+  .enablePlugins(WebsitePlugin)

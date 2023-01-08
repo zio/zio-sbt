@@ -18,7 +18,7 @@ package zio.sbt
 
 import scala.sys.process._
 
-import mdoc.DocusaurusPlugin.website
+import mdoc.DocusaurusPlugin
 import sbt.Keys._
 import sbt._
 import sbt.complete.DefaultParsers._
@@ -37,8 +37,8 @@ object DocusaurusExtrasPlugin extends AutoPlugin {
     val plogger = ProcessLogger(log.info(_), log.error(_))
 
     try {
-      Process(List("yarn", "install"), cwd = website.value).!(plogger)
-      Process(List("yarn", "run") ++ args, cwd = website.value).!(plogger)
+      Process(List("yarn", "install"), cwd = DocusaurusPlugin.website.value).!(plogger)
+      Process(List("yarn", "run") ++ args, cwd = DocusaurusPlugin.website.value).!(plogger)
 
     } catch {
 
