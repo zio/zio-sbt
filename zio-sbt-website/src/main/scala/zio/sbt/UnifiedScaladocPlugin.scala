@@ -16,8 +16,8 @@
 
 package zio.sbt
 
-import sbt.Keys._
-import sbt._
+import sbt.Keys.*
+import sbt.*
 import sbtunidoc.ScalaUnidocPlugin
 
 object UnifiedScaladocPlugin extends sbt.AutoPlugin {
@@ -25,7 +25,7 @@ object UnifiedScaladocPlugin extends sbt.AutoPlugin {
 
   override def trigger = noTrigger
 
-  import ScalaUnidocPlugin.autoImport._
+  import ScalaUnidocPlugin.autoImport.*
 
   override def projectSettings: Seq[Setting[_]] =
     Seq(Compile / doc := (ScalaUnidoc / doc).value)

@@ -16,8 +16,8 @@
 
 package zio.sbt.githubactions
 
-import io.circe._
-import io.circe.syntax._
+import io.circe.*
+import io.circe.syntax.*
 
 import zio.sbt.githubactions.Step.StepSequence
 

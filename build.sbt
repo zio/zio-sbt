@@ -41,11 +41,9 @@ ThisBuild / publishTo := sonatypePublishToBundle.value
 lazy val root = project
   .in(file("."))
   .settings(
-    name               := "zio-sbt",
-    headerEndYear      := Some(2023),
-    crossScalaVersions := Seq(scalaVersion.value),
-    scalaVersion       := versions.Scala212,
-    publish / skip     := true
+    name           := "zio-sbt",
+    headerEndYear  := Some(2023),
+    publish / skip := true
   )
   .aggregate(
     zioSbtWebsite,
@@ -57,11 +55,9 @@ lazy val tests =
   project
     .in(file("tests"))
     .settings(
-      name               := "zio-sbt-tests",
-      publish / skip     := true,
-      crossScalaVersions := Seq(scalaVersion.value),
-      scalaVersion       := versions.Scala212,
-      headerEndYear      := Some(2023)
+      name           := "zio-sbt-tests",
+      publish / skip := true,
+      headerEndYear  := Some(2023)
     )
     .settings(buildInfoSettings("zio.sbt"))
     .enablePlugins(ZioEcosystemProjectPlugin)
@@ -73,7 +69,7 @@ lazy val zioSbtWebsite =
     .settings(
       name               := "zio-sbt-website",
       headerEndYear      := Some(2023),
-      crossScalaVersions := Seq(scalaVersion.value),
+      crossScalaVersions := Seq.empty,
       scalaVersion       := versions.Scala212,
       scriptedLaunchOpts := {
         scriptedLaunchOpts.value ++
@@ -90,7 +86,7 @@ lazy val zioSbtEcosystem =
     .settings(
       name               := "zio-sbt-ecosystem",
       headerEndYear      := Some(2023),
-      crossScalaVersions := Seq(scalaVersion.value),
+      crossScalaVersions := Seq.empty,
       needsZio           := false,
       scalaVersion       := versions.Scala212,
       scriptedLaunchOpts := {
@@ -108,12 +104,10 @@ lazy val docs = project
     moduleName    := "zio-sbt-docs",
     scalacOptions -= "-Yno-imports",
     scalacOptions -= "-Xfatal-warnings",
-    crossScalaVersions                         := Seq(scalaVersion.value),
-    scalaVersion                               := versions.Scala212,
     projectName                                := "ZIO SBT",
     mainModuleName                             := (zioSbtWebsite / moduleName).value,
     projectStage                               := ProjectStage.ProductionReady,
-    ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(zioSbtWebsite),
+    ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(zioSbtEcosystem, zioSbtWebsite),
     readmeContribution := readmeContribution.value +
       """|
          |#### TL;DR
@@ -127,4 +121,5 @@ lazy val docs = project
          |```
          |""".stripMargin
   )
-  .enablePlugins(WebsitePlugin)
+  .dependsOn(root)
+  .enablePlugins(ZioEcosystemProjectPlugin, WebsitePlugin)
