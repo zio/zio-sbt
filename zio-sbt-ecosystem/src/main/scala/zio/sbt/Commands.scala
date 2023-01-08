@@ -85,7 +85,7 @@ object Commands {
       quietOn >> scalafix(versions.Scala212) >> quietOff ?? ("fix", "Fixes source files using using scalafix")
 
     val fixLint: ComposableCommand =
-      quietOn >> scalafix(versions.Scala212, "--check") >> quietOff
+      quietOn >> scalafix(versions.Scala212, "--check") >> scalafix(versions.Scala212, "--check") >> quietOff
 
     val fmt: ComposableCommand =
       quietOn >> "scalafmtSbt" >> "+scalafmt" >> "+Test / scalafmt" >> quietOff ?? ("fmt", "Formats source files using scalafmt.")
