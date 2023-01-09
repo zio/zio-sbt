@@ -270,7 +270,7 @@ object WebsiteUtils {
                   Seq(
                     Checkout,
                     SetupJava,
-                    CheckGithubWorkflow,
+                    CheckGithubWorkflow
                   )
                 ),
                 Step.StepSequence(
