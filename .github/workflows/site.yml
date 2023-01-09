@@ -29,30 +29,10 @@ jobs:
         check-latest: true
     - name: Check that site workflow is up to date
       run: sbt  docs/checkGithubWorkflow
-    - name: Git Checkout
-      uses: actions/checkout@v3.3.0
-      with:
-        fetch-depth: '0'
-    - name: Setup Scala
-      uses: actions/setup-java@v3.9.0
-      with:
-        distribution: temurin
-        java-version: 17
-        check-latest: true
-    - name: Check website build process
-      run: sbt  docs/buildWebsite
-    - name: Git Checkout
-      uses: actions/checkout@v3.3.0
-      with:
-        fetch-depth: '0'
-    - name: Setup Scala
-      uses: actions/setup-java@v3.9.0
-      with:
-        distribution: temurin
-        java-version: 17
-        check-latest: true
     - name: Check artifacts build process
       run: sbt  +publishLocal
+    - name: Check website build process
+      run: sbt  docs/buildWebsite
   publish-docs:
     name: Publish Docs
     runs-on: ubuntu-latest

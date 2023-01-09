@@ -270,21 +270,9 @@ object WebsiteUtils {
                   Seq(
                     Checkout,
                     SetupJava,
-                    CheckGithubWorkflow
-                  )
-                ),
-                Step.StepSequence(
-                  Seq(
-                    Checkout,
-                    SetupJava,
+                    CheckGithubWorkflow,
+                    CheckArtifactsBuildProcess,
                     CheckWebsiteBuildProcess
-                  )
-                ),
-                Step.StepSequence(
-                  Seq(
-                    Checkout,
-                    SetupJava,
-                    CheckArtifactsBuildProcess
                   )
                 )
               )
