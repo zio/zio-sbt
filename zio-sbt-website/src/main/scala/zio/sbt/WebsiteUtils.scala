@@ -219,6 +219,11 @@ object WebsiteUtils {
         run = Some(s"sbt ${sbtBuildOptions.mkString(" ")} docs/buildWebsite")
       )
 
+      val CheckArtifactsBuildProcess: Step.SingleStep = Step.SingleStep(
+        name = "Check artifacts build process",
+        run = Some(s"sbt ${sbtBuildOptions.mkString(" ")} +publishLocal")
+      )
+
       val CheckGithubWorkflow: Step.SingleStep = Step.SingleStep(
         name = "Check that site workflow is up to date",
         run = Some(s"sbt ${sbtBuildOptions.mkString(" ")} docs/checkGithubWorkflow")
@@ -266,7 +271,20 @@ object WebsiteUtils {
                     Checkout,
                     SetupJava,
                     CheckGithubWorkflow,
+                  )
+                ),
+                Step.StepSequence(
+                  Seq(
+                    Checkout,
+                    SetupJava,
                     CheckWebsiteBuildProcess
+                  )
+                ),
+                Step.StepSequence(
+                  Seq(
+                    Checkout,
+                    SetupJava,
+                    CheckArtifactsBuildProcess
                   )
                 )
               )
