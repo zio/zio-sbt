@@ -296,6 +296,7 @@ object WebsiteUtils {
               name = "Generate README",
               condition = updateReadmeCondition orElse Some(
                 Condition.Expression("github.event_name == 'push'") ||
+                  Condition.Expression("github.event_name == 'release'") &&
                   Condition.Expression("github.event_name == 'published'")
               ),
               steps = Seq(
