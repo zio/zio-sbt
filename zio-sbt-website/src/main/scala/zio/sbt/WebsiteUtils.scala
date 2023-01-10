@@ -228,7 +228,7 @@ object WebsiteUtils {
         name = "Check if the site workflow is up to date",
         run = Some(s"sbt ${sbtBuildOptions.mkString(" ")} docs/checkGithubWorkflow")
       )
-      
+
       val CheckReadme: Step.SingleStep = Step.SingleStep(
         name = "Check if the README file is up to date",
         run = Some(s"sbt ${sbtBuildOptions.mkString(" ")} docs/checkReadme")

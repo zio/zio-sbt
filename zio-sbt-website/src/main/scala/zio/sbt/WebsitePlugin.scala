@@ -365,7 +365,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
         )
       }
     }
-    
+
   def readmeDocumentationSection(projectName: String, projectHomepageUrl: URL): String =
     s"""Learn more on the [$projectName homepage]($projectHomepageUrl)!""".stripMargin
 
