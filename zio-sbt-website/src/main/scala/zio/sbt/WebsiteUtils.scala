@@ -278,6 +278,7 @@ object WebsiteUtils {
                     CheckReadme,
                     CheckGithubWorkflow,
                     CheckArtifactsBuildProcess,
+                    SetupNodeJs,
                     CheckWebsiteBuildProcess
                   )
                 )
