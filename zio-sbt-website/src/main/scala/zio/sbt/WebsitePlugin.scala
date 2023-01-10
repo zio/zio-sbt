@@ -40,7 +40,8 @@ object WebsitePlugin extends sbt.AutoPlugin {
     val publishSnapshotToNpm: InputKey[Unit]        = inputKey[Unit]("Publish snapshot version of website to the npm registry")
     val publishHashverToNpm: InputKey[Unit]         = inputKey[Unit]("Publish hash version of website to the npm registry")
     val generateGithubWorkflow: TaskKey[Unit]       = taskKey[Unit]("Generate github workflow")
-    val checkGithubWorkflow: TaskKey[Unit]          = taskKey[Unit]("Make sure the site.yml file is up-to-date")
+    val checkGithubWorkflow: TaskKey[Unit]          = taskKey[Unit]("Make sure if the site.yml file is up-to-date")
+    val checkReadme: TaskKey[Unit]                  = taskKey[Unit]("Make sure if the README.md file is up-to-date")
     val generateReadme: TaskKey[Unit]               = taskKey[Unit]("Generate readme file")
     val npmToken: SettingKey[String]                = settingKey[String]("NPM Token")
     val docsDependencies: SettingKey[Seq[ModuleID]] = settingKey[Seq[ModuleID]]("documentation project dependencies")
@@ -88,6 +89,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
       publishHashverToNpm    := publishHashverToNpmTask.value,
       generateGithubWorkflow := generateGithubWorkflowTask.value,
       checkGithubWorkflow    := checkGithubWorkflowTask.value,
+      checkReadme            := checkReadmeTask.value,
       generateReadme         := generateReadmeTask.value,
       docsDependencies       := Seq.empty,
       libraryDependencies ++= docsDependencies.value,
@@ -352,6 +354,18 @@ object WebsitePlugin extends sbt.AutoPlugin {
       }
     }
 
+  lazy val checkReadmeTask: Def.Initialize[Task[Unit]] =
+    Def.task {
+      val _ = generateReadme.value
+
+      if ("git diff --exit-code".! == 1) {
+        sys.error(
+          "The README.md file is not up-to-date!\n" +
+            "Please run `sbt docs/generateReadme` and commit new changes."
+        )
+      }
+    }
+    
   def readmeDocumentationSection(projectName: String, projectHomepageUrl: URL): String =
     s"""Learn more on the [$projectName homepage]($projectHomepageUrl)!""".stripMargin
 
