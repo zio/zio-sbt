@@ -16,18 +16,16 @@
 
 package zio.sbt
 
-import java.nio.file.{Path, Paths}
-
-import scala.sys.process._
-
-import _root_.java.nio.file.Files
 import mdoc.MdocPlugin
-import mdoc.MdocPlugin.autoImport._
-import sbt.Keys._
-import sbt.{Def, _}
-
+import mdoc.MdocPlugin.autoImport.*
+import sbt.Keys.*
+import sbt.{Def, *}
 import zio.sbt.WebsiteUtils.{readFile, removeYamlHeader}
 import zio.sbt.githubactions.Condition
+
+import _root_.java.nio.file.{Files, Path, Paths}
+import scala.collection.mutable
+import scala.sys.process.*
 
 object WebsitePlugin extends sbt.AutoPlugin {
 
@@ -72,7 +70,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
     type DocsVersioning = zio.sbt.WebsiteUtils.DocsVersioning
   }
 
-  import autoImport._
+  import autoImport.*
 
   override def requires: Plugins = MdocPlugin && UnifiedScaladocPlugin
 
@@ -133,7 +131,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
   private def exit(exitCode: Int, errorMessage: String = "") = if (exitCode != 0) sys.error(errorMessage: String)
 
   lazy val previewWebsiteTask: Def.Initialize[Task[Unit]] = Def.task {
-    import zio._
+    import zio.*
 
     val task: Task[Unit] =
       for {
@@ -273,7 +271,19 @@ object WebsitePlugin extends sbt.AutoPlugin {
     Def.task(WebsiteUtils.releaseVersion(sLog.value.warn(_)).getOrElse(version.value))
 
   lazy val fetchLatestTag: Def.Initialize[Task[Unit]] = Def.task {
-    exit("git fetch --tags".!)
+    import sys.process.*
+
+    val stdout = new mutable.StringBuilder
+    val stderr = new mutable.StringBuilder
+
+    exit("git fetch --tags" ! ProcessLogger(stdout append _, stderr append _))
+
+    if (stderr.mkString.contains("new tag")) {
+      throw new MessageOnlyException(
+        s"""|New release detected so the ${version.value} is out of date. I need to reload settings to update the version.
+            |To do so, please reload the sbt (`sbt reload`) and then try `sbt docs/generateReadme` again""".stripMargin
+      )
+    }
   }
 
   lazy val ignoreIndexSnapshotVersion: Def.Initialize[Task[Unit]] = Def.task {
@@ -290,7 +300,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
   lazy val generateReadmeTask: Def.Initialize[Task[Unit]] = {
     Def.task {
-      import zio._
+      import zio.*
 
       val _ = Def
         .sequential(
