@@ -278,7 +278,6 @@ object WebsiteUtils {
                     CheckReadme,
                     CheckGithubWorkflow,
                     CheckArtifactsBuildProcess,
-                    SetupNodeJs,
                     CheckWebsiteBuildProcess
                   )
                 )
@@ -298,7 +297,6 @@ object WebsiteUtils {
                   Seq(
                     Checkout,
                     SetupJava,
-                    SetupNodeJs,
                     PublishToNpmRegistry
                   )
                 )

@@ -33,13 +33,8 @@ jobs:
       run: sbt  docs/checkGithubWorkflow
     - name: Check artifacts build process
       run: sbt  +publishLocal
-    - name: Setup NodeJs
-      uses: actions/setup-node@v3
-      with:
-        node-version: 16.x
-        registry-url: https://registry.npmjs.org
     - name: Check website build process
-      run: sbt  docs/buildWebsite
+      run: sbt docs/clean; sbt  docs/buildWebsite
   publish-docs:
     name: Publish Docs
     runs-on: ubuntu-latest
@@ -55,11 +50,6 @@ jobs:
         distribution: temurin
         java-version: 17
         check-latest: true
-    - name: Setup NodeJs
-      uses: actions/setup-node@v3
-      with:
-        node-version: 16.x
-        registry-url: https://registry.npmjs.org
     - name: Publish Docs to NPM Registry
       run: sbt  docs/publishToNpm
       env:
