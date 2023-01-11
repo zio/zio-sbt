@@ -15,4 +15,5 @@ title: "Developer Notes"
 - Support for auto update PRs
 - Add workflow for header checker
 - Add prepare task to perform preliminary tasks before PR
+- Parametrize "docs" project instead of hardcoded value
 
