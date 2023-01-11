@@ -216,7 +216,7 @@ object WebsiteUtils {
 
       val CheckWebsiteBuildProcess: Step.SingleStep = Step.SingleStep(
         name = "Check website build process",
-        run = Some(s"sbt ${sbtBuildOptions.mkString(" ")} docs/buildWebsite")
+        run = Some(s"sbt docs/clean; sbt ${sbtBuildOptions.mkString(" ")} docs/buildWebsite")
       )
 
       val CheckArtifactsBuildProcess: Step.SingleStep = Step.SingleStep(
