@@ -16,16 +16,17 @@
 
 package zio.sbt
 
+import scala.collection.mutable
+import scala.sys.process.*
+
+import _root_.java.nio.file.{Files, Path, Paths}
 import mdoc.MdocPlugin
 import mdoc.MdocPlugin.autoImport.*
 import sbt.Keys.*
 import sbt.{Def, *}
+
 import zio.sbt.WebsiteUtils.{readFile, removeYamlHeader}
 import zio.sbt.githubactions.Condition
-
-import _root_.java.nio.file.{Files, Path, Paths}
-import scala.collection.mutable
-import scala.sys.process.*
 
 object WebsitePlugin extends sbt.AutoPlugin {
 
