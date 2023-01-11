@@ -297,6 +297,7 @@ object WebsiteUtils {
                   Seq(
                     Checkout,
                     SetupJava,
+                    SetupNodeJs,
                     PublishToNpmRegistry
                   )
                 )
