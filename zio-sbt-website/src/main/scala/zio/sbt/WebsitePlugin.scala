@@ -272,6 +272,10 @@ object WebsitePlugin extends sbt.AutoPlugin {
   lazy val normalizedVersion: Def.Initialize[Task[String]] =
     Def.task(WebsiteUtils.releaseVersion(sLog.value.warn(_)).getOrElse(version.value))
 
+  lazy val fetchLatestTag: Def.Initialize[Task[Unit]] = Def.task {
+    exit("git fetch --tags".!)
+  }
+
   lazy val ignoreIndexSnapshotVersion: Def.Initialize[Task[Unit]] = Def.task {
     if (normalizedVersion.value.endsWith("-SNAPSHOT"))
       exit("sed -i.bak s/@VERSION@/<version>/g docs/index.md".!)
@@ -290,6 +294,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
       val _ = Def
         .sequential(
+          fetchLatestTag,
           ignoreIndexSnapshotVersion,
           compileDocs.toTask(""),
           revertIndexChanges
