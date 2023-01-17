@@ -65,8 +65,10 @@ object WebsiteUtils {
   def discord =
     "[![Chat on Discord!](https://img.shields.io/discord/629491597070827530?logo=discord)](https://discord.gg/2ccFBr4)"
 
-  def ciBadge(githubUser: String, githubRepo: String): String =
-    s"![CI Badge](https://github.com/$githubUser/$githubRepo/workflows/CI/badge.svg)"
+  def ciBadge(githubUser: String, githubRepo: String, workflowName: String): String = {
+    val ci = workflowName.replaceAll(" ", "%20")
+    s"![CI Badge](https://github.com/$githubUser/$githubRepo/workflows/$ci/badge.svg)"
+  }
 
   def snapshotBadge(groupId: String, artifact: String): String = {
     val badge =
@@ -106,10 +108,11 @@ object WebsiteUtils {
     docsArtifactId: String,
     githubUser: String,
     githubRepo: String,
-    projectName: String
+    projectName: String,
+    ciWorkflowName: String
   ): String = {
     val stage    = projectStageBadge(projectStage)
-    val ci       = ciBadge(githubUser, githubRepo)
+    val ci       = ciBadge(githubUser, githubRepo, ciWorkflowName)
     val snapshot = snapshotBadge(groupId, artifactId)
     val github   = githubBadge(githubUser, githubRepo, projectName)
 
