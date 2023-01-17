@@ -16,5 +16,5 @@ addSbtPlugin("pl.project13.scala" % "sbt-jmh"                       % "0.4.3")
 addSbtPlugin("de.heikoseeberger"  % "sbt-header"                    % "5.9.0")
 
 libraryDependencies += "org.snakeyaml" % "snakeyaml-engine" % "2.5"
-libraryDependencies += "dev.zio"      %% "zio"              % "2.0.5"
+libraryDependencies += "dev.zio"      %% "zio"              % "2.0.6"
 libraryDependencies += "io.circe"     %% "circe-yaml"       % "0.14.2"
