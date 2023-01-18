@@ -312,7 +312,7 @@ object WebsiteUtils {
               condition = updateReadmeCondition orElse Some(
                 Condition.Expression("github.event_name == 'push'") ||
                   Condition.Expression("github.event_name == 'release'") &&
-                  Condition.Expression("github.event_name == 'published'")
+                  Condition.Expression("github.event.action == 'published'")
               ),
               steps = Seq(
                 Step.SingleStep(
