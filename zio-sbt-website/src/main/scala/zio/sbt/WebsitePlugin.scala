@@ -49,6 +49,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
     val projectStage: SettingKey[ProjectStage]      = settingKey[ProjectStage]("Project stage")
     val projectName: SettingKey[String]             = settingKey[String]("Project name e.g. ZIO SBT")
     val mainModuleName: SettingKey[String]          = settingKey[String]("Main Module Name e.g. zio-sbt")
+    val ciWorkflowName: SettingKey[String]          = settingKey[String]("CI Workflow Name")
     val projectHomePage: SettingKey[String]         = settingKey[String]("Project home page url e.g. https://zio.dev/zio-sbt")
     val readmeBanner: SettingKey[String]            = settingKey[String]("Readme banner section")
     val readmeDocumentation: SettingKey[String]     = settingKey[String]("Readme documentation section")
@@ -105,7 +106,8 @@ object WebsitePlugin extends sbt.AutoPlugin {
               docsArtifactId = moduleName.value + '_' + scalaBinaryVersion.value,
               githubUser = "zio",
               githubRepo = scmInfo.value.map(_.browseUrl.getPath.split('/').last).getOrElse("github repo not provided"),
-              projectName = projectName.value
+              projectName = projectName.value,
+              ciWorkflowName = ciWorkflowName.value
             )
           }
         )
@@ -126,7 +128,8 @@ object WebsitePlugin extends sbt.AutoPlugin {
       readmeMaintainers     := "",
       docsVersioning        := DocsVersioning.SemanticVersioning,
       sbtBuildOptions       := List.empty[String],
-      updateReadmeCondition := None
+      updateReadmeCondition := None,
+      ciWorkflowName        := "CI"
     )
 
   private def exit(exitCode: Int, errorMessage: String = "") = if (exitCode != 0) sys.error(errorMessage: String)
