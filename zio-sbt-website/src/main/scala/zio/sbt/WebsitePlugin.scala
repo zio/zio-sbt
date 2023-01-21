@@ -298,7 +298,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
   lazy val revertIndexChanges: Def.Initialize[Task[Unit]] = Def.task {
     if (normalizedVersion.value.endsWith("-SNAPSHOT")) {
       exit("rm docs/index.md".!)
-      exit("cp docs/index.md.bak docs/index.md".!)
+      exit("mv docs/index.md.bak docs/index.md".!)
     }
   }
 
