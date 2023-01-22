@@ -130,13 +130,14 @@ object WebsitePlugin extends sbt.AutoPlugin {
       sbtBuildOptions       := List.empty[String],
       updateReadmeCondition := None,
       ciWorkflowName        := "CI",
-      checkArtifactBuildProcessWorkflowStep := Some(CheckArtifactsBuildProcess)
+      checkArtifactBuildProcessWorkflowStep :=
+        Some(
+          Step.SingleStep(
+            name = "Check artifacts build process",
+            run = Some(s"sbt ${sbtBuildOptions.value.mkString(" ")} +publishLocal")
+          )
+        )
     )
-
-  lazy val CheckArtifactsBuildProcess: Step.SingleStep = Step.SingleStep(
-    name = "Check artifacts build process",
-    run = Some(s"sbt ${sbtBuildOptions.value.mkString(" ")} +publishLocal")
-  )
 
   private def exit(exitCode: Int, errorMessage: String = "") = if (exitCode != 0) sys.error(errorMessage: String)
 
