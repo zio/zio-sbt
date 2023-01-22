@@ -18,15 +18,13 @@ package zio.sbt
 
 import scala.collection.mutable
 import scala.sys.process.*
-
 import _root_.java.nio.file.{Files, Path, Paths}
 import mdoc.MdocPlugin
 import mdoc.MdocPlugin.autoImport.*
 import sbt.Keys.*
 import sbt.{Def, *}
-
 import zio.sbt.WebsiteUtils.{readFile, removeYamlHeader}
-import zio.sbt.githubactions.Condition
+import zio.sbt.githubactions.{Condition, Step}
 
 object WebsitePlugin extends sbt.AutoPlugin {
 
@@ -64,6 +62,8 @@ object WebsitePlugin extends sbt.AutoPlugin {
     val sbtBuildOptions: SettingKey[List[String]]   = settingKey[List[String]]("SBT build options")
     val updateReadmeCondition: SettingKey[Option[Condition]] =
       settingKey[Option[Condition]]("Condition to update readme")
+    val checkArtifactBuildProcessWorkflowStep: SettingKey[Option[Step]] =
+      settingKey[Option[Step]]("Workflow step for checking artifact build process")
 
     val ProjectStage = zio.sbt.WebsiteUtils.ProjectStage
     type ProjectStage = zio.sbt.WebsiteUtils.ProjectStage
@@ -129,8 +129,14 @@ object WebsitePlugin extends sbt.AutoPlugin {
       docsVersioning        := DocsVersioning.SemanticVersioning,
       sbtBuildOptions       := List.empty[String],
       updateReadmeCondition := None,
-      ciWorkflowName        := "CI"
+      ciWorkflowName        := "CI",
+      checkArtifactBuildProcessWorkflowStep := Some(CheckArtifactsBuildProcess)
     )
+
+  lazy val CheckArtifactsBuildProcess: Step.SingleStep = Step.SingleStep(
+    name = "Check artifacts build process",
+    run = Some(s"sbt ${sbtBuildOptions.value.mkString(" ")} +publishLocal")
+  )
 
   private def exit(exitCode: Int, errorMessage: String = "") = if (exitCode != 0) sys.error(errorMessage: String)
 
@@ -349,7 +355,8 @@ object WebsitePlugin extends sbt.AutoPlugin {
         docsPublishBranch = docsPublishBranch.value,
         sbtBuildOptions = sbtBuildOptions.value,
         versioning = docsVersioning.value,
-        updateReadmeCondition = updateReadmeCondition.value
+        updateReadmeCondition = updateReadmeCondition.value,
+        checkArtifactBuildProcess = checkArtifactBuildProcessWorkflowStep.value
       )
 
       val template =

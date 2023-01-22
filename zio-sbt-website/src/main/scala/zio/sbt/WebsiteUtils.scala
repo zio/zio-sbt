@@ -176,7 +176,8 @@ object WebsiteUtils {
     docsPublishBranch: String,
     sbtBuildOptions: List[String] = List.empty,
     versioning: DocsVersioning = SemanticVersioning,
-    updateReadmeCondition: Option[Condition] = None
+    updateReadmeCondition: Option[Condition] = None,
+    checkArtifactBuildProcess: Option[Step] = None
   ): String = {
     object Actions {
       val checkout: ActionRef     = ActionRef("actions/checkout@v3.3.0")
@@ -220,11 +221,6 @@ object WebsiteUtils {
       val CheckWebsiteBuildProcess: Step.SingleStep = Step.SingleStep(
         name = "Check website build process",
         run = Some(s"sbt docs/clean; sbt ${sbtBuildOptions.mkString(" ")} docs/buildWebsite")
-      )
-
-      val CheckArtifactsBuildProcess: Step.SingleStep = Step.SingleStep(
-        name = "Check artifacts build process",
-        run = Some(s"sbt ${sbtBuildOptions.mkString(" ")} +publishLocal")
       )
 
       val CheckGithubWorkflow: Step.SingleStep = Step.SingleStep(
@@ -275,14 +271,25 @@ object WebsiteUtils {
               ),
               steps = Seq(
                 Step.StepSequence(
-                  Seq(
-                    Checkout,
-                    SetupJava,
-                    CheckReadme,
-                    CheckGithubWorkflow,
-                    CheckArtifactsBuildProcess,
-                    CheckWebsiteBuildProcess
-                  )
+                  checkArtifactBuildProcess match {
+                    case Some(artifactBuildProcess) =>
+                      Seq(
+                        Checkout,
+                        SetupJava,
+                        CheckReadme,
+                        CheckGithubWorkflow,
+                        artifactBuildProcess,
+                        CheckWebsiteBuildProcess
+                      )
+                    case None =>
+                      Seq(
+                        Checkout,
+                        SetupJava,
+                        CheckReadme,
+                        CheckGithubWorkflow,
+                        CheckWebsiteBuildProcess
+                      )
+                  }
                 )
               )
             ),
