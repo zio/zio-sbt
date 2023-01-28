@@ -13,6 +13,8 @@ addCommand(
 
 inThisBuild(
   List(
+    scala212     := Some("2.12.17"),
+    zioVersion   := Some("2.0.6"),
     organization := "dev.zio",
     startYear    := Some(2022),
     homepage     := Some(url("https://zio.dev/zio-sbt")),
@@ -69,8 +71,8 @@ lazy val zioSbtWebsite =
     .settings(
       name               := "zio-sbt-website",
       headerEndYear      := Some(2023),
-      crossScalaVersions := Seq.empty,
-      scalaVersion       := versions.Scala212,
+      scalaVersion       := scala212.value.get,
+      crossScalaVersions := Seq(scalaVersion.value),
       buildInfoPackage   := "zio.sbt.website",
       scriptedLaunchOpts := {
         scriptedLaunchOpts.value ++
@@ -83,14 +85,12 @@ lazy val zioSbtWebsite =
 lazy val zioSbtEcosystem =
   project
     .in(file("zio-sbt-ecosystem"))
-    .settings(buildInfoSettings("zio.sbt"))
+    .settings(buildInfoSettings("zio.sbt.ecosystem"))
     .settings(
       name               := "zio-sbt-ecosystem",
       headerEndYear      := Some(2023),
-      crossScalaVersions := Seq.empty,
-      needsZio           := false,
-      scalaVersion       := versions.Scala212,
-      buildInfoPackage   := "zio.sbt.ecosystem",
+      scalaVersion       := scala212.value.get,
+      crossScalaVersions := Seq(scalaVersion.value),
       scriptedLaunchOpts := {
         scriptedLaunchOpts.value ++
           Seq("-Xmx1024M", "-Dplugin.version=" + version.value)
@@ -105,7 +105,8 @@ lazy val docs = project
     moduleName := "zio-sbt-docs",
     scalacOptions -= "-Yno-imports",
     scalacOptions -= "-Xfatal-warnings",
-    crossScalaVersions                         := Seq.empty,
+    scalaVersion                               := scala212.value.get,
+    crossScalaVersions                         := Seq(scalaVersion.value),
     projectName                                := "ZIO SBT",
     mainModuleName                             := (zioSbtWebsite / moduleName).value,
     projectStage                               := ProjectStage.ProductionReady,
