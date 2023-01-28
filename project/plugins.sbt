@@ -11,7 +11,7 @@ addSbtPlugin("org.xerial.sbt"     % "sbt-sonatype"                  % "3.9.15")
 addSbtPlugin("org.scalameta"      % "sbt-mdoc"                      % "2.3.6")
 addSbtPlugin("com.github.sbt"     % "sbt-unidoc"                    % "0.5.0")
 addSbtPlugin("org.portable-scala" % "sbt-scala-native-crossproject" % "1.2.0")
-addSbtPlugin("org.scala-native"   % "sbt-scala-native"              % "0.4.9")
+addSbtPlugin("org.scala-native"   % "sbt-scala-native"              % "0.4.10")
 addSbtPlugin("pl.project13.scala" % "sbt-jmh"                       % "0.4.3")
 addSbtPlugin("de.heikoseeberger"  % "sbt-header"                    % "5.9.0")
 
