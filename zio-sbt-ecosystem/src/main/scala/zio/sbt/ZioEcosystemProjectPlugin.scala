@@ -16,15 +16,15 @@
 
 package zio.sbt
 
+import scala.collection.immutable.ListMap
+
 import _root_.scalafix.sbt.ScalafixPlugin
 import org.scalafmt.sbt.ScalafmtPlugin
-import sbt.*
 import sbt.Keys.*
+import sbt.*
 import sbtbuildinfo.BuildInfoPlugin
 import sbtbuildinfo.BuildInfoPlugin.autoImport.*
 import scalafix.sbt.ScalafixPlugin.autoImport.*
-
-import scala.collection.immutable.ListMap
 
 object ZioEcosystemProjectPlugin extends AutoPlugin {
 

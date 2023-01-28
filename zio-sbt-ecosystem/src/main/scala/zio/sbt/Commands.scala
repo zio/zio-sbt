@@ -16,10 +16,10 @@
 
 package zio.sbt
 
-import sbt.*
-import sbt.Keys.*
-
 import scala.collection.immutable.ListMap
+
+import sbt.Keys.*
+import sbt.*
 
 object Commands {
 
