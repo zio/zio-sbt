@@ -25,7 +25,7 @@ import sbtbuildinfo.BuildInfoPlugin
 import sbtbuildinfo.BuildInfoPlugin.autoImport.*
 import scalafix.sbt.ScalafixPlugin.autoImport.*
 
-object ZioEcosystemProjectPlugin extends AutoPlugin {
+object EcosystemPlugin extends AutoPlugin {
 
   override def trigger = allRequirements
 
