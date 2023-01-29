@@ -35,6 +35,13 @@ object EcosystemPlugin extends AutoPlugin {
 
   object autoImport {
 
+    def zioDependencies(zioVersion: String): Seq[ModuleID] =
+      Seq(
+        "dev.zio" %% "zio"          % zioVersion,
+        "dev.zio" %% "zio-test"     % zioVersion,
+        "dev.zio" %% "zio-test-sbt" % zioVersion % Test
+      )
+
     def buildInfoSettings(packageName: String): Seq[Setting[_ <: Object]] =
       Seq(
         buildInfoKeys := Seq[BuildInfoKey](
@@ -59,18 +66,16 @@ object EcosystemPlugin extends AutoPlugin {
       )
 
     object Defaults {
-      val scala3     = "3.2.1"
-      val scala211   = "2.11.12"
-      val scala212   = "2.12.17"
-      val scala213   = "2.13.10"
-      val zioVersion = "2.0.6"
+      val scala3   = "3.2.1"
+      val scala211 = "2.11.12"
+      val scala212 = "2.12.17"
+      val scala213 = "2.13.10"
     }
 
-    lazy val scala3: SettingKey[String]     = settingKey[String]("Scala 3 version")
-    lazy val scala211: SettingKey[String]   = settingKey[String]("Scala 2.11 version")
-    lazy val scala212: SettingKey[String]   = settingKey[String]("Scala 2.12 version")
-    lazy val scala213: SettingKey[String]   = settingKey[String]("Scala 2.13 version")
-    lazy val zioVersion: SettingKey[String] = settingKey[String]("ZIO version")
+    lazy val scala3: SettingKey[String]   = settingKey[String]("Scala 3 version")
+    lazy val scala211: SettingKey[String] = settingKey[String]("Scala 2.11 version")
+    lazy val scala212: SettingKey[String] = settingKey[String]("Scala 2.12 version")
+    lazy val scala213: SettingKey[String] = settingKey[String]("Scala 2.13 version")
 
     val welcomeBannerEnabled: SettingKey[Boolean] =
       settingKey[Boolean]("Indicates whether or not to enable the welcome banner.")
@@ -98,15 +103,6 @@ object EcosystemPlugin extends AutoPlugin {
       welcomeBannerEnabled   := true,
       usefulTasksAndSettings := defaultTasksAndSettings,
       scalacOptions          := ScalaCompilerSettings.stdScalacOptions(scalaVersion.value, !isSnapshot.value),
-      libraryDependencies ++= {
-        if (zioVersion.value.nonEmpty)
-          Seq(
-            "dev.zio" %% "zio"          % zioVersion.value,
-            "dev.zio" %% "zio-test"     % zioVersion.value,
-            "dev.zio" %% "zio-test-sbt" % zioVersion.value % Test
-          )
-        else Seq.empty
-      },
       testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"),
       semanticdbEnabled := scalaVersion.value != scala3.value, // enable SemanticDB
       semanticdbOptions += "-P:semanticdb:synthetics:on",
@@ -152,7 +148,6 @@ object EcosystemPlugin extends AutoPlugin {
       scala211     := Defaults.scala211,
       scala212     := Defaults.scala212,
       scala213     := Defaults.scala213,
-      zioVersion   := Defaults.zioVersion,
       scalaVersion := Defaults.scala213
     )
 }

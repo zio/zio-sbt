@@ -11,7 +11,6 @@ addCommand(
     ) >> "scripted" >> "project zioSbtWebsite" >> "scripted" >> "project root") ?? ("testPlugins", "Runs the scripted SBT plugin tests.")
 )
 
-ThisBuild / zioVersion         := V.zio
 ThisBuild / scalaVersion       := V.Scala212
 ThisBuild / crossScalaVersions := Seq(scalaVersion.value)
 
