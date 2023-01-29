@@ -11,10 +11,8 @@ addCommand(
     ) >> "scripted" >> "project zioSbtWebsite" >> "scripted" >> "project root") ?? ("testPlugins", "Runs the scripted SBT plugin tests.")
 )
 
-//ThisBuild / scala212     := V.Scala212
-//ThisBuild / scalaVersion := V.Scala212
-//ThisBuild / zioVersion   := V.zio
-ThisBuild / scalaVersion := V.Scala212
+ThisBuild / zioVersion         := V.zio
+ThisBuild / scalaVersion       := V.Scala212
 ThisBuild / crossScalaVersions := Seq(V.Scala211, V.Scala212)
 
 inThisBuild(
