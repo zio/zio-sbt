@@ -18,12 +18,12 @@ package zio.sbt
 
 import scala.collection.immutable.ListMap
 
-import scalafix.sbt.ScalafixPlugin
 import org.scalafmt.sbt.ScalafmtPlugin
 import sbt.Keys.*
 import sbt.{Def, *}
 import sbtbuildinfo.BuildInfoPlugin
 import sbtbuildinfo.BuildInfoPlugin.autoImport.*
+import scalafix.sbt.ScalafixPlugin
 import scalafix.sbt.ScalafixPlugin.autoImport.*
 
 object EcosystemPlugin extends AutoPlugin {
