@@ -18,10 +18,8 @@ package zio.sbt
 
 import scala.collection.immutable.ListMap
 
-import sbt.Keys._
-import sbt._
-
-import zio.sbt.V.versions
+import sbt.Keys.*
+import sbt.*
 
 object Commands {
 
@@ -74,19 +72,18 @@ object Commands {
     val quietOn: ComposableCommand = make("set welcomeBannerEnabled := false")
 
     val buildAll: ComposableCommand =
-      quietOn >> "project /" >> "+build" >> quietOff ?? ("build-all", s"Builds all modules for all defined Scala cross versions: ${versions.Scala212}, ${versions.Scala213} and ${versions.Scala3}.")
+      quietOn >> "project /" >> "++build" >> quietOff ?? ("build-all", s"Builds all modules for all defined Scala cross versions.")
 
     def setScalaVersion(scalaVersion: String): ComposableCommand = make(s"++$scalaVersion")
 
-    def scalafix(scalaVersion: String, args: String = ""): ComposableCommand =
-      setScalaVersion(scalaVersion) >> s"scalafix ${args}".trim() >> s"Test / scalafix ${args}".trim()
+    def scalafix(args: String = ""): ComposableCommand =
+      ComposableCommand.make(s"scalafix ${args}".trim()) >> s"Test / scalafix ${args}".trim()
 
-    val fix: ComposableCommand = quietOn >> scalafix(versions.Scala213) >> scalafix(
-      versions.Scala212
-    ) >> quietOff ?? ("fix", "Fixes source files using using scalafix")
+    val fix: ComposableCommand =
+      quietOn >> scalafix() >> quietOff ?? ("fix", "Fixes source files using using scalafix")
 
     val fixLint: ComposableCommand =
-      quietOn >> scalafix(versions.Scala213, "--check") >> scalafix(versions.Scala212, "--check") >> quietOff
+      quietOn >> scalafix("--check") >> quietOff
 
     val fmt: ComposableCommand =
       quietOn >> "scalafmtSbt" >> "+scalafmt" >> "+Test / scalafmt" >> quietOff ?? ("fmt", "Formats source files using scalafmt.")
@@ -117,7 +114,7 @@ object Commands {
 
   }
 
-  import ComposableCommand._
+  import ComposableCommand.*
 
   val quiet: Command = Command.single("quiet") { (state, arg) =>
     arg.trim.toLowerCase() match {

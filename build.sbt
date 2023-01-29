@@ -2,7 +2,7 @@ import zio.sbt.Commands._
 sbtPlugin         := true
 publishMavenStyle := true
 
-enablePlugins(ZioEcosystemProjectPlugin)
+enablePlugins(EcosystemPlugin)
 
 addCommand(
   (ComposableCommand
@@ -10,6 +10,10 @@ addCommand(
       "project zioSbtEcosystem"
     ) >> "scripted" >> "project zioSbtWebsite" >> "scripted" >> "project root") ?? ("testPlugins", "Runs the scripted SBT plugin tests.")
 )
+
+ThisBuild / zioVersion         := V.zio
+ThisBuild / scalaVersion       := V.Scala212
+ThisBuild / crossScalaVersions := Seq(scalaVersion.value)
 
 inThisBuild(
   List(
@@ -60,44 +64,38 @@ lazy val tests =
       headerEndYear  := Some(2023)
     )
     .settings(buildInfoSettings("zio.sbt"))
-    .enablePlugins(ZioEcosystemProjectPlugin)
+    .enablePlugins(EcosystemPlugin)
 
 lazy val zioSbtWebsite =
   project
     .in(file("zio-sbt-website"))
     .settings(buildInfoSettings("zio.sbt"))
     .settings(
-      name               := "zio-sbt-website",
-      headerEndYear      := Some(2023),
-      crossScalaVersions := Seq.empty,
-      scalaVersion       := versions.Scala212,
-      buildInfoPackage   := "zio.sbt.website",
+      name             := "zio-sbt-website",
+      headerEndYear    := Some(2023),
+      buildInfoPackage := "zio.sbt.website",
       scriptedLaunchOpts := {
         scriptedLaunchOpts.value ++
           Seq("-Xmx1024M", "-Dplugin.version=" + version.value)
       },
       scriptedBufferLog := false
     )
-    .enablePlugins(SbtPlugin, ZioEcosystemProjectPlugin)
+    .enablePlugins(SbtPlugin, EcosystemPlugin)
 
 lazy val zioSbtEcosystem =
   project
     .in(file("zio-sbt-ecosystem"))
-    .settings(buildInfoSettings("zio.sbt"))
+    .settings(buildInfoSettings("zio.sbt.ecosystem"))
     .settings(
-      name               := "zio-sbt-ecosystem",
-      headerEndYear      := Some(2023),
-      crossScalaVersions := Seq.empty,
-      needsZio           := false,
-      scalaVersion       := versions.Scala212,
-      buildInfoPackage   := "zio.sbt.ecosystem",
+      name          := "zio-sbt-ecosystem",
+      headerEndYear := Some(2023),
       scriptedLaunchOpts := {
         scriptedLaunchOpts.value ++
           Seq("-Xmx1024M", "-Dplugin.version=" + version.value)
       },
       scriptedBufferLog := false
     )
-    .enablePlugins(SbtPlugin, ZioEcosystemProjectPlugin)
+    .enablePlugins(SbtPlugin, EcosystemPlugin)
 
 lazy val docs = project
   .in(file("zio-sbt-docs"))
@@ -105,7 +103,6 @@ lazy val docs = project
     moduleName := "zio-sbt-docs",
     scalacOptions -= "-Yno-imports",
     scalacOptions -= "-Xfatal-warnings",
-    crossScalaVersions                         := Seq.empty,
     projectName                                := "ZIO SBT",
     mainModuleName                             := (zioSbtWebsite / moduleName).value,
     projectStage                               := ProjectStage.ProductionReady,
