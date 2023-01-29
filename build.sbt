@@ -11,10 +11,14 @@ addCommand(
     ) >> "scripted" >> "project zioSbtWebsite" >> "scripted" >> "project root") ?? ("testPlugins", "Runs the scripted SBT plugin tests.")
 )
 
+//ThisBuild / scala212     := V.Scala212
+//ThisBuild / scalaVersion := V.Scala212
+//ThisBuild / zioVersion   := V.zio
+ThisBuild / scalaVersion := V.Scala212
+ThisBuild / crossScalaVersions := Seq(V.Scala211, V.Scala212)
+
 inThisBuild(
   List(
-    scala212     := Some("2.12.17"),
-    zioVersion   := Some("2.0.6"),
     organization := "dev.zio",
     startYear    := Some(2022),
     homepage     := Some(url("https://zio.dev/zio-sbt")),
@@ -69,9 +73,9 @@ lazy val zioSbtWebsite =
     .in(file("zio-sbt-website"))
     .settings(buildInfoSettings("zio.sbt"))
     .settings(
-      name               := "zio-sbt-website",
-      headerEndYear      := Some(2023),
-      scalaVersion       := scala212.value.get,
+      name          := "zio-sbt-website",
+      headerEndYear := Some(2023),
+//      scalaVersion       := scala212.value.get,
       crossScalaVersions := Seq(scalaVersion.value),
       buildInfoPackage   := "zio.sbt.website",
       scriptedLaunchOpts := {
@@ -87,9 +91,9 @@ lazy val zioSbtEcosystem =
     .in(file("zio-sbt-ecosystem"))
     .settings(buildInfoSettings("zio.sbt.ecosystem"))
     .settings(
-      name               := "zio-sbt-ecosystem",
-      headerEndYear      := Some(2023),
-      scalaVersion       := scala212.value.get,
+      name          := "zio-sbt-ecosystem",
+      headerEndYear := Some(2023),
+//      scalaVersion       := scala212.value.get,
       crossScalaVersions := Seq(scalaVersion.value),
       scriptedLaunchOpts := {
         scriptedLaunchOpts.value ++
@@ -105,7 +109,7 @@ lazy val docs = project
     moduleName := "zio-sbt-docs",
     scalacOptions -= "-Yno-imports",
     scalacOptions -= "-Xfatal-warnings",
-    scalaVersion                               := scala212.value.get,
+    scalaVersion                               := V.Scala212,
     crossScalaVersions                         := Seq(scalaVersion.value),
     projectName                                := "ZIO SBT",
     mainModuleName                             := (zioSbtWebsite / moduleName).value,

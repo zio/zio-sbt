@@ -17,11 +17,10 @@
 package zio.sbt
 
 import scala.collection.immutable.ListMap
-
 import _root_.scalafix.sbt.ScalafixPlugin
 import org.scalafmt.sbt.ScalafmtPlugin
 import sbt.Keys.*
-import sbt.*
+import sbt.{Def, *}
 import sbtbuildinfo.BuildInfoPlugin
 import sbtbuildinfo.BuildInfoPlugin.autoImport.*
 import scalafix.sbt.ScalafixPlugin.autoImport.*
@@ -34,16 +33,6 @@ object ZioEcosystemProjectPlugin extends AutoPlugin {
     super.requires && de.heikoseeberger.sbtheader.HeaderPlugin && ScalafixPlugin && ScalafmtPlugin && BuildInfoPlugin
 
   object autoImport {
-
-    sealed trait ZIOSeries {
-      def version: String
-    }
-
-    object ZIOSeries {
-      case class Series1X(version: String) extends ZIOSeries
-
-      case class Series2X(version: String) extends ZIOSeries
-    }
 
     def buildInfoSettings(packageName: String): Seq[Setting[_ <: Object]] =
       Seq(
@@ -68,13 +57,19 @@ object ZioEcosystemProjectPlugin extends AutoPlugin {
         usefulTasksAndSettings += command.toItem
       )
 
-    val zioVersion: SettingKey[Option[String]] = settingKey[Option[String]]("ZIO version")
-    val scala3: SettingKey[Option[String]]     = settingKey[Option[String]]("Scala 3 version")
-    val scala211: SettingKey[Option[String]]   = settingKey[Option[String]]("Scala 2.11 version")
-    val scala212: SettingKey[Option[String]]   = settingKey[Option[String]]("Scala 2.12 version")
-    val scala213: SettingKey[Option[String]]   = settingKey[Option[String]]("Scala 2.13 version")
+    object Defaults {
+      val scala3     = "3.2.1"
+      val scala211   = "2.11.12"
+      val scala212   = "2.12.17"
+      val scala213   = "2.13.10"
+      val zioVersion = "2.0.6"
+    }
 
-    val needsZio: SettingKey[Boolean] = settingKey[Boolean]("Indicates whether or not the project needs ZIO libraries.")
+    lazy val scala3: SettingKey[String]     = settingKey[String]("Scala 3 version")
+    lazy val scala211: SettingKey[String]   = settingKey[String]("Scala 2.11 version")
+    lazy val scala212: SettingKey[String]   = settingKey[String]("Scala 2.12 version")
+    lazy val scala213: SettingKey[String]   = settingKey[String]("Scala 2.13 version")
+    lazy val zioVersion: SettingKey[String] = settingKey[String]("ZIO version")
 
     val welcomeBannerEnabled: SettingKey[Boolean] =
       settingKey[Boolean]("Indicates whether or not to enable the welcome banner.")
@@ -98,23 +93,27 @@ object ZioEcosystemProjectPlugin extends AutoPlugin {
 
   def stdSettings: Seq[Setting[_]] =
     Seq(
+      scala3                 := Defaults.scala3,
+      scala211               := Defaults.scala211,
+      scala212               := Defaults.scala212,
+      scala213               := Defaults.scala213,
+      zioVersion             := Defaults.zioVersion,
+      scalaVersion           := Defaults.scala213,
       licenses               := List("Apache-2.0" -> new URL("http://www.apache.org/licenses/LICENSE-2.0.txt")),
-      scala3                 := None,
-      needsZio               := true,
       welcomeBannerEnabled   := true,
       usefulTasksAndSettings := defaultTasksAndSettings,
       scalacOptions          := ScalaCompilerSettings.stdScalacOptions(scalaVersion.value, !isSnapshot.value),
       libraryDependencies ++= {
         if (zioVersion.value.nonEmpty)
           Seq(
-            "dev.zio" %% "zio"          % zioVersion.value.get,
-            "dev.zio" %% "zio-test"     % zioVersion.value.get,
-            "dev.zio" %% "zio-test-sbt" % zioVersion.value.get % Test
+            "dev.zio" %% "zio"          % zioVersion.value,
+            "dev.zio" %% "zio-test"     % zioVersion.value,
+            "dev.zio" %% "zio-test-sbt" % zioVersion.value % Test
           )
         else Seq.empty
       },
       testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"),
-      semanticdbEnabled := scalaVersion.value != scala3.value.getOrElse(""), // enable SemanticDB
+      semanticdbEnabled := scalaVersion.value != scala3.value, // enable SemanticDB
       semanticdbOptions += "-P:semanticdb:synthetics:on",
       semanticdbVersion                      := scalafixSemanticdb.revision, // use Scalafix compatible version
       ThisBuild / scalafixScalaBinaryVersion := CrossVersion.binaryScalaVersion(scalaVersion.value),
@@ -149,5 +148,6 @@ object ZioEcosystemProjectPlugin extends AutoPlugin {
       } else ""
     }
 
-  override def projectSettings: Seq[Setting[_]] = stdSettings ++ Tasks.settings ++ Commands.settings ++ welcomeMessage
+  override def projectSettings: Seq[Setting[_]] =
+    stdSettings ++ Tasks.settings ++ Commands.settings ++ welcomeMessage
 }
