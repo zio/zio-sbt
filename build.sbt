@@ -71,9 +71,9 @@ lazy val zioSbtWebsite =
     .in(file("zio-sbt-website"))
     .settings(buildInfoSettings("zio.sbt"))
     .settings(
-      name          := "zio-sbt-website",
-      headerEndYear := Some(2023),
-      buildInfoPackage   := "zio.sbt.website",
+      name             := "zio-sbt-website",
+      headerEndYear    := Some(2023),
+      buildInfoPackage := "zio.sbt.website",
       scriptedLaunchOpts := {
         scriptedLaunchOpts.value ++
           Seq("-Xmx1024M", "-Dplugin.version=" + version.value)
