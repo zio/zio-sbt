@@ -93,12 +93,6 @@ object ZioEcosystemProjectPlugin extends AutoPlugin {
 
   def stdSettings: Seq[Setting[_]] =
     Seq(
-      scala3                 := Defaults.scala3,
-      scala211               := Defaults.scala211,
-      scala212               := Defaults.scala212,
-      scala213               := Defaults.scala213,
-      zioVersion             := Defaults.zioVersion,
-      scalaVersion           := Defaults.scala213,
       licenses               := List("Apache-2.0" -> new URL("http://www.apache.org/licenses/LICENSE-2.0.txt")),
       welcomeBannerEnabled   := true,
       usefulTasksAndSettings := defaultTasksAndSettings,
@@ -150,4 +144,14 @@ object ZioEcosystemProjectPlugin extends AutoPlugin {
 
   override def projectSettings: Seq[Setting[_]] =
     stdSettings ++ Tasks.settings ++ Commands.settings ++ welcomeMessage
+
+  override def globalSettings: Seq[Def.Setting[_]] =
+    super.globalSettings ++ Seq(
+      scala3       := Defaults.scala3,
+      scala211     := Defaults.scala211,
+      scala212     := Defaults.scala212,
+      scala213     := Defaults.scala213,
+      zioVersion   := Defaults.zioVersion,
+      scalaVersion := Defaults.scala213
+    )
 }

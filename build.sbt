@@ -13,7 +13,7 @@ addCommand(
 
 ThisBuild / zioVersion         := V.zio
 ThisBuild / scalaVersion       := V.Scala212
-ThisBuild / crossScalaVersions := Seq(V.Scala211, V.Scala212)
+ThisBuild / crossScalaVersions := Seq(scalaVersion.value)
 
 inThisBuild(
   List(
@@ -73,8 +73,6 @@ lazy val zioSbtWebsite =
     .settings(
       name          := "zio-sbt-website",
       headerEndYear := Some(2023),
-//      scalaVersion       := scala212.value.get,
-      crossScalaVersions := Seq(scalaVersion.value),
       buildInfoPackage   := "zio.sbt.website",
       scriptedLaunchOpts := {
         scriptedLaunchOpts.value ++
@@ -91,8 +89,6 @@ lazy val zioSbtEcosystem =
     .settings(
       name          := "zio-sbt-ecosystem",
       headerEndYear := Some(2023),
-//      scalaVersion       := scala212.value.get,
-      crossScalaVersions := Seq(scalaVersion.value),
       scriptedLaunchOpts := {
         scriptedLaunchOpts.value ++
           Seq("-Xmx1024M", "-Dplugin.version=" + version.value)
@@ -107,8 +103,6 @@ lazy val docs = project
     moduleName := "zio-sbt-docs",
     scalacOptions -= "-Yno-imports",
     scalacOptions -= "-Xfatal-warnings",
-    scalaVersion                               := V.Scala212,
-    crossScalaVersions                         := Seq(scalaVersion.value),
     projectName                                := "ZIO SBT",
     mainModuleName                             := (zioSbtWebsite / moduleName).value,
     projectStage                               := ProjectStage.ProductionReady,
