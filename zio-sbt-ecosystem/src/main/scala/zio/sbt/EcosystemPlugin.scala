@@ -17,6 +17,7 @@
 package zio.sbt
 
 import scala.collection.immutable.ListMap
+
 import _root_.scalafix.sbt.ScalafixPlugin
 import org.scalafmt.sbt.ScalafmtPlugin
 import sbt.Keys.*
