@@ -2,7 +2,7 @@ import zio.sbt.Commands._
 sbtPlugin         := true
 publishMavenStyle := true
 
-enablePlugins(ZioEcosystemProjectPlugin)
+enablePlugins(EcosystemPlugin)
 
 addCommand(
   (ComposableCommand
@@ -64,7 +64,7 @@ lazy val tests =
       headerEndYear  := Some(2023)
     )
     .settings(buildInfoSettings("zio.sbt"))
-    .enablePlugins(ZioEcosystemProjectPlugin)
+    .enablePlugins(EcosystemPlugin)
 
 lazy val zioSbtWebsite =
   project
@@ -80,7 +80,7 @@ lazy val zioSbtWebsite =
       },
       scriptedBufferLog := false
     )
-    .enablePlugins(SbtPlugin, ZioEcosystemProjectPlugin)
+    .enablePlugins(SbtPlugin, EcosystemPlugin)
 
 lazy val zioSbtEcosystem =
   project
@@ -95,7 +95,7 @@ lazy val zioSbtEcosystem =
       },
       scriptedBufferLog := false
     )
-    .enablePlugins(SbtPlugin, ZioEcosystemProjectPlugin)
+    .enablePlugins(SbtPlugin, EcosystemPlugin)
 
 lazy val docs = project
   .in(file("zio-sbt-docs"))
