@@ -31,8 +31,10 @@ jobs:
         uses: olafurpg/setup-scala@v13
       - name: Cache scala dependencies
         uses: coursier/cache-action@v6
-      - name: Lint code
-        run: sbt lint
+      - name: Scalafix
+        run: sbt scalafix
+      - name: Scalafmt
+        run: sbt scalafmt 
 
   build:
     runs-on: ubuntu-20.04
