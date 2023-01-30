@@ -94,7 +94,7 @@ object EcosystemPlugin extends AutoPlugin {
 
     def extraOptions(scalaVersion: String, optimize: Boolean) =
       CrossVersion.partialVersion(scalaVersion) match {
-        case Some((3, 0))  =>
+        case Some((3, 0)) =>
           Seq(
             "-language:implicitConversions",
             "-Xignore-scala2-macros"
@@ -136,7 +136,7 @@ object EcosystemPlugin extends AutoPlugin {
             "-Xmax-classfile-name",
             "242"
           ) ++ std2xOptions
-        case _             => Seq.empty
+        case _ => Seq.empty
       }
 
     def platformSpecificSources(platform: String, conf: String, baseDirectory: File)(versions: String*) = for {
@@ -154,9 +154,9 @@ object EcosystemPlugin extends AutoPlugin {
           List("2.12", "2.11+", "2.12+", "2.11-2.12", "2.12-2.13", "2.x")
         case Some((2, 13)) =>
           List("2.13", "2.11+", "2.12+", "2.13+", "2.12-2.13", "2.x")
-        case Some((3, 0))  =>
+        case Some((3, 0)) =>
           List("dotty", "2.11+", "2.12+", "2.13+", "3.x")
-        case _             =>
+        case _ =>
           List()
       }
       platformSpecificSources(platform, conf, baseDir)(versions: _*)
@@ -182,7 +182,7 @@ object EcosystemPlugin extends AutoPlugin {
     )
 
     val SilencerVersion = "1.7.12"
-    
+
     def stdSettings(scala3Version: String, scala213Version: String) = Seq(
       scalacOptions ++= stdOptions ++ extraOptions(scalaVersion.value, optimize = !isSnapshot.value),
       libraryDependencies ++= {
@@ -192,14 +192,14 @@ object EcosystemPlugin extends AutoPlugin {
           )
         else
           Seq(
-            "com.github.ghik" % "silencer-lib"            % SilencerVersion % Provided cross CrossVersion.full,
+            "com.github.ghik" % "silencer-lib" % SilencerVersion % Provided cross CrossVersion.full,
             compilerPlugin("com.github.ghik" % "silencer-plugin" % SilencerVersion cross CrossVersion.full),
             compilerPlugin("org.typelevel"  %% "kind-projector"  % "0.13.2" cross CrossVersion.full)
           )
       },
       semanticdbEnabled := scalaVersion.value != scala3Version, // enable SemanticDB
       semanticdbOptions += "-P:semanticdb:synthetics:on",
-      semanticdbVersion := scalafixSemanticdb.revision, // use Scalafix compatible version
+      semanticdbVersion                      := scalafixSemanticdb.revision, // use Scalafix compatible version
       ThisBuild / scalafixScalaBinaryVersion := CrossVersion.binaryScalaVersion(scalaVersion.value),
       ThisBuild / scalafixDependencies ++= List(
         "com.github.liancheng" %% "organize-imports" % "0.6.0",
@@ -207,7 +207,7 @@ object EcosystemPlugin extends AutoPlugin {
       ),
       Test / parallelExecution := true,
       incOptions ~= (_.withLogRecompileOnMacro(false)),
-      autoAPIMappings := true,
+      autoAPIMappings := true
 //      unusedCompileDependenciesFilter -= moduleFilter("org.scala-js", "scalajs-library")
     )
 
@@ -219,7 +219,6 @@ object EcosystemPlugin extends AutoPlugin {
 //          Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value % Test)
 //      }
 //    )
-
 
     def enableZIO(zioVersion: String): Seq[Def.Setting[_]] =
       Seq(
@@ -328,7 +327,7 @@ object EcosystemPlugin extends AutoPlugin {
 //    }
 
 //  override def projectSettings: Seq[Setting[_]] =
-//    stdSettings 
+//    stdSettings
 //    ++ Tasks.settings ++ Commands.settings ++ welcomeMessage
 
   override def globalSettings: Seq[Def.Setting[_]] =
