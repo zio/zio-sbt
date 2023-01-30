@@ -157,12 +157,13 @@ object WebsiteUtils {
       commentSection + banner + introductionSection + documentationSection + contributingSection + codeOfConductSection +
         supportSection + maintainersSection + creditsSection + acknowledgementSection + licenseSection
 
-    ZIO.attemptBlocking(
+    ZIO.attemptBlocking {
       Files.write(
         Paths.get("README.md"),
         readme.getBytes(StandardCharsets.UTF_8)
       )
-    )
+      ()
+    }
   }
 
   abstract class DocsVersioning(val npmCommand: String)

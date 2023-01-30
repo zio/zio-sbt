@@ -76,7 +76,7 @@ object Trigger {
         Seq(
           "branches"        := branches,
           "branches-ignore" := ignoredBranches
-        ).filter { case (key, data) => data.asArray.exists(_.nonEmpty) }: _*
+        ).filter { case (_, data) => data.asArray.exists(_.nonEmpty) }: _*
       )
   }
 
@@ -89,7 +89,7 @@ object Trigger {
         Seq(
           "branches"        := branches,
           "branches-ignore" := ignoredBranches
-        ).filter { case (key, data) => data.asArray.exists(_.nonEmpty) }: _*
+        ).filter { case (_, data) => data.asArray.exists(_.nonEmpty) }: _*
       )
   }
 }
@@ -122,7 +122,7 @@ object Condition {
       other match {
         case Expression(otherExpression: String) =>
           Expression(s"($expression) && ($otherExpression)")
-        case Function(otherExpression: String) =>
+        case Function(_: String) =>
           throw new IllegalArgumentException("Not supported currently")
       }
 
@@ -130,7 +130,7 @@ object Condition {
       other match {
         case Expression(otherExpression: String) =>
           Expression(s"($expression) || ($otherExpression)")
-        case Function(otherExpression: String) =>
+        case Function(_: String) =>
           throw new IllegalArgumentException("Not supported currently")
       }
 
