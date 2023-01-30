@@ -4,12 +4,12 @@ publishMavenStyle := true
 
 enablePlugins(EcosystemPlugin)
 
-addCommand(
-  (ComposableCommand
-    .make(
-      "project zioSbtEcosystem"
-    ) >> "scripted" >> "project zioSbtWebsite" >> "scripted" >> "project root") ?? ("testPlugins", "Runs the scripted SBT plugin tests.")
-)
+//addCommand(
+//  (ComposableCommand
+//    .make(
+//      "project zioSbtEcosystem"
+//    ) >> "scripted" >> "project zioSbtWebsite" >> "scripted" >> "project root") ?? ("testPlugins", "Runs the scripted SBT plugin tests.")
+//)
 
 ThisBuild / scalaVersion       := V.Scala212
 ThisBuild / crossScalaVersions := Seq(scalaVersion.value)
@@ -68,6 +68,7 @@ lazy val tests =
 lazy val zioSbtWebsite =
   project
     .in(file("zio-sbt-website"))
+    .settings(stdSettings(V.Scala3, V.Scala213))
     .settings(buildInfoSettings("zio.sbt"))
     .settings(
       name             := "zio-sbt-website",
@@ -84,6 +85,7 @@ lazy val zioSbtWebsite =
 lazy val zioSbtEcosystem =
   project
     .in(file("zio-sbt-ecosystem"))
+    .settings(stdSettings(V.Scala3, V.Scala213))
     .settings(buildInfoSettings("zio.sbt.ecosystem"))
     .settings(
       name          := "zio-sbt-ecosystem",
@@ -105,7 +107,7 @@ lazy val docs = project
     projectName                                := "ZIO SBT",
     mainModuleName                             := (zioSbtWebsite / moduleName).value,
     projectStage                               := ProjectStage.ProductionReady,
-    ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(zioSbtEcosystem, zioSbtWebsite),
+    ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(zioSbtWebsite),
     headerLicense                              := None,
     readmeContribution := readmeContribution.value +
       """|

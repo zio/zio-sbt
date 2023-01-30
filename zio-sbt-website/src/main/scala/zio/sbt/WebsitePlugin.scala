@@ -289,7 +289,18 @@ object WebsitePlugin extends sbt.AutoPlugin {
     val stdout = new mutable.StringBuilder
     val stderr = new mutable.StringBuilder
 
-    exit("git fetch --tags" ! ProcessLogger(stdout append _, stderr append _))
+    exit(
+      "git fetch --tags" ! ProcessLogger(
+        { out =>
+          stdout.append(out)
+          ()
+        },
+        { err =>
+          stderr.append(err)
+          ()
+        }
+      )
+    )
 
     if (stderr.mkString.contains("new tag")) {
       throw new MessageOnlyException(

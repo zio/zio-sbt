@@ -16,13 +16,12 @@
 
 package zio.sbt
 
-import scala.collection.immutable.ListMap
-
 import org.scalafmt.sbt.ScalafmtPlugin
 import sbt.Keys.*
 import sbt.{Def, *}
 import sbtbuildinfo.BuildInfoPlugin
 import sbtbuildinfo.BuildInfoPlugin.autoImport.*
+import sbtcrossproject.CrossPlugin.autoImport.crossProjectPlatform
 import scalafix.sbt.ScalafixPlugin
 import scalafix.sbt.ScalafixPlugin.autoImport.*
 
@@ -35,11 +34,200 @@ object EcosystemPlugin extends AutoPlugin {
 
   object autoImport {
 
-    def zioDependencies(zioVersion: String): Seq[ModuleID] =
+    private val stdOptions = Seq(
+      "-deprecation",
+      "-encoding",
+      "UTF-8",
+      "-feature",
+      "-unchecked"
+    ) ++ {
+      if (sys.env.contains("CI")) {
+        Seq("-Xfatal-warnings")
+      } else {
+        Nil // to enable Scalafix locally
+      }
+    }
+
+    private val std2xOptions = Seq(
+      "-language:higherKinds",
+      "-language:existentials",
+      "-explaintypes",
+      "-Yrangepos",
+      "-Xlint:_,-missing-interpolator,-type-parameter-shadow",
+      "-Ywarn-numeric-widen",
+      "-Ywarn-value-discard"
+    )
+
+    private def optimizerOptions(optimize: Boolean) =
+      if (optimize)
+        Seq(
+          "-opt:l:inline",
+          "-opt-inline-from:zio.internal.**"
+        )
+      else Nil
+
+    def dottySettings(scala3Version: String) = Seq(
+      crossScalaVersions += scala3Version,
+      scalacOptions --= {
+        if (scalaVersion.value == scala3Version)
+          Seq("-Xfatal-warnings")
+        else
+          Seq()
+      },
+      Compile / doc / sources := {
+        val old = (Compile / doc / sources).value
+        if (scalaVersion.value == scala3Version) {
+          Nil
+        } else {
+          old
+        }
+      },
+      Test / parallelExecution := {
+        val old = (Test / parallelExecution).value
+        if (scalaVersion.value == scala3Version) {
+          false
+        } else {
+          old
+        }
+      }
+    )
+
+    def extraOptions(scalaVersion: String, optimize: Boolean) =
+      CrossVersion.partialVersion(scalaVersion) match {
+        case Some((3, 0)) =>
+          Seq(
+            "-language:implicitConversions",
+            "-Xignore-scala2-macros"
+          )
+        case Some((2, 13)) =>
+          Seq(
+            "-Ywarn-unused:params,-implicits"
+          ) ++ std2xOptions ++ optimizerOptions(optimize)
+        case Some((2, 12)) =>
+          Seq(
+            "-opt-warnings",
+            "-Ywarn-extra-implicit",
+            "-Ywarn-unused:_,imports",
+            "-Ywarn-unused:imports",
+            "-Ypartial-unification",
+            "-Yno-adapted-args",
+            "-Ywarn-inaccessible",
+            "-Ywarn-infer-any",
+            "-Ywarn-nullary-override",
+            "-Ywarn-nullary-unit",
+            "-Ywarn-unused:params,-implicits",
+            "-Xfuture",
+            "-Xsource:2.13",
+            "-Xmax-classfile-name",
+            "242"
+          ) ++ std2xOptions ++ optimizerOptions(optimize)
+        case Some((2, 11)) =>
+          Seq(
+            "-Ypartial-unification",
+            "-Yno-adapted-args",
+            "-Ywarn-inaccessible",
+            "-Ywarn-infer-any",
+            "-Ywarn-nullary-override",
+            "-Ywarn-nullary-unit",
+            "-Xexperimental",
+            "-Ywarn-unused-import",
+            "-Xfuture",
+            "-Xsource:2.13",
+            "-Xmax-classfile-name",
+            "242"
+          ) ++ std2xOptions
+        case _ => Seq.empty
+      }
+
+    def platformSpecificSources(platform: String, conf: String, baseDirectory: File)(versions: String*) = for {
+      platform <- List("shared", platform)
+      version  <- "scala" :: versions.toList.map("scala-" + _)
+      result    = baseDirectory.getParentFile / platform.toLowerCase / "src" / conf / version
+      if result.exists
+    } yield result
+
+    def crossPlatformSources(scalaVer: String, platform: String, conf: String, baseDir: File) = {
+      val versions = CrossVersion.partialVersion(scalaVer) match {
+        case Some((2, 11)) =>
+          List("2.11", "2.11+", "2.11-2.12", "2.x")
+        case Some((2, 12)) =>
+          List("2.12", "2.11+", "2.12+", "2.11-2.12", "2.12-2.13", "2.x")
+        case Some((2, 13)) =>
+          List("2.13", "2.11+", "2.12+", "2.13+", "2.12-2.13", "2.x")
+        case Some((3, 0)) =>
+          List("dotty", "2.11+", "2.12+", "2.13+", "3.x")
+        case _ =>
+          List()
+      }
+      platformSpecificSources(platform, conf, baseDir)(versions: _*)
+    }
+
+    lazy val crossProjectSettings = Seq(
+      Compile / unmanagedSourceDirectories ++= {
+        crossPlatformSources(
+          scalaVersion.value,
+          crossProjectPlatform.value.identifier,
+          "main",
+          baseDirectory.value
+        )
+      },
+      Test / unmanagedSourceDirectories ++= {
+        crossPlatformSources(
+          scalaVersion.value,
+          crossProjectPlatform.value.identifier,
+          "test",
+          baseDirectory.value
+        )
+      }
+    )
+
+    val SilencerVersion = "1.7.12"
+
+    def stdSettings(scala3Version: String, scala213Version: String) = Seq(
+      scalacOptions ++= stdOptions ++ extraOptions(scalaVersion.value, optimize = !isSnapshot.value),
+      libraryDependencies ++= {
+        if (scalaVersion.value == scala3Version)
+          Seq(
+            "com.github.ghik" % s"silencer-lib_$scala213Version" % SilencerVersion % Provided
+          )
+        else
+          Seq(
+            "com.github.ghik" % "silencer-lib" % SilencerVersion % Provided cross CrossVersion.full,
+            compilerPlugin("com.github.ghik" % "silencer-plugin" % SilencerVersion cross CrossVersion.full),
+            compilerPlugin("org.typelevel"  %% "kind-projector"  % "0.13.2" cross CrossVersion.full)
+          )
+      },
+      semanticdbEnabled := scalaVersion.value != scala3Version, // enable SemanticDB
+      semanticdbOptions += "-P:semanticdb:synthetics:on",
+      semanticdbVersion                      := scalafixSemanticdb.revision, // use Scalafix compatible version
+      ThisBuild / scalafixScalaBinaryVersion := CrossVersion.binaryScalaVersion(scalaVersion.value),
+      ThisBuild / scalafixDependencies ++= List(
+        "com.github.liancheng" %% "organize-imports" % "0.6.0",
+        "com.github.vovapolu"  %% "scaluzzi"         % "0.1.23"
+      ),
+      Test / parallelExecution := true,
+      incOptions ~= (_.withLogRecompileOnMacro(false)),
+      autoAPIMappings := true
+//      unusedCompileDependenciesFilter -= moduleFilter("org.scala-js", "scalajs-library")
+    )
+
+//    val scalaReflectTestSettings: List[Setting[_]] = List(
+//      libraryDependencies ++= {
+//        if (scalaVersion.value == Scala3)
+//          Seq("org.scala-lang" % "scala-reflect" % Scala213           % Test)
+//        else
+//          Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value % Test)
+//      }
+//    )
+
+    def enableZIO(zioVersion: String): Seq[Def.Setting[_]] =
       Seq(
-        "dev.zio" %% "zio"          % zioVersion,
-        "dev.zio" %% "zio-test"     % zioVersion,
-        "dev.zio" %% "zio-test-sbt" % zioVersion % Test
+        libraryDependencies ++= Seq(
+          "dev.zio" %% "zio"          % zioVersion,
+          "dev.zio" %% "zio-test"     % zioVersion,
+          "dev.zio" %% "zio-test-sbt" % zioVersion % Test
+        ),
+        testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
       )
 
     def buildInfoSettings(packageName: String): Seq[Setting[_ <: Object]] =
@@ -54,16 +242,16 @@ object EcosystemPlugin extends AutoPlugin {
         buildInfoPackage := packageName
       )
 
-    def addCommand(commandString: List[String], name: String, description: String): Seq[Setting[_]] = {
-      val cCommand = Commands.ComposableCommand(commandString, name, description)
-      addCommand(cCommand)
-    }
+//    def addCommand(commandString: List[String], name: String, description: String): Seq[Setting[_]] = {
+//      val cCommand = Commands.ComposableCommand(commandString, name, description)
+//      addCommand(cCommand)
+//    }
 
-    def addCommand(command: Commands.ComposableCommand): Seq[Setting[_]] =
-      Seq(
-        commands += command.toCommand,
-        usefulTasksAndSettings += command.toItem
-      )
+//    def addCommand(command: Commands.ComposableCommand): Seq[Setting[_]] =
+//      Seq(
+//        commands += command.toCommand,
+//        usefulTasksAndSettings += command.toItem
+//      )
 
     object Defaults {
       val scala3   = "3.2.1"
@@ -77,70 +265,70 @@ object EcosystemPlugin extends AutoPlugin {
     lazy val scala212: SettingKey[String] = settingKey[String]("Scala 2.12 version")
     lazy val scala213: SettingKey[String] = settingKey[String]("Scala 2.13 version")
 
-    val welcomeBannerEnabled: SettingKey[Boolean] =
-      settingKey[Boolean]("Indicates whether or not to enable the welcome banner.")
+//    val welcomeBannerEnabled: SettingKey[Boolean] =
+//      settingKey[Boolean]("Indicates whether or not to enable the welcome banner.")
 
-    val usefulTasksAndSettings: SettingKey[Map[String, String]] = settingKey[Map[String, String]](
-      "A map of useful tasks and settings that will be displayed as part of the welcome banner."
-    )
+//    val usefulTasksAndSettings: SettingKey[Map[String, String]] = settingKey[Map[String, String]](
+//      "A map of useful tasks and settings that will be displayed as part of the welcome banner."
+//    )
 
   }
 
   import autoImport.*
 
-  private val defaultTasksAndSettings: Map[String, String] = Commands.ComposableCommand.makeHelp ++ ListMap(
-    "build"                                       -> "Lints source files then strictly compiles and runs tests.",
-    "enableStrictCompile"                         -> "Enables strict compilation e.g. warnings become errors.",
-    "disableStrictCompile"                        -> "Disables strict compilation e.g. warnings are no longer treated as errors.",
-    "~compile"                                    -> "Compiles all modules (file-watch enabled)",
-    "test"                                        -> "Runs all tests",
-    """testOnly *.YourSpec -- -t \"YourLabel\"""" -> "Only runs tests with matching term e.g."
-  )
+//  private val defaultTasksAndSettings: Map[String, String] = Commands.ComposableCommand.makeHelp ++ ListMap(
+//    "build"                                       -> "Lints source files then strictly compiles and runs tests.",
+//    "enableStrictCompile"                         -> "Enables strict compilation e.g. warnings become errors.",
+//    "disableStrictCompile"                        -> "Disables strict compilation e.g. warnings are no longer treated as errors.",
+//    "~compile"                                    -> "Compiles all modules (file-watch enabled)",
+//    "test"                                        -> "Runs all tests",
+//    """testOnly *.YourSpec -- -t \"YourLabel\"""" -> "Only runs tests with matching term e.g."
+//  )
 
-  def stdSettings: Seq[Setting[_]] =
-    Seq(
-      licenses               := List("Apache-2.0" -> new URL("http://www.apache.org/licenses/LICENSE-2.0.txt")),
-      welcomeBannerEnabled   := true,
-      usefulTasksAndSettings := defaultTasksAndSettings,
-      scalacOptions          := ScalaCompilerSettings.stdScalacOptions(scalaVersion.value, !isSnapshot.value),
-      testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"),
-      semanticdbEnabled := scalaVersion.value != scala3.value, // enable SemanticDB
-      semanticdbOptions += "-P:semanticdb:synthetics:on",
-      semanticdbVersion                      := scalafixSemanticdb.revision, // use Scalafix compatible version
-      ThisBuild / scalafixScalaBinaryVersion := CrossVersion.binaryScalaVersion(scalaVersion.value),
-      ThisBuild / scalafixDependencies ++= List(
-        "com.github.liancheng" %% "organize-imports" % "0.6.0",
-        "com.github.vovapolu"  %% "scaluzzi"         % "0.1.23"
-      ),
-      Test / parallelExecution := !sys.env.contains("CI"),
-      incOptions ~= (_.withLogRecompileOnMacro(false)),
-      autoAPIMappings := true
-    )
+//  def stdSettings: Seq[Setting[_]] = Seq.empty
+//    Seq(
+//      licenses               := List("Apache-2.0" -> new URL("http://www.apache.org/licenses/LICENSE-2.0.txt")),
+//      welcomeBannerEnabled   := true,
+//      usefulTasksAndSettings := defaultTasksAndSettings,
+//      scalacOptions          := ScalaCompilerSettings.stdScalacOptions(scalaVersion.value, !isSnapshot.value),
+//      semanticdbEnabled      := scalaVersion.value != scala3.value, // enable SemanticDB
+//      semanticdbOptions += "-P:semanticdb:synthetics:on",
+//      semanticdbVersion                      := scalafixSemanticdb.revision, // use Scalafix compatible version
+//      ThisBuild / scalafixScalaBinaryVersion := CrossVersion.binaryScalaVersion(scalaVersion.value),
+//      ThisBuild / scalafixDependencies ++= List(
+//        "com.github.liancheng" %% "organize-imports" % "0.6.0",
+//        "com.github.vovapolu"  %% "scaluzzi"         % "0.1.23"
+//      ),
+//      Test / parallelExecution := !sys.env.contains("CI"),
+//      incOptions ~= (_.withLogRecompileOnMacro(false)),
+//      autoAPIMappings := true
+//    )
 
-  def welcomeMessage: Setting[String] =
-    onLoadMessage := {
-      if (welcomeBannerEnabled.value) {
-        import scala.Console
+//  def welcomeMessage: Setting[String] =
+//    onLoadMessage := {
+//      if (welcomeBannerEnabled.value) {
+//        import scala.Console
+//
+//        val maxLen = usefulTasksAndSettings.value.keys.map(_.length).max
+//
+//        def normalizedPadding(s: String) = " " * (maxLen - s.length)
+//
+//        def item(text: String): String = s"${Console.GREEN}> ${Console.CYAN}$text${Console.RESET}"
+//
+//        s"""|${Banner.trueColor(s"${name.value} v.${version.value}")}
+//            |Useful sbt tasks:
+//            |${usefulTasksAndSettings.value.map { case (task, description) =>
+//          s"${item(task)} ${normalizedPadding(task)}${description}"
+//        }
+//          .mkString("\n")}
+//      """.stripMargin
+//
+//      } else ""
+//    }
 
-        val maxLen = usefulTasksAndSettings.value.keys.map(_.length).max
-
-        def normalizedPadding(s: String) = " " * (maxLen - s.length)
-
-        def item(text: String): String = s"${Console.GREEN}> ${Console.CYAN}$text${Console.RESET}"
-
-        s"""|${Banner.trueColor(s"${name.value} v.${version.value}")}
-            |Useful sbt tasks:
-            |${usefulTasksAndSettings.value.map { case (task, description) =>
-          s"${item(task)} ${normalizedPadding(task)}${description}"
-        }
-          .mkString("\n")}
-      """.stripMargin
-
-      } else ""
-    }
-
-  override def projectSettings: Seq[Setting[_]] =
-    stdSettings ++ Tasks.settings ++ Commands.settings ++ welcomeMessage
+//  override def projectSettings: Seq[Setting[_]] =
+//    stdSettings
+//    ++ Tasks.settings ++ Commands.settings ++ welcomeMessage
 
   override def globalSettings: Seq[Def.Setting[_]] =
     super.globalSettings ++ Seq(
