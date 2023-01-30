@@ -17,7 +17,6 @@
 package zio.sbt
 
 import scala.collection.immutable.ListMap
-
 import org.scalafmt.sbt.ScalafmtPlugin
 import sbt.Keys.*
 import sbt.{Def, *}
@@ -35,11 +34,14 @@ object EcosystemPlugin extends AutoPlugin {
 
   object autoImport {
 
-    def zioDependencies(zioVersion: String): Seq[ModuleID] =
+    def enableZIO(zioVersion: String): Seq[Def.Setting[_]] =
       Seq(
-        "dev.zio" %% "zio"          % zioVersion,
-        "dev.zio" %% "zio-test"     % zioVersion,
-        "dev.zio" %% "zio-test-sbt" % zioVersion % Test
+        libraryDependencies ++= Seq(
+          "dev.zio" %% "zio"          % zioVersion,
+          "dev.zio" %% "zio-test"     % zioVersion,
+          "dev.zio" %% "zio-test-sbt" % zioVersion % Test
+        ),
+        testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
       )
 
     def buildInfoSettings(packageName: String): Seq[Setting[_ <: Object]] =
@@ -103,8 +105,7 @@ object EcosystemPlugin extends AutoPlugin {
       welcomeBannerEnabled   := true,
       usefulTasksAndSettings := defaultTasksAndSettings,
       scalacOptions          := ScalaCompilerSettings.stdScalacOptions(scalaVersion.value, !isSnapshot.value),
-      testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"),
-      semanticdbEnabled := scalaVersion.value != scala3.value, // enable SemanticDB
+      semanticdbEnabled      := scalaVersion.value != scala3.value, // enable SemanticDB
       semanticdbOptions += "-P:semanticdb:synthetics:on",
       semanticdbVersion                      := scalafixSemanticdb.revision, // use Scalafix compatible version
       ThisBuild / scalafixScalaBinaryVersion := CrossVersion.binaryScalaVersion(scalaVersion.value),
