@@ -54,7 +54,7 @@ jobs:
     - name: Run tests
       run: sbt ++${{ matrix.scala }}! test
     - name: Run Scripted plugin tests
-      run: sbt testPlugins
+      run: sbt scripted
 
   publish:
     runs-on: ubuntu-20.04
