@@ -68,7 +68,7 @@ lazy val tests =
 lazy val zioSbtWebsite =
   project
     .in(file("zio-sbt-website"))
-    .settings(stdSettings(V.Scala3, V.Scala213))
+    .settings(stdSettings(V.Scala3))
     .settings(buildInfoSettings("zio.sbt"))
     .settings(
       name             := "zio-sbt-website",
@@ -85,7 +85,7 @@ lazy val zioSbtWebsite =
 lazy val zioSbtEcosystem =
   project
     .in(file("zio-sbt-ecosystem"))
-    .settings(stdSettings(V.Scala3, V.Scala213))
+    .settings(stdSettings(V.Scala3))
     .settings(buildInfoSettings("zio.sbt.ecosystem"))
     .settings(
       name          := "zio-sbt-ecosystem",
