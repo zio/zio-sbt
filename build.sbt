@@ -107,7 +107,7 @@ lazy val docs = project
     projectName                                := "ZIO SBT",
     mainModuleName                             := (zioSbtWebsite / moduleName).value,
     projectStage                               := ProjectStage.ProductionReady,
-    ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(zioSbtEcosystem, zioSbtWebsite),
+    ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(zioSbtWebsite),
     headerLicense                              := None,
     readmeContribution := readmeContribution.value +
       """|
