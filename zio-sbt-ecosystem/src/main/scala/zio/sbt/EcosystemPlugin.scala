@@ -187,17 +187,23 @@ object EcosystemPlugin extends AutoPlugin {
       }
     )
 
-    def stdSettings(scala3Version: String) = Seq(
+    val silencerModules: Seq[ModuleID] =
+      Seq(
+        "com.github.ghik" % "silencer-lib" % V.SilencerVersion % Provided cross CrossVersion.full,
+        compilerPlugin("com.github.ghik" % "silencer-plugin" % V.SilencerVersion cross CrossVersion.full)
+      )
+
+    val kindProjectorModule: ModuleID =
+      compilerPlugin("org.typelevel" %% "kind-projector" % V.KindProjectorVersion cross CrossVersion.full)
+
+    def stdSettings(scala3Version: String, enableSilencer: Boolean = false, enableKindProjector: Boolean = false) = Seq(
       scalacOptions ++= stdOptions ++ extraOptions(scalaVersion.value, optimize = !isSnapshot.value),
       Compile / console / scalacOptions ~= { _.filterNot(Set("-Xfatal-warnings")) },
       libraryDependencies ++= {
-        if (scalaVersion.value != scala3Version)
-          Seq(
-            "com.github.ghik" % "silencer-lib" % V.SilencerVersion % Provided cross CrossVersion.full,
-            compilerPlugin("com.github.ghik" % "silencer-plugin" % V.SilencerVersion cross CrossVersion.full),
-            compilerPlugin("org.typelevel"  %% "kind-projector"  % V.KindProjectorVersion cross CrossVersion.full)
-          )
-        else Seq.empty
+        if (scalaVersion.value != scala3Version) {
+          (if (enableSilencer) silencerModules else Seq.empty) ++
+            (if (enableKindProjector) Seq(kindProjectorModule) else Seq.empty)
+        } else Seq.empty
       },
       semanticdbEnabled := scalaVersion.value != scala3Version, // enable SemanticDB
       semanticdbOptions += "-P:semanticdb:synthetics:on",
@@ -222,15 +228,17 @@ object EcosystemPlugin extends AutoPlugin {
 //      }
 //    )
 
-    def enableZIO(zioVersion: String): Seq[Def.Setting[_]] =
-      Seq(
-        libraryDependencies ++= Seq(
-          "dev.zio" %% "zio"          % zioVersion,
-          "dev.zio" %% "zio-test"     % zioVersion,
-          "dev.zio" %% "zio-test-sbt" % zioVersion % Test
-        ),
-        testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
-      )
+    def enableZIO(zioVersion: String, enableTesting: Boolean = false): Seq[Def.Setting[_]] =
+      Seq(libraryDependencies += "dev.zio" %% "zio" % zioVersion) ++
+        (if (enableTesting)
+           Seq(
+             libraryDependencies ++= Seq(
+               "dev.zio" %% "zio-test"     % zioVersion,
+               "dev.zio" %% "zio-test-sbt" % zioVersion % Test
+             ),
+             testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
+           )
+         else Seq.empty)
 
     def buildInfoSettings(packageName: String): Seq[Setting[_ <: Object]] =
       Seq(
