@@ -66,7 +66,7 @@ object EcosystemPlugin extends AutoPlugin {
         )
       else Nil
 
-    def dottySettings(scala3Version: String, scala213Version: String): Seq[Setting[_]] = Seq(
+    def enableScala3(scala3Version: String, scala213Version: String): Seq[Setting[_]] = Seq(
       crossScalaVersions += scala3Version,
       libraryDependencies ++= {
         if (scalaVersion.value == scala3Version)
@@ -198,31 +198,39 @@ object EcosystemPlugin extends AutoPlugin {
       compilerPlugin("org.typelevel" %% "kind-projector" % V.KindProjectorVersion cross CrossVersion.full)
 
     def stdSettings(
-      scala3Version: String,
+      name: String,
+      packageName: String,
+      scalaVersion: String,
       enableSilencer: Boolean = false,
-      enableKindProjector: Boolean = false
-    ): Seq[Setting[_]] = Seq(
-      scalacOptions ++= stdOptions ++ extraOptions(scalaVersion.value, optimize = !isSnapshot.value),
-      Compile / console / scalacOptions ~= { _.filterNot(Set("-Xfatal-warnings")) },
-      libraryDependencies ++= {
-        if (scalaVersion.value != scala3Version) {
-          (if (enableSilencer) silencerModules else Seq.empty) ++
-            (if (enableKindProjector) Seq(kindProjectorModule) else Seq.empty)
-        } else Seq.empty
-      },
-      semanticdbEnabled := scalaVersion.value != scala3Version, // enable SemanticDB
-      semanticdbOptions += "-P:semanticdb:synthetics:on",
-      semanticdbVersion                      := scalafixSemanticdb.revision, // use Scalafix compatible version
-      ThisBuild / scalafixScalaBinaryVersion := CrossVersion.binaryScalaVersion(scalaVersion.value),
-      ThisBuild / scalafixDependencies ++= List(
-        "com.github.liancheng" %% "organize-imports" % V.OrganizeImportsVersion,
-        "com.github.vovapolu"  %% "scaluzzi"         % V.ScaluzziVersion
-      ),
-      Test / parallelExecution := true,
-      incOptions ~= (_.withLogRecompileOnMacro(false)),
-      autoAPIMappings := true
-//      unusedCompileDependenciesFilter -= moduleFilter("org.scala-js", "scalajs-library")
-    )
+      enableKindProjector: Boolean = false,
+      enableCrossProject: Boolean = true
+    ): Seq[Setting[_]] =
+      Seq(
+        Keys.name         := name,
+        Keys.scalaVersion := scalaVersion,
+        scalacOptions ++= stdOptions ++ extraOptions(scalaVersion, optimize = !isSnapshot.value),
+        Compile / console / scalacOptions ~= {
+          _.filterNot(Set("-Xfatal-warnings"))
+        },
+        libraryDependencies ++= {
+          if (!scalaVersion.startsWith("3")) {
+            (if (enableSilencer) silencerModules else Seq.empty) ++
+              (if (enableKindProjector) Seq(kindProjectorModule) else Seq.empty)
+          } else Seq.empty
+        },
+        semanticdbEnabled := !scalaVersion.startsWith("3"),
+        semanticdbOptions += "-P:semanticdb:synthetics:on",
+        semanticdbVersion                      := scalafixSemanticdb.revision, // use Scalafix compatible version
+        ThisBuild / scalafixScalaBinaryVersion := CrossVersion.binaryScalaVersion(scalaVersion),
+        ThisBuild / scalafixDependencies ++= List(
+          "com.github.liancheng" %% "organize-imports" % V.OrganizeImportsVersion,
+          "com.github.vovapolu"  %% "scaluzzi"         % V.ScaluzziVersion
+        ),
+        Test / parallelExecution := true,
+        incOptions ~= (_.withLogRecompileOnMacro(false)),
+        autoAPIMappings := true
+        //      unusedCompileDependenciesFilter -= moduleFilter("org.scala-js", "scalajs-library")
+      ) ++ (if (enableCrossProject) crossProjectSettings else Seq.empty) ++ buildInfoSettings(packageName)
 
 //    val scalaReflectTestSettings: List[Setting[_]] = List(
 //      libraryDependencies ++= {
@@ -351,6 +359,7 @@ object EcosystemPlugin extends AutoPlugin {
       scala211     := Defaults.scala211,
       scala212     := Defaults.scala212,
       scala213     := Defaults.scala213,
-      scalaVersion := Defaults.scala213
+      scalaVersion := Defaults.scala213,
+      licenses     := List("Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0"))
     )
 }
