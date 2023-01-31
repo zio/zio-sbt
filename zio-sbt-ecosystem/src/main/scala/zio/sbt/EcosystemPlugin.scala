@@ -189,6 +189,7 @@ object EcosystemPlugin extends AutoPlugin {
 
     def stdSettings(scala3Version: String) = Seq(
       scalacOptions ++= stdOptions ++ extraOptions(scalaVersion.value, optimize = !isSnapshot.value),
+      Compile / console / scalacOptions ~= { _.filterNot(Set("-Xfatal-warnings")) },
       libraryDependencies ++= {
         if (scalaVersion.value != scala3Version)
           Seq(
