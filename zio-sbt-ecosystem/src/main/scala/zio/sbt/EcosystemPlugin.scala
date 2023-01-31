@@ -66,8 +66,14 @@ object EcosystemPlugin extends AutoPlugin {
         )
       else Nil
 
-    def dottySettings(scala3Version: String) = Seq(
+    def dottySettings(scala3Version: String, scala213Version: String): Seq[Setting[_]] = Seq(
       crossScalaVersions += scala3Version,
+      libraryDependencies ++= {
+        if (scalaVersion.value == scala3Version)
+          Seq("com.github.ghik" % s"silencer-lib_$scala213Version" % V.SilencerVersion % Provided)
+        else
+          Seq.empty
+      },
       scalacOptions --= {
         if (scalaVersion.value == scala3Version)
           Seq("-Xfatal-warnings")
@@ -92,7 +98,7 @@ object EcosystemPlugin extends AutoPlugin {
       }
     )
 
-    def extraOptions(scalaVersion: String, optimize: Boolean) =
+    def extraOptions(scalaVersion: String, optimize: Boolean): Seq[String] =
       CrossVersion.partialVersion(scalaVersion) match {
         case Some((3, 0)) =>
           Seq(
@@ -139,14 +145,15 @@ object EcosystemPlugin extends AutoPlugin {
         case _ => Seq.empty
       }
 
-    def platformSpecificSources(platform: String, conf: String, baseDirectory: File)(versions: String*) = for {
-      platform <- List("shared", platform)
-      version  <- "scala" :: versions.toList.map("scala-" + _)
-      result    = baseDirectory.getParentFile / platform.toLowerCase / "src" / conf / version
-      if result.exists
-    } yield result
+    def platformSpecificSources(platform: String, conf: String, baseDirectory: File)(versions: String*): List[File] =
+      for {
+        platform <- List("shared", platform)
+        version  <- "scala" :: versions.toList.map("scala-" + _)
+        result    = baseDirectory.getParentFile / platform.toLowerCase / "src" / conf / version
+        if result.exists
+      } yield result
 
-    def crossPlatformSources(scalaVer: String, platform: String, conf: String, baseDir: File) = {
+    def crossPlatformSources(scalaVer: String, platform: String, conf: String, baseDir: File): List[File] = {
       val versions = CrossVersion.partialVersion(scalaVer) match {
         case Some((2, 11)) =>
           List("2.11", "2.11+", "2.11-2.12", "2.x")
@@ -162,7 +169,7 @@ object EcosystemPlugin extends AutoPlugin {
       platformSpecificSources(platform, conf, baseDir)(versions: _*)
     }
 
-    lazy val crossProjectSettings = Seq(
+    lazy val crossProjectSettings: Seq[Setting[Seq[File]]] = Seq(
       Compile / unmanagedSourceDirectories ++= {
         crossPlatformSources(
           scalaVersion.value,
@@ -181,29 +188,35 @@ object EcosystemPlugin extends AutoPlugin {
       }
     )
 
-    val SilencerVersion = "1.7.12"
+    val silencerModules: Seq[ModuleID] =
+      Seq(
+        "com.github.ghik" % "silencer-lib" % V.SilencerVersion % Provided cross CrossVersion.full,
+        compilerPlugin("com.github.ghik" % "silencer-plugin" % V.SilencerVersion cross CrossVersion.full)
+      )
 
-    def stdSettings(scala3Version: String, scala213Version: String) = Seq(
+    val kindProjectorModule: ModuleID =
+      compilerPlugin("org.typelevel" %% "kind-projector" % V.KindProjectorVersion cross CrossVersion.full)
+
+    def stdSettings(
+      scala3Version: String,
+      enableSilencer: Boolean = false,
+      enableKindProjector: Boolean = false
+    ): Seq[Setting[_]] = Seq(
       scalacOptions ++= stdOptions ++ extraOptions(scalaVersion.value, optimize = !isSnapshot.value),
+      Compile / console / scalacOptions ~= { _.filterNot(Set("-Xfatal-warnings")) },
       libraryDependencies ++= {
-        if (scalaVersion.value == scala3Version)
-          Seq(
-            "com.github.ghik" % s"silencer-lib_$scala213Version" % SilencerVersion % Provided
-          )
-        else
-          Seq(
-            "com.github.ghik" % "silencer-lib" % SilencerVersion % Provided cross CrossVersion.full,
-            compilerPlugin("com.github.ghik" % "silencer-plugin" % SilencerVersion cross CrossVersion.full),
-            compilerPlugin("org.typelevel"  %% "kind-projector"  % "0.13.2" cross CrossVersion.full)
-          )
+        if (scalaVersion.value != scala3Version) {
+          (if (enableSilencer) silencerModules else Seq.empty) ++
+            (if (enableKindProjector) Seq(kindProjectorModule) else Seq.empty)
+        } else Seq.empty
       },
       semanticdbEnabled := scalaVersion.value != scala3Version, // enable SemanticDB
       semanticdbOptions += "-P:semanticdb:synthetics:on",
       semanticdbVersion                      := scalafixSemanticdb.revision, // use Scalafix compatible version
       ThisBuild / scalafixScalaBinaryVersion := CrossVersion.binaryScalaVersion(scalaVersion.value),
       ThisBuild / scalafixDependencies ++= List(
-        "com.github.liancheng" %% "organize-imports" % "0.6.0",
-        "com.github.vovapolu"  %% "scaluzzi"         % "0.1.23"
+        "com.github.liancheng" %% "organize-imports" % V.OrganizeImportsVersion,
+        "com.github.vovapolu"  %% "scaluzzi"         % V.ScaluzziVersion
       ),
       Test / parallelExecution := true,
       incOptions ~= (_.withLogRecompileOnMacro(false)),
@@ -220,15 +233,17 @@ object EcosystemPlugin extends AutoPlugin {
 //      }
 //    )
 
-    def enableZIO(zioVersion: String): Seq[Def.Setting[_]] =
-      Seq(
-        libraryDependencies ++= Seq(
-          "dev.zio" %% "zio"          % zioVersion,
-          "dev.zio" %% "zio-test"     % zioVersion,
-          "dev.zio" %% "zio-test-sbt" % zioVersion % Test
-        ),
-        testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
-      )
+    def enableZIO(zioVersion: String, enableTesting: Boolean = false): Seq[Def.Setting[_]] =
+      Seq(libraryDependencies += "dev.zio" %% "zio" % zioVersion) ++
+        (if (enableTesting)
+           Seq(
+             libraryDependencies ++= Seq(
+               "dev.zio" %% "zio-test"     % zioVersion,
+               "dev.zio" %% "zio-test-sbt" % zioVersion % Test
+             ),
+             testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
+           )
+         else Seq.empty)
 
     def buildInfoSettings(packageName: String): Seq[Setting[_ <: Object]] =
       Seq(
