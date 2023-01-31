@@ -66,7 +66,7 @@ object EcosystemPlugin extends AutoPlugin {
         )
       else Nil
 
-    def dottySettings(scala3Version: String, scala213Version: String) = Seq(
+    def dottySettings(scala3Version: String, scala213Version: String): Seq[Setting[_]] = Seq(
       crossScalaVersions += scala3Version,
       libraryDependencies ++= {
         if (scalaVersion.value == scala3Version)
@@ -98,7 +98,7 @@ object EcosystemPlugin extends AutoPlugin {
       }
     )
 
-    def extraOptions(scalaVersion: String, optimize: Boolean) =
+    def extraOptions(scalaVersion: String, optimize: Boolean): Seq[String] =
       CrossVersion.partialVersion(scalaVersion) match {
         case Some((3, 0)) =>
           Seq(
@@ -145,14 +145,15 @@ object EcosystemPlugin extends AutoPlugin {
         case _ => Seq.empty
       }
 
-    def platformSpecificSources(platform: String, conf: String, baseDirectory: File)(versions: String*) = for {
-      platform <- List("shared", platform)
-      version  <- "scala" :: versions.toList.map("scala-" + _)
-      result    = baseDirectory.getParentFile / platform.toLowerCase / "src" / conf / version
-      if result.exists
-    } yield result
+    def platformSpecificSources(platform: String, conf: String, baseDirectory: File)(versions: String*): List[File] =
+      for {
+        platform <- List("shared", platform)
+        version  <- "scala" :: versions.toList.map("scala-" + _)
+        result    = baseDirectory.getParentFile / platform.toLowerCase / "src" / conf / version
+        if result.exists
+      } yield result
 
-    def crossPlatformSources(scalaVer: String, platform: String, conf: String, baseDir: File) = {
+    def crossPlatformSources(scalaVer: String, platform: String, conf: String, baseDir: File): List[File] = {
       val versions = CrossVersion.partialVersion(scalaVer) match {
         case Some((2, 11)) =>
           List("2.11", "2.11+", "2.11-2.12", "2.x")
@@ -168,7 +169,7 @@ object EcosystemPlugin extends AutoPlugin {
       platformSpecificSources(platform, conf, baseDir)(versions: _*)
     }
 
-    lazy val crossProjectSettings = Seq(
+    lazy val crossProjectSettings: Seq[Setting[Seq[File]]] = Seq(
       Compile / unmanagedSourceDirectories ++= {
         crossPlatformSources(
           scalaVersion.value,
@@ -196,7 +197,11 @@ object EcosystemPlugin extends AutoPlugin {
     val kindProjectorModule: ModuleID =
       compilerPlugin("org.typelevel" %% "kind-projector" % V.KindProjectorVersion cross CrossVersion.full)
 
-    def stdSettings(scala3Version: String, enableSilencer: Boolean = false, enableKindProjector: Boolean = false) = Seq(
+    def stdSettings(
+      scala3Version: String,
+      enableSilencer: Boolean = false,
+      enableKindProjector: Boolean = false
+    ): Seq[Setting[_]] = Seq(
       scalacOptions ++= stdOptions ++ extraOptions(scalaVersion.value, optimize = !isSnapshot.value),
       Compile / console / scalacOptions ~= { _.filterNot(Set("-Xfatal-warnings")) },
       libraryDependencies ++= {
