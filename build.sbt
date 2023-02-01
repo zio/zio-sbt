@@ -4,12 +4,12 @@ publishMavenStyle := true
 
 enablePlugins(EcosystemPlugin)
 
-//addCommand(
-//  (ComposableCommand
-//    .make(
-//      "project zioSbtEcosystem"
-//    ) >> "scripted" >> "project zioSbtWebsite" >> "scripted" >> "project root") ?? ("testPlugins", "Runs the scripted SBT plugin tests.")
-//)
+addCommand(
+  (ComposableCommand
+    .make(
+      "project zioSbtEcosystem"
+    ) >> "scripted" >> "project zioSbtWebsite" >> "scripted" >> "project root") ?? ("testPlugins", "Runs the scripted SBT plugin tests.")
+)
 
 ThisBuild / scalaVersion       := V.Scala212
 ThisBuild / crossScalaVersions := Seq(scalaVersion.value)
