@@ -67,7 +67,6 @@ object EcosystemPlugin extends AutoPlugin {
       else Nil
 
     def enableScala3(scala3Version: String, scala213Version: String): Seq[Setting[_]] = Seq(
-      crossScalaVersions += scala3Version,
       libraryDependencies ++= {
         if (scalaVersion.value == scala3Version)
           Seq("com.github.ghik" % s"silencer-lib_$scala213Version" % V.SilencerVersion % Provided)
@@ -210,20 +209,20 @@ object EcosystemPlugin extends AutoPlugin {
         Keys.name               := name,
         Keys.scalaVersion       := scalaVersion,
         Keys.crossScalaVersions := crossScalaVersions,
-        scalacOptions ++= stdOptions ++ extraOptions(scalaVersion, optimize = !isSnapshot.value),
+        scalacOptions ++= stdOptions ++ extraOptions(Keys.scalaVersion.value, optimize = !isSnapshot.value),
         Compile / console / scalacOptions ~= {
           _.filterNot(Set("-Xfatal-warnings"))
         },
         libraryDependencies ++= {
-          if (!scalaVersion.startsWith("3")) {
+          if (!Keys.scalaVersion.value.startsWith("3")) {
             (if (enableSilencer) silencerModules else Seq.empty) ++
               (if (enableKindProjector) Seq(kindProjectorModule) else Seq.empty)
           } else Seq.empty
         },
-        semanticdbEnabled := !scalaVersion.startsWith("3"),
+        semanticdbEnabled := !Keys.scalaVersion.value.startsWith("3"),
         semanticdbOptions += "-P:semanticdb:synthetics:on",
         semanticdbVersion                      := scalafixSemanticdb.revision, // use Scalafix compatible version
-        ThisBuild / scalafixScalaBinaryVersion := CrossVersion.binaryScalaVersion(scalaVersion),
+        ThisBuild / scalafixScalaBinaryVersion := CrossVersion.binaryScalaVersion(Keys.scalaVersion.value),
         ThisBuild / scalafixDependencies ++= List(
           "com.github.liancheng" %% "organize-imports" % V.OrganizeImportsVersion,
           "com.github.vovapolu"  %% "scaluzzi"         % V.ScaluzziVersion
@@ -232,8 +231,13 @@ object EcosystemPlugin extends AutoPlugin {
         incOptions ~= (_.withLogRecompileOnMacro(false)),
         autoAPIMappings := true
         //      unusedCompileDependenciesFilter -= moduleFilter("org.scala-js", "scalajs-library")
-      ) ++ (if (enableCrossProject) crossProjectSettings else Seq.empty) ++ buildInfoSettings(packageName)
-
+      ) ++ (if (enableCrossProject) crossProjectSettings else Seq.empty) ++ buildInfoSettings(packageName) ++ {
+        crossScalaVersions.find(_.startsWith("3")) match {
+          case Some(version) =>
+            enableScala3(version, crossScalaVersions.find(_.startsWith("2.13")).getOrElse(Defaults.scala213))
+          case None => Seq.empty
+        }
+      }
 //    val scalaReflectTestSettings: List[Setting[_]] = List(
 //      libraryDependencies ++= {
 //        if (scalaVersion.value == Scala3)
