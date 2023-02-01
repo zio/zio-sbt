@@ -71,8 +71,8 @@ object Commands {
 
     val quietOn: ComposableCommand = make("set welcomeBannerEnabled := false")
 
-    val buildAll: ComposableCommand =
-      quietOn >> "project /" >> "++build" >> quietOff ?? ("build-all", s"Builds all modules for all defined Scala cross versions.")
+//    val buildAll: ComposableCommand =
+//      (quietOn >> "project /" >> "++build") ?? ("build-all", s"Builds all modules for all defined Scala cross versions.")
 
     def setScalaVersion(scalaVersion: String): ComposableCommand = make(s"++$scalaVersion")
 
@@ -80,33 +80,32 @@ object Commands {
       ComposableCommand.make(s"scalafix ${args}".trim()) >> s"Test / scalafix ${args}".trim()
 
     val fix: ComposableCommand =
-      quietOn >> scalafix() >> quietOff ?? ("fix", "Fixes source files using using scalafix")
+      quietOn >> scalafix() ?? ("fix", "Fixes source files using using scalafix")
 
     val fixLint: ComposableCommand =
-      quietOn >> scalafix("--check") >> quietOff
+      quietOn >> scalafix("--check")
 
     val fmt: ComposableCommand =
-      quietOn >> "scalafmtSbt" >> "+scalafmt" >> "+Test / scalafmt" >> quietOff ?? ("fmt", "Formats source files using scalafmt.")
+      (quietOn >> "scalafmtSbt" >> "+scalafmt" >> "+Test / scalafmt") ?? ("fmt", "Formats source files using scalafmt.")
 
     val lint: ComposableCommand =
-      quietOn >> "enableStrictCompile" >> "+scalafmtSbtCheck" >> "+scalafmtCheckAll" >> "+headerCheckAll" >> fixLint >> "disableStrictCompile" >> quietOff ?? ("lint", "Verifies that all source files are properly formatted, have the correct license headers and have had all scalafix rules applied.")
+      (quietOn >> "enableStrictCompile" >> "+scalafmtSbtCheck" >> "+scalafmtCheckAll" >> "+headerCheckAll" >> fixLint >> "disableStrictCompile") ?? ("lint", "Verifies that all source files are properly formatted, have the correct license headers and have had all scalafix rules applied.")
 
     val prepare: ComposableCommand =
-      quietOn >> "+headerCreateAll" >> "+scalafmtSbt" >> "+scalafmt" >> "+Test / scalafmt" >> fix >> quietOff ?? ("prepare", "Prepares sources by applying scalafmt, adding missing license headers and running scalafix.")
+      (quietOn >> "+headerCreateAll" >> "+scalafmtSbt" >> "+scalafmt" >> "+Test / scalafmt" >> fix) ?? ("prepare", "Prepares sources by applying scalafmt, adding missing license headers and running scalafix.")
 
     val publishAll: ComposableCommand =
-      quietOn >> "project /" >> "+publishSigned" >> quietOff ?? ("publish-all", "Signs and publishes all artifacts to Maven Central.")
+      (quietOn >> "project /" >> "+publishSigned") ?? ("publish-all", "Signs and publishes all artifacts to Maven Central.")
 
     val site: ComposableCommand =
-      quietOn >> "docs/clean" >> "docs/docusaurusCreateSite" >> quietOff ?? ("site", "Builds the documentation microsite.")
+      (quietOn >> "docs/clean" >> "docs/docusaurusCreateSite") ?? ("site", "Builds the documentation microsite.")
 
     val makeHelp: ListMap[String, String] = ListMap(
       lint.toItem,
       fmt.toItem,
       fix.toItem,
       prepare.toItem,
-      buildAll.toItem,
-      site.toItem,
+//      buildAll.toItem,
       prepare.toItem,
       "quiet" -> "`quite on` mutes the welcome banner whilst `quiet off` un-mutes it.",
       publishAll.toItem
@@ -138,9 +137,8 @@ object Commands {
       quiet,
       lint.toCommand,
       prepare.toCommand,
-      buildAll.toCommand,
-      publishAll.toCommand,
-      site.toCommand
+//      buildAll.toCommand,
+      publishAll.toCommand
     )
   )
 }

@@ -16,6 +16,8 @@
 
 package zio.sbt
 
+import scala.collection.immutable.ListMap
+
 import org.scalafmt.sbt.ScalafmtPlugin
 import sbt.Keys.*
 import sbt.{Def, *}
@@ -271,16 +273,16 @@ object EcosystemPlugin extends AutoPlugin {
         buildInfoPackage := packageName
       )
 
-//    def addCommand(commandString: List[String], name: String, description: String): Seq[Setting[_]] = {
-//      val cCommand = Commands.ComposableCommand(commandString, name, description)
-//      addCommand(cCommand)
-//    }
+    def addCommand(commandString: List[String], name: String, description: String): Seq[Setting[_]] = {
+      val cCommand = Commands.ComposableCommand(commandString, name, description)
+      addCommand(cCommand)
+    }
 
-//    def addCommand(command: Commands.ComposableCommand): Seq[Setting[_]] =
-//      Seq(
-//        commands += command.toCommand,
-//        usefulTasksAndSettings += command.toItem
-//      )
+    def addCommand(command: Commands.ComposableCommand): Seq[Setting[_]] =
+      Seq(
+        commands += command.toCommand,
+        usefulTasksAndSettings += command.toItem
+      )
 
     object Defaults {
       val scala3   = "3.2.1"
@@ -294,25 +296,25 @@ object EcosystemPlugin extends AutoPlugin {
     lazy val scala212: SettingKey[String] = settingKey[String]("Scala 2.12 version")
     lazy val scala213: SettingKey[String] = settingKey[String]("Scala 2.13 version")
 
-//    val welcomeBannerEnabled: SettingKey[Boolean] =
-//      settingKey[Boolean]("Indicates whether or not to enable the welcome banner.")
+    val welcomeBannerEnabled: SettingKey[Boolean] =
+      settingKey[Boolean]("Indicates whether or not to enable the welcome banner.")
 
-//    val usefulTasksAndSettings: SettingKey[Map[String, String]] = settingKey[Map[String, String]](
-//      "A map of useful tasks and settings that will be displayed as part of the welcome banner."
-//    )
+    val usefulTasksAndSettings: SettingKey[Map[String, String]] = settingKey[Map[String, String]](
+      "A map of useful tasks and settings that will be displayed as part of the welcome banner."
+    )
 
   }
 
   import autoImport.*
 
-//  private val defaultTasksAndSettings: Map[String, String] = Commands.ComposableCommand.makeHelp ++ ListMap(
+  private val defaultTasksAndSettings: Map[String, String] = Commands.ComposableCommand.makeHelp ++ ListMap(
 //    "build"                                       -> "Lints source files then strictly compiles and runs tests.",
-//    "enableStrictCompile"                         -> "Enables strict compilation e.g. warnings become errors.",
-//    "disableStrictCompile"                        -> "Disables strict compilation e.g. warnings are no longer treated as errors.",
-//    "~compile"                                    -> "Compiles all modules (file-watch enabled)",
-//    "test"                                        -> "Runs all tests",
-//    """testOnly *.YourSpec -- -t \"YourLabel\"""" -> "Only runs tests with matching term e.g."
-//  )
+    "enableStrictCompile"                         -> "Enables strict compilation e.g. warnings become errors.",
+    "disableStrictCompile"                        -> "Disables strict compilation e.g. warnings are no longer treated as errors.",
+    "~compile"                                    -> "Compiles all modules (file-watch enabled)",
+    "test"                                        -> "Runs all tests",
+    """testOnly *.YourSpec -- -t \"YourLabel\"""" -> "Only runs tests with matching term e.g."
+  )
 
 //  def stdSettings: Seq[Setting[_]] = Seq.empty
 //    Seq(
@@ -333,31 +335,34 @@ object EcosystemPlugin extends AutoPlugin {
 //      autoAPIMappings := true
 //    )
 
-//  def welcomeMessage: Setting[String] =
-//    onLoadMessage := {
-//      if (welcomeBannerEnabled.value) {
-//        import scala.Console
-//
-//        val maxLen = usefulTasksAndSettings.value.keys.map(_.length).max
-//
-//        def normalizedPadding(s: String) = " " * (maxLen - s.length)
-//
-//        def item(text: String): String = s"${Console.GREEN}> ${Console.CYAN}$text${Console.RESET}"
-//
-//        s"""|${Banner.trueColor(s"${name.value} v.${version.value}")}
-//            |Useful sbt tasks:
-//            |${usefulTasksAndSettings.value.map { case (task, description) =>
-//          s"${item(task)} ${normalizedPadding(task)}${description}"
-//        }
-//          .mkString("\n")}
-//      """.stripMargin
-//
-//      } else ""
-//    }
+  def welcomeMessage: Setting[String] =
+    onLoadMessage := {
+      if (welcomeBannerEnabled.value) {
+        import scala.Console
 
-//  override def projectSettings: Seq[Setting[_]] =
-//    stdSettings
-//    ++ Tasks.settings ++ Commands.settings ++ welcomeMessage
+        val maxLen = usefulTasksAndSettings.value.keys.map(_.length).max
+
+        def normalizedPadding(s: String) = " " * (maxLen - s.length)
+
+        def item(text: String): String = s"${Console.GREEN}> ${Console.CYAN}$text${Console.RESET}"
+
+        s"""|${Banner.trueColor(s"${name.value} v.${version.value}")}
+            |Useful sbt tasks:
+            |${usefulTasksAndSettings.value.map { case (task, description) =>
+          s"${item(task)} ${normalizedPadding(task)}${description}"
+        }
+          .mkString("\n")}
+      """.stripMargin
+
+      } else ""
+    }
+
+  override def projectSettings: Seq[Setting[_]] =
+    Commands.settings ++ welcomeMessage ++ Seq(
+      usefulTasksAndSettings := defaultTasksAndSettings,
+      welcomeBannerEnabled   := true
+    )
+//    stdSettings ++ Tasks.settings
 
   override def globalSettings: Seq[Def.Setting[_]] =
     super.globalSettings ++ Seq(
