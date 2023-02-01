@@ -72,7 +72,8 @@ lazy val zioSbtWebsite =
       stdSettings(
         name = "zio-sbt-website",
         packageName = "zio.sbt.website",
-        scalaVersion = V.Scala3
+        scalaVersion = V.Scala212,
+        crossScalaVersions = Seq(V.Scala212)
       )
     )
     .settings(
@@ -92,7 +93,8 @@ lazy val zioSbtEcosystem =
       stdSettings(
         name = "zio-sbt-ecosystem",
         packageName = "zio.sbt.ecosystem",
-        scalaVersion = V.Scala3
+        scalaVersion = V.Scala212,
+        crossScalaVersions = Seq(V.Scala212)
       )
     )
     .settings(

@@ -201,13 +201,15 @@ object EcosystemPlugin extends AutoPlugin {
       name: String,
       packageName: String,
       scalaVersion: String,
+      crossScalaVersions: Seq[String],
       enableSilencer: Boolean = false,
       enableKindProjector: Boolean = false,
-      enableCrossProject: Boolean = true
+      enableCrossProject: Boolean = false
     ): Seq[Setting[_]] =
       Seq(
-        Keys.name         := name,
-        Keys.scalaVersion := scalaVersion,
+        Keys.name               := name,
+        Keys.scalaVersion       := scalaVersion,
+        Keys.crossScalaVersions := crossScalaVersions,
         scalacOptions ++= stdOptions ++ extraOptions(scalaVersion, optimize = !isSnapshot.value),
         Compile / console / scalacOptions ~= {
           _.filterNot(Set("-Xfatal-warnings"))
