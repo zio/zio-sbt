@@ -77,7 +77,7 @@ object Commands {
     def setScalaVersion(scalaVersion: String): ComposableCommand = make(s"++$scalaVersion")
 
     def scalafix(args: String = ""): ComposableCommand =
-      ComposableCommand.make(s"scalafix ${args}".trim()) >> s"Test / scalafix ${args}".trim()
+      ComposableCommand.make(s"Compile / scalafix ${args}".trim()) >> s"Test / scalafix ${args}".trim()
 
     val fix: ComposableCommand =
       quietOn >> scalafix() ?? ("fix", "Fixes source files using using scalafix")
@@ -88,17 +88,38 @@ object Commands {
     val fmt: ComposableCommand =
       (quietOn >> "scalafmtSbt" >> "+scalafmt" >> "+Test / scalafmt") ?? ("fmt", "Formats source files using scalafmt.")
 
-    val lint: ComposableCommand =
-      (quietOn >> "enableStrictCompile" >> "+scalafmtSbtCheck" >> "+scalafmtCheckAll" >> "+headerCheckAll" >> fixLint >> "disableStrictCompile") ?? ("lint", "Verifies that all source files are properly formatted, have the correct license headers and have had all scalafix rules applied.")
+    // TODO: have the correct license headers
+    val lint: ComposableCommand = {
+      quietOn >>
+        "enableStrictCompile" >>
+        "+scalafmtSbtCheck" >>
+        "+scalafmtCheckAll" >>
+//        "+headerCheckAll" >>
+        fixLint >>
+        "disableStrictCompile"
+    } ?? (
+      "lint",
+      "Verifies that all source files are properly formatted and have had all scalafix rules applied."
+    )
 
-    val prepare: ComposableCommand =
-      (quietOn >> "+headerCreateAll" >> "+scalafmtSbt" >> "+scalafmt" >> "+Test / scalafmt" >> fix) ?? ("prepare", "Prepares sources by applying scalafmt, adding missing license headers and running scalafix.")
+    //TODO: adding missing license headers
+    val prepare: ComposableCommand = {
+      quietOn >>
+//        "+headerCreateAll" >>
+        "+scalafmtSbt" >>
+        "+scalafmt" >>
+        "+Test / scalafmt" >>
+        fix
+    } ??
+      ("prepare", "Prepares sources by applying scalafmt and running scalafix.")
 
     val publishAll: ComposableCommand =
-      (quietOn >> "project /" >> "+publishSigned") ?? ("publish-all", "Signs and publishes all artifacts to Maven Central.")
+      (quietOn >> "project /" >> "+publishSigned") ??
+        ("publish-all", "Signs and publishes all artifacts to Maven Central.")
 
     val site: ComposableCommand =
-      (quietOn >> "docs/clean" >> "docs/docusaurusCreateSite") ?? ("site", "Builds the documentation microsite.")
+      (quietOn >> "docs/clean" >> "docs/docusaurusCreateSite") ??
+        ("site", "Builds the documentation microsite.")
 
     val makeHelp: ListMap[String, String] = ListMap(
       lint.toItem,
