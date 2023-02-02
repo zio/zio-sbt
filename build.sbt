@@ -4,12 +4,12 @@ publishMavenStyle := true
 
 enablePlugins(EcosystemPlugin)
 
-//addCommand(
-//  (ComposableCommand
-//    .make(
-//      "project zioSbtEcosystem"
-//    ) >> "scripted" >> "project zioSbtWebsite" >> "scripted" >> "project root") ?? ("testPlugins", "Runs the scripted SBT plugin tests.")
-//)
+addCommand(
+  (ComposableCommand
+    .make(
+      "project zioSbtEcosystem"
+    ) >> "scripted" >> "project zioSbtWebsite" >> "scripted" >> "project root") ?? ("testPlugins", "Runs the scripted SBT plugin tests.")
+)
 
 ThisBuild / scalaVersion       := V.Scala212
 ThisBuild / crossScalaVersions := Seq(scalaVersion.value)
@@ -68,12 +68,16 @@ lazy val tests =
 lazy val zioSbtWebsite =
   project
     .in(file("zio-sbt-website"))
-    .settings(stdSettings(V.Scala3))
-    .settings(buildInfoSettings("zio.sbt"))
     .settings(
-      name             := "zio-sbt-website",
-      headerEndYear    := Some(2023),
-      buildInfoPackage := "zio.sbt.website",
+      stdSettings(
+        name = "zio-sbt-website",
+        packageName = "zio.sbt.website",
+        scalaVersion = V.Scala212,
+        crossScalaVersions = Seq(V.Scala212)
+      )
+    )
+    .settings(
+      headerEndYear := Some(2023),
       scriptedLaunchOpts := {
         scriptedLaunchOpts.value ++
           Seq("-Xmx1024M", "-Dplugin.version=" + version.value)
@@ -85,10 +89,15 @@ lazy val zioSbtWebsite =
 lazy val zioSbtEcosystem =
   project
     .in(file("zio-sbt-ecosystem"))
-    .settings(stdSettings(V.Scala3))
-    .settings(buildInfoSettings("zio.sbt.ecosystem"))
     .settings(
-      name          := "zio-sbt-ecosystem",
+      stdSettings(
+        name = "zio-sbt-ecosystem",
+        packageName = "zio.sbt.ecosystem",
+        scalaVersion = V.Scala212,
+        crossScalaVersions = Seq(V.Scala212)
+      )
+    )
+    .settings(
       headerEndYear := Some(2023),
       scriptedLaunchOpts := {
         scriptedLaunchOpts.value ++

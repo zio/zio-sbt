@@ -16,6 +16,8 @@
 
 package zio.sbt
 
+import scala.collection.immutable.ListMap
+
 import org.scalafmt.sbt.ScalafmtPlugin
 import sbt.Keys.*
 import sbt.{Def, *}
@@ -66,8 +68,7 @@ object EcosystemPlugin extends AutoPlugin {
         )
       else Nil
 
-    def dottySettings(scala3Version: String, scala213Version: String): Seq[Setting[_]] = Seq(
-      crossScalaVersions += scala3Version,
+    def enableScala3(scala3Version: String, scala213Version: String): Seq[Setting[_]] = Seq(
       libraryDependencies ++= {
         if (scalaVersion.value == scala3Version)
           Seq("com.github.ghik" % s"silencer-lib_$scala213Version" % V.SilencerVersion % Provided)
@@ -198,32 +199,47 @@ object EcosystemPlugin extends AutoPlugin {
       compilerPlugin("org.typelevel" %% "kind-projector" % V.KindProjectorVersion cross CrossVersion.full)
 
     def stdSettings(
-      scala3Version: String,
+      name: String,
+      packageName: String,
+      scalaVersion: String,
+      crossScalaVersions: Seq[String],
       enableSilencer: Boolean = false,
-      enableKindProjector: Boolean = false
-    ): Seq[Setting[_]] = Seq(
-      scalacOptions ++= stdOptions ++ extraOptions(scalaVersion.value, optimize = !isSnapshot.value),
-      Compile / console / scalacOptions ~= { _.filterNot(Set("-Xfatal-warnings")) },
-      libraryDependencies ++= {
-        if (scalaVersion.value != scala3Version) {
-          (if (enableSilencer) silencerModules else Seq.empty) ++
-            (if (enableKindProjector) Seq(kindProjectorModule) else Seq.empty)
-        } else Seq.empty
-      },
-      semanticdbEnabled := scalaVersion.value != scala3Version, // enable SemanticDB
-      semanticdbOptions += "-P:semanticdb:synthetics:on",
-      semanticdbVersion                      := scalafixSemanticdb.revision, // use Scalafix compatible version
-      ThisBuild / scalafixScalaBinaryVersion := CrossVersion.binaryScalaVersion(scalaVersion.value),
-      ThisBuild / scalafixDependencies ++= List(
-        "com.github.liancheng" %% "organize-imports" % V.OrganizeImportsVersion,
-        "com.github.vovapolu"  %% "scaluzzi"         % V.ScaluzziVersion
-      ),
-      Test / parallelExecution := true,
-      incOptions ~= (_.withLogRecompileOnMacro(false)),
-      autoAPIMappings := true
-//      unusedCompileDependenciesFilter -= moduleFilter("org.scala-js", "scalajs-library")
-    )
-
+      enableKindProjector: Boolean = false,
+      enableCrossProject: Boolean = false
+    ): Seq[Setting[_]] =
+      Seq(
+        Keys.name               := name,
+        Keys.scalaVersion       := scalaVersion,
+        Keys.crossScalaVersions := crossScalaVersions,
+        scalacOptions ++= stdOptions ++ extraOptions(Keys.scalaVersion.value, optimize = !isSnapshot.value),
+        Compile / console / scalacOptions ~= {
+          _.filterNot(Set("-Xfatal-warnings"))
+        },
+        libraryDependencies ++= {
+          if (!Keys.scalaVersion.value.startsWith("3")) {
+            (if (enableSilencer) silencerModules else Seq.empty) ++
+              (if (enableKindProjector) Seq(kindProjectorModule) else Seq.empty)
+          } else Seq.empty
+        },
+        semanticdbEnabled := !Keys.scalaVersion.value.startsWith("3"),
+        semanticdbOptions += "-P:semanticdb:synthetics:on",
+        semanticdbVersion                      := scalafixSemanticdb.revision, // use Scalafix compatible version
+        ThisBuild / scalafixScalaBinaryVersion := CrossVersion.binaryScalaVersion(Keys.scalaVersion.value),
+        ThisBuild / scalafixDependencies ++= List(
+          "com.github.liancheng" %% "organize-imports" % V.OrganizeImportsVersion,
+          "com.github.vovapolu"  %% "scaluzzi"         % V.ScaluzziVersion
+        ),
+        Test / parallelExecution := true,
+        incOptions ~= (_.withLogRecompileOnMacro(false)),
+        autoAPIMappings := true
+        //      unusedCompileDependenciesFilter -= moduleFilter("org.scala-js", "scalajs-library")
+      ) ++ (if (enableCrossProject) crossProjectSettings else Seq.empty) ++ buildInfoSettings(packageName) ++ {
+        crossScalaVersions.find(_.startsWith("3")) match {
+          case Some(version) =>
+            enableScala3(version, crossScalaVersions.find(_.startsWith("2.13")).getOrElse(Defaults.scala213))
+          case None => Seq.empty
+        }
+      }
 //    val scalaReflectTestSettings: List[Setting[_]] = List(
 //      libraryDependencies ++= {
 //        if (scalaVersion.value == Scala3)
@@ -257,16 +273,16 @@ object EcosystemPlugin extends AutoPlugin {
         buildInfoPackage := packageName
       )
 
-//    def addCommand(commandString: List[String], name: String, description: String): Seq[Setting[_]] = {
-//      val cCommand = Commands.ComposableCommand(commandString, name, description)
-//      addCommand(cCommand)
-//    }
+    def addCommand(commandString: List[String], name: String, description: String): Seq[Setting[_]] = {
+      val cCommand = Commands.ComposableCommand(commandString, name, description)
+      addCommand(cCommand)
+    }
 
-//    def addCommand(command: Commands.ComposableCommand): Seq[Setting[_]] =
-//      Seq(
-//        commands += command.toCommand,
-//        usefulTasksAndSettings += command.toItem
-//      )
+    def addCommand(command: Commands.ComposableCommand): Seq[Setting[_]] =
+      Seq(
+        commands += command.toCommand,
+        usefulTasksAndSettings += command.toItem
+      )
 
     object Defaults {
       val scala3   = "3.2.1"
@@ -280,25 +296,25 @@ object EcosystemPlugin extends AutoPlugin {
     lazy val scala212: SettingKey[String] = settingKey[String]("Scala 2.12 version")
     lazy val scala213: SettingKey[String] = settingKey[String]("Scala 2.13 version")
 
-//    val welcomeBannerEnabled: SettingKey[Boolean] =
-//      settingKey[Boolean]("Indicates whether or not to enable the welcome banner.")
+    val welcomeBannerEnabled: SettingKey[Boolean] =
+      settingKey[Boolean]("Indicates whether or not to enable the welcome banner.")
 
-//    val usefulTasksAndSettings: SettingKey[Map[String, String]] = settingKey[Map[String, String]](
-//      "A map of useful tasks and settings that will be displayed as part of the welcome banner."
-//    )
+    val usefulTasksAndSettings: SettingKey[Map[String, String]] = settingKey[Map[String, String]](
+      "A map of useful tasks and settings that will be displayed as part of the welcome banner."
+    )
 
   }
 
   import autoImport.*
 
-//  private val defaultTasksAndSettings: Map[String, String] = Commands.ComposableCommand.makeHelp ++ ListMap(
+  private val defaultTasksAndSettings: Map[String, String] = Commands.ComposableCommand.makeHelp ++ ListMap(
 //    "build"                                       -> "Lints source files then strictly compiles and runs tests.",
-//    "enableStrictCompile"                         -> "Enables strict compilation e.g. warnings become errors.",
-//    "disableStrictCompile"                        -> "Disables strict compilation e.g. warnings are no longer treated as errors.",
-//    "~compile"                                    -> "Compiles all modules (file-watch enabled)",
-//    "test"                                        -> "Runs all tests",
-//    """testOnly *.YourSpec -- -t \"YourLabel\"""" -> "Only runs tests with matching term e.g."
-//  )
+    "enableStrictCompile"                         -> "Enables strict compilation e.g. warnings become errors.",
+    "disableStrictCompile"                        -> "Disables strict compilation e.g. warnings are no longer treated as errors.",
+    "~compile"                                    -> "Compiles all modules (file-watch enabled)",
+    "test"                                        -> "Runs all tests",
+    """testOnly *.YourSpec -- -t \"YourLabel\"""" -> "Only runs tests with matching term e.g."
+  )
 
 //  def stdSettings: Seq[Setting[_]] = Seq.empty
 //    Seq(
@@ -319,31 +335,34 @@ object EcosystemPlugin extends AutoPlugin {
 //      autoAPIMappings := true
 //    )
 
-//  def welcomeMessage: Setting[String] =
-//    onLoadMessage := {
-//      if (welcomeBannerEnabled.value) {
-//        import scala.Console
-//
-//        val maxLen = usefulTasksAndSettings.value.keys.map(_.length).max
-//
-//        def normalizedPadding(s: String) = " " * (maxLen - s.length)
-//
-//        def item(text: String): String = s"${Console.GREEN}> ${Console.CYAN}$text${Console.RESET}"
-//
-//        s"""|${Banner.trueColor(s"${name.value} v.${version.value}")}
-//            |Useful sbt tasks:
-//            |${usefulTasksAndSettings.value.map { case (task, description) =>
-//          s"${item(task)} ${normalizedPadding(task)}${description}"
-//        }
-//          .mkString("\n")}
-//      """.stripMargin
-//
-//      } else ""
-//    }
+  def welcomeMessage: Setting[String] =
+    onLoadMessage := {
+      if (welcomeBannerEnabled.value) {
+        import scala.Console
 
-//  override def projectSettings: Seq[Setting[_]] =
-//    stdSettings
-//    ++ Tasks.settings ++ Commands.settings ++ welcomeMessage
+        val maxLen = usefulTasksAndSettings.value.keys.map(_.length).max
+
+        def normalizedPadding(s: String) = " " * (maxLen - s.length)
+
+        def item(text: String): String = s"${Console.GREEN}> ${Console.CYAN}$text${Console.RESET}"
+
+        s"""|${Banner.trueColor(s"${name.value} v.${version.value}")}
+            |Useful sbt tasks:
+            |${usefulTasksAndSettings.value.map { case (task, description) =>
+          s"${item(task)} ${normalizedPadding(task)}${description}"
+        }
+          .mkString("\n")}
+      """.stripMargin
+
+      } else ""
+    }
+
+  override def projectSettings: Seq[Setting[_]] =
+    Commands.settings ++ welcomeMessage ++ Seq(
+      usefulTasksAndSettings := defaultTasksAndSettings,
+      welcomeBannerEnabled   := true
+    )
+//    stdSettings ++ Tasks.settings
 
   override def globalSettings: Seq[Def.Setting[_]] =
     super.globalSettings ++ Seq(
@@ -351,6 +370,7 @@ object EcosystemPlugin extends AutoPlugin {
       scala211     := Defaults.scala211,
       scala212     := Defaults.scala212,
       scala213     := Defaults.scala213,
-      scalaVersion := Defaults.scala213
+      scalaVersion := Defaults.scala213,
+      licenses     := List("Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0"))
     )
 }
