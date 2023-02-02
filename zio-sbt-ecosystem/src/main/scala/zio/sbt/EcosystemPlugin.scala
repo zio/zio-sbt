@@ -373,12 +373,12 @@ object EcosystemPlugin extends AutoPlugin {
 
   override def globalSettings: Seq[Def.Setting[_]] =
     super.globalSettings ++ Seq(
-      scala3       := Defaults.scala3,
-      scala211     := Defaults.scala211,
-      scala212     := Defaults.scala212,
-      scala213     := Defaults.scala213,
-      scalaVersion := Defaults.scala213,
-      licenses := License.Apache2,
+      scala3        := Defaults.scala3,
+      scala211      := Defaults.scala211,
+      scala212      := Defaults.scala212,
+      scala213      := Defaults.scala213,
+      scalaVersion  := Defaults.scala213,
+      licenses      := Seq(License.Apache2),
       pgpPassphrase := sys.env.get("PGP_PASSPHRASE").map(_.toArray),
       pgpPublicRing := file("/tmp/public.asc"),
       pgpSecretRing := file("/tmp/secret.asc")
