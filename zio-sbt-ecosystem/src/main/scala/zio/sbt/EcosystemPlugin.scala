@@ -16,8 +16,9 @@
 
 package zio.sbt
 
-import scala.collection.immutable.ListMap
+import com.jsuereth.sbtpgp.SbtPgp.autoImport.{pgpPassphrase, pgpPublicRing, pgpSecretRing}
 
+import scala.collection.immutable.ListMap
 import org.scalafmt.sbt.ScalafmtPlugin
 import sbt.Keys.*
 import sbt.{Def, *}
@@ -366,11 +367,14 @@ object EcosystemPlugin extends AutoPlugin {
 
   override def globalSettings: Seq[Def.Setting[_]] =
     super.globalSettings ++ Seq(
-      scala3       := Defaults.scala3,
-      scala211     := Defaults.scala211,
-      scala212     := Defaults.scala212,
-      scala213     := Defaults.scala213,
-      scalaVersion := Defaults.scala213,
-      licenses     := List("Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0"))
+      scala3        := Defaults.scala3,
+      scala211      := Defaults.scala211,
+      scala212      := Defaults.scala212,
+      scala213      := Defaults.scala213,
+      scalaVersion  := Defaults.scala213,
+      licenses      := List("Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")),
+      pgpPassphrase := sys.env.get("PGP_PASSPHRASE").map(_.toArray),
+      pgpPublicRing := file("/tmp/public.asc"),
+      pgpSecretRing := file("/tmp/secret.asc")
     )
 }

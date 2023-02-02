@@ -32,10 +32,7 @@ inThisBuild(
         homepage.value.get,
         "scm:git:git@github.com:zio/zio-sbt.git"
       )
-    ),
-    pgpPassphrase := sys.env.get("PGP_PASSWORD").map(_.toArray),
-    pgpPublicRing := file("/tmp/public.asc"),
-    pgpSecretRing := file("/tmp/secret.asc")
+    )
   )
 )
 
