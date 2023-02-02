@@ -16,9 +16,9 @@
 
 package zio.sbt
 
-import com.jsuereth.sbtpgp.SbtPgp.autoImport.{pgpPassphrase, pgpPublicRing, pgpSecretRing}
-
 import scala.collection.immutable.ListMap
+
+import com.jsuereth.sbtpgp.SbtPgp.autoImport.{pgpPassphrase, pgpPublicRing, pgpSecretRing}
 import org.scalafmt.sbt.ScalafmtPlugin
 import sbt.Keys.*
 import sbt.{Def, *}
@@ -70,21 +70,32 @@ object EcosystemPlugin extends AutoPlugin {
       else Nil
 
     def enableScala3(scala3Version: String, scala213Version: String): Seq[Setting[_]] = Seq(
+      crossScalaVersions ++= {
+        if (crossScalaVersions.value.contains(scala3Version)) Seq.empty else Seq(scala3Version)
+      },
       libraryDependencies ++= {
-        if (scalaVersion.value == scala3Version)
-          Seq("com.github.ghik" % s"silencer-lib_$scala213Version" % V.SilencerVersion % Provided)
+        if (Keys.scalaVersion.value.startsWith("3"))
+          Seq(
+            "com.github.ghik" % s"silencer-lib_$scala213Version" % V.SilencerVersion % Provided
+          )
         else
           Seq.empty
       },
+      scalacOptions ++= {
+        if (Keys.scalaVersion.value.startsWith("3"))
+          Seq("-noindent")
+        else
+          Seq()
+      },
       scalacOptions --= {
-        if (scalaVersion.value == scala3Version)
+        if (Keys.scalaVersion.value.startsWith("3"))
           Seq("-Xfatal-warnings")
         else
           Seq()
       },
       Compile / doc / sources := {
         val old = (Compile / doc / sources).value
-        if (scalaVersion.value == scala3Version) {
+        if (Keys.scalaVersion.value.startsWith("3")) {
           Nil
         } else {
           old
@@ -92,7 +103,7 @@ object EcosystemPlugin extends AutoPlugin {
       },
       Test / parallelExecution := {
         val old = (Test / parallelExecution).value
-        if (scalaVersion.value == scala3Version) {
+        if (Keys.scalaVersion.value.startsWith("3")) {
           false
         } else {
           old
@@ -241,14 +252,15 @@ object EcosystemPlugin extends AutoPlugin {
           case None => Seq.empty
         }
       }
-//    val scalaReflectTestSettings: List[Setting[_]] = List(
-//      libraryDependencies ++= {
-//        if (scalaVersion.value == Scala3)
-//          Seq("org.scala-lang" % "scala-reflect" % Scala213           % Test)
-//        else
-//          Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value % Test)
-//      }
-//    )
+
+    def scalaReflectTestSettings(scala213Version: String): List[Setting[_]] = List(
+      libraryDependencies ++= {
+        if (scalaVersion.value.startsWith("3"))
+          Seq("org.scala-lang" % "scala-reflect" % scala213Version % Test)
+        else
+          Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value % Test)
+      }
+    )
 
     def enableZIO(zioVersion: String, enableTesting: Boolean = false): Seq[Def.Setting[_]] =
       Seq(libraryDependencies += "dev.zio" %% "zio" % zioVersion) ++
@@ -264,13 +276,7 @@ object EcosystemPlugin extends AutoPlugin {
 
     def buildInfoSettings(packageName: String): Seq[Setting[_ <: Object]] =
       Seq(
-        buildInfoKeys := Seq[BuildInfoKey](
-          name,
-          version,
-          scalaVersion,
-          sbtVersion,
-          isSnapshot
-        ),
+        buildInfoKeys    := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion, isSnapshot),
         buildInfoPackage := packageName
       )
 
@@ -362,17 +368,17 @@ object EcosystemPlugin extends AutoPlugin {
     Commands.settings ++ welcomeMessage ++ Seq(
       usefulTasksAndSettings := defaultTasksAndSettings,
       welcomeBannerEnabled   := true
-    )
+    ) ++ Tasks.settings
 //    stdSettings ++ Tasks.settings
 
   override def globalSettings: Seq[Def.Setting[_]] =
     super.globalSettings ++ Seq(
-      scala3        := Defaults.scala3,
-      scala211      := Defaults.scala211,
-      scala212      := Defaults.scala212,
-      scala213      := Defaults.scala213,
-      scalaVersion  := Defaults.scala213,
-      licenses      := List("Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")),
+      scala3       := Defaults.scala3,
+      scala211     := Defaults.scala211,
+      scala212     := Defaults.scala212,
+      scala213     := Defaults.scala213,
+      scalaVersion := Defaults.scala213,
+      licenses := License.Apache2,
       pgpPassphrase := sys.env.get("PGP_PASSPHRASE").map(_.toArray),
       pgpPublicRing := file("/tmp/public.asc"),
       pgpSecretRing := file("/tmp/secret.asc")
