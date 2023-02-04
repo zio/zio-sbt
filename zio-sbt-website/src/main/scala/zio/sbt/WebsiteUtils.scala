@@ -214,6 +214,11 @@ object WebsiteUtils {
         )
       )
 
+      val Lint: Step.SingleStep = Step.SingleStep(
+        name = "Lint",
+        run = Some("sbt lint")
+      )
+
       val GenerateReadme: Step.SingleStep = Step.SingleStep(
         name = "Generate Readme",
         run = Some(s"sbt ${sbtBuildOptions.mkString(" ")} docs/generateReadme")
@@ -292,6 +297,15 @@ object WebsiteUtils {
                       )
                   }
                 )
+              )
+            ),
+            Job(
+              id = "lint",
+              name = "Lint",
+              steps = Seq(
+                Checkout,
+                SetupJava,
+                Lint
               )
             ),
             Job(
