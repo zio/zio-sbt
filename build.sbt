@@ -1,16 +1,10 @@
-import V.{Scala211, Scala212}
-import zio.sbt.Commands._
+import V.Scala212
 sbtPlugin         := true
 publishMavenStyle := true
 
 enablePlugins(EcosystemPlugin)
 
-addCommand(
-  (ComposableCommand
-    .make(
-      "project zioSbtEcosystem"
-    ) >> "scripted" >> "project zioSbtWebsite" >> "scripted" >> "project root") ?? ("testPlugins", "Runs the scripted SBT plugin tests.")
-)
+addCommandAlias("test", "scripted")
 
 ThisBuild / scalaVersion       := V.Scala212
 ThisBuild / crossScalaVersions := Seq(scalaVersion.value)

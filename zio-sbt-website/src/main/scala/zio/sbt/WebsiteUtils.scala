@@ -207,6 +207,12 @@ object WebsiteUtils {
         )
       )
 
+      val Test: Step.SingleStep =
+        Step.SingleStep(
+          name = "Test",
+          run = Some("sbt 'project ${{ matrix.project }}' '++${{ matrix.scala }}' test")
+        )
+
       val SetupNodeJs: Step.SingleStep = Step.SingleStep(
         name = "Setup NodeJs",
         uses = Some(`setup-node`),
@@ -316,19 +322,16 @@ object WebsiteUtils {
               strategy = Some(
                 Strategy(
                   Map(
-                    "java"     -> List("8", "11", "17"),
-                    "scala"    -> scalaVersions,
-                    "projects" -> projects
+                    "java"    -> List("8", "11", "17"),
+                    "scala"   -> scalaVersions,
+                    "project" -> projects
                   )
                 )
               ),
               steps = Seq(
                 SetupJava,
                 Checkout,
-                Step.SingleStep(
-                  name = "Test",
-                  run = Some("sbt 'project ${{ matrix.projects }}' '++${{ matrix.scala }}' test")
-                )
+                Test
               )
             ),
             Job(
