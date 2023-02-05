@@ -75,7 +75,7 @@ jobs:
         java-version: 17
         check-latest: true
     - name: Test Modules
-      run: sbt ++${{ matrix.scala }} {{ matrix.projects }}/test
+      run: sbt ++${{ matrix.scala }} ${{ matrix.projects }}/test
   publish-docs:
     name: Publish Docs
     runs-on: ubuntu-latest
