@@ -370,7 +370,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
       val workflow = WebsiteUtils.websiteWorkflow(
         docsPublishBranch = docsPublishBranch.value,
         scalaVersions = supportedScalaVersions.value,
-        projects = buildDependencies.value.classpath.keys.map(_.project).toList.filterNot(_ == "root"),
+        projects = (buildDependencies.value.classpath.keys.map(_.project).toSet -- Set("root", "docs")).toList,
         sbtBuildOptions = sbtBuildOptions.value,
         versioning = docsVersioning.value,
         updateReadmeCondition = updateReadmeCondition.value,
