@@ -1,4 +1,5 @@
-import V.Scala212
+import Versions._
+
 sbtPlugin         := true
 publishMavenStyle := true
 
@@ -6,7 +7,7 @@ enablePlugins(EcosystemPlugin)
 
 addCommandAlias("test", "scripted")
 
-ThisBuild / scalaVersion       := V.Scala212
+ThisBuild / scalaVersion       := Scala212
 ThisBuild / crossScalaVersions := Seq(scalaVersion.value)
 
 inThisBuild(
@@ -64,8 +65,8 @@ lazy val zioSbtWebsite =
       stdSettings(
         name = "zio-sbt-website",
         packageName = "zio.sbt.website",
-        scalaVersion = V.Scala212,
-        crossScalaVersions = Seq(V.Scala212)
+        scalaVersion = Scala212,
+        crossScalaVersions = Seq(Scala212)
       )
     )
     .settings(
@@ -85,8 +86,8 @@ lazy val zioSbtEcosystem =
       stdSettings(
         name = "zio-sbt-ecosystem",
         packageName = "zio.sbt.ecosystem",
-        scalaVersion = V.Scala212,
-        crossScalaVersions = Seq(V.Scala212)
+        scalaVersion = Scala212,
+        crossScalaVersions = Seq(Scala212)
       )
     )
     .settings(
