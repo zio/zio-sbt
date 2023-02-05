@@ -56,10 +56,6 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        java:
-        - '8'
-        - '11'
-        - '17'
         scala:
         - 2.12.17
         projects:
