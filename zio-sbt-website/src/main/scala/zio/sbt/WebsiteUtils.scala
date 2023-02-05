@@ -316,8 +316,8 @@ object WebsiteUtils {
               strategy = Some(
                 Strategy(
                   Map(
-                    "java"  -> List("8", "11", "17"),
-                    "scala" -> scalaVersions,
+                    "java"     -> List("8", "11", "17"),
+                    "scala"    -> scalaVersions,
                     "projects" -> projects
                   )
                 )
@@ -327,7 +327,7 @@ object WebsiteUtils {
                 Step.SingleStep(
                   name = "Test Modules",
                   run = Some("sbt ++${{ matrix.scala }} {{ matrix.projects }}/test")
-                ) 
+                )
               )
             ),
             Job(
