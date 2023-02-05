@@ -1,4 +1,4 @@
-import V.Scala211
+import V.{Scala211, Scala212}
 import zio.sbt.Commands._
 sbtPlugin         := true
 publishMavenStyle := true
@@ -128,7 +128,7 @@ lazy val docs = project
          |sbt testPlugin
          |```
          |""".stripMargin,
-    supportedScalaVersions := List(Scala211)
+    supportedScalaVersions := List(Scala212)
   )
   .dependsOn(zioSbtWebsite, zioSbtEcosystem)
   .enablePlugins(WebsitePlugin)

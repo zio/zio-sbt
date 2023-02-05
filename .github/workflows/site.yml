@@ -61,7 +61,7 @@ jobs:
         - '11'
         - '17'
         scala:
-        - 2.11.12
+        - 2.12.17
         projects:
         - docs
         - tests
