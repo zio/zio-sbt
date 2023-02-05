@@ -51,6 +51,31 @@ jobs:
         check-latest: true
     - name: Lint
       run: sbt lint
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        java:
+        - '8'
+        - '11'
+        - '17'
+        scala:
+        - 2.11.12
+        projects:
+        - docs
+        - tests
+        - zioSbtEcosystem
+        - zioSbtWebsite
+    steps:
+    - name: Setup Scala
+      uses: actions/setup-java@v3.9.0
+      with:
+        distribution: temurin
+        java-version: 17
+        check-latest: true
+    - name: Test Modules
+      run: sbt ++${{ matrix.scala }} {{ matrix.projects }}/test
   publish-docs:
     name: Publish Docs
     runs-on: ubuntu-latest
