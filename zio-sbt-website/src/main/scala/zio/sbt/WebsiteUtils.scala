@@ -324,8 +324,9 @@ object WebsiteUtils {
               ),
               steps = Seq(
                 SetupJava,
+                Checkout,
                 Step.SingleStep(
-                  name = "Test Modules",
+                  name = "Test",
                   run = Some("sbt 'project ${{ matrix.projects }}' '++${{ matrix.scala }}' test")
                 )
               )
