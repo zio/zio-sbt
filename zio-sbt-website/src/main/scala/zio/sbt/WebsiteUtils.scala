@@ -326,7 +326,7 @@ object WebsiteUtils {
                 SetupJava,
                 Step.SingleStep(
                   name = "Test Modules",
-                  run = Some("sbt ++${{ matrix.scala }} ${{ matrix.projects }}/test")
+                  run = Some("""sbt ++${{ matrix.scala }} "${{ matrix.projects }}/test"""")
                 )
               )
             ),
