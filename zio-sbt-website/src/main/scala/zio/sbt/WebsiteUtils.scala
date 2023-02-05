@@ -197,12 +197,12 @@ object WebsiteUtils {
         parameters = Map("fetch-depth" -> "0".asJson)
       )
 
-      val SetupJava: Step.SingleStep = Step.SingleStep(
+      def SetupJava(version: String = "17"): Step.SingleStep = Step.SingleStep(
         name = "Setup Scala",
         uses = Some(`setup-java`),
         parameters = Map(
           "distribution" -> "temurin".asJson,
-          "java-version" -> 17.asJson,
+          "java-version" -> version.asJson,
           "check-latest" -> true.asJson
         )
       )
@@ -289,7 +289,7 @@ object WebsiteUtils {
                     case Some(artifactBuildProcess) =>
                       Seq(
                         Checkout,
-                        SetupJava,
+                        SetupJava(),
                         CheckReadme,
                         CheckGithubWorkflow,
                         artifactBuildProcess,
@@ -298,7 +298,7 @@ object WebsiteUtils {
                     case None =>
                       Seq(
                         Checkout,
-                        SetupJava,
+                        SetupJava(),
                         CheckReadme,
                         CheckGithubWorkflow,
                         CheckWebsiteBuildProcess
@@ -312,7 +312,7 @@ object WebsiteUtils {
               name = "Lint",
               steps = Seq(
                 Checkout,
-                SetupJava,
+                SetupJava(),
                 Lint
               )
             ),
@@ -329,7 +329,7 @@ object WebsiteUtils {
                 )
               ),
               steps = Seq(
-                SetupJava,
+                SetupJava("${{ matrix.java }}"),
                 Checkout,
                 Test
               )
@@ -347,7 +347,7 @@ object WebsiteUtils {
                 Step.StepSequence(
                   Seq(
                     Checkout,
-                    SetupJava,
+                    SetupJava(),
                     SetupNodeJs,
                     PublishToNpmRegistry
                   )
@@ -371,7 +371,7 @@ object WebsiteUtils {
                     "fetch-depth" -> "0".asJson
                   )
                 ),
-                SetupJava,
+                SetupJava(),
                 GenerateReadme,
                 Step.SingleStep(
                   name = "Commit Changes",
