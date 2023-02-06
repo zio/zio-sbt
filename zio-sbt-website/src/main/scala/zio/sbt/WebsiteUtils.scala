@@ -222,6 +222,18 @@ object WebsiteUtils {
         )
       )
 
+      val Publish =
+        Step.SingleStep(
+          name = "Publish",
+          run = Some("sbt ci-release"),
+          env = Map(
+            "PGP_PASSPHRASE"    -> "${{ secrets.PGP_PASSPHRASE }}",
+            "PGP_SECRET"        -> "${{ secrets.PGP_SECRET }}",
+            "SONATYPE_PASSWORD" -> "${{ secrets.SONATYPE_PASSWORD }}",
+            "SONATYPE_USERNAME" -> "${{ secrets.SONATYPE_USERNAME }}"
+          )
+        )
+
       val Lint: Step.SingleStep = Step.SingleStep(
         name = "Lint",
         run = Some("sbt lint")
@@ -270,6 +282,13 @@ object WebsiteUtils {
       .pretty(
         Workflow(
           name = "Website",
+          env = Map(
+            // JDK_JAVA_OPTIONS is _the_ env. variable to use for modern Java
+            "JDK_JAVA_OPTIONS" -> "-XX:+PrintCommandLineFlags -Xmx6G -Xss4M -XX:+UseG1GC",
+            // For Java 8 only (sadly, it is not modern enough for JDK_JAVA_OPTIONS)
+            "JVM_OPTS"     -> "-XX:+PrintCommandLineFlags -Xmx6G -Xss4M -XX:+UseG1GC",
+            "NODE_OPTIONS" -> "--max_old_space_size=6144"
+          ),
           triggers = Seq(
             Trigger.WorkflowDispatch(),
             Trigger.Release(Seq("published")),
@@ -332,6 +351,21 @@ object WebsiteUtils {
                 SetupJava("${{ matrix.java }}"),
                 Checkout,
                 Test
+              )
+            ),
+            Job(
+              id = "release",
+              name = "Release",
+              need = Seq("build", "lint", "test"),
+              condition = Some(
+                Condition.Expression("github.event_name != 'pull_request'") &&
+                  (Condition.Expression("github.ref == 'refs/heads/main'") ||
+                    Condition.Expression("startsWith(github.ref, 'refs/tags/v')"))
+              ),
+              steps = Seq(
+                Checkout,
+                SetupJava(),
+                Publish
               )
             ),
             Job(

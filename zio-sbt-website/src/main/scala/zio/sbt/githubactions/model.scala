@@ -224,6 +224,7 @@ case class Job(
   id: String,
   name: String,
   runsOn: String = "ubuntu-latest",
+  timeoutMinutes: Int = 30,
   strategy: Option[Strategy] = None,
   steps: Seq[Step] = Seq.empty,
   need: Seq[String] = Seq.empty,
@@ -264,6 +265,7 @@ object Job {
 
 case class Workflow(
   name: String,
+  env: Map[String, String] = Map.empty,
   triggers: Seq[Trigger] = Seq.empty,
   jobs: Seq[Job] = Seq.empty
 ) {
@@ -286,6 +288,7 @@ object Workflow {
       Json
         .obj(
           "name" := wf.name,
+          "env"  := wf.env,
           "on" := (if (wf.triggers.isEmpty)
                      Json.Null
                    else {
