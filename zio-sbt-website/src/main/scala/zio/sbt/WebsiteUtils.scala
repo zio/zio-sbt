@@ -222,7 +222,7 @@ object WebsiteUtils {
         )
       )
 
-      val Release =
+      val Release: Step.SingleStep =
         Step.SingleStep(
           name = "Release",
           run = Some("sbt ci-release"),
