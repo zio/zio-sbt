@@ -175,6 +175,8 @@ object WebsiteUtils {
   @nowarn("msg=detected an interpolated expression")
   def websiteWorkflow(
     docsPublishBranch: String,
+    scalaVersions: List[String],
+    projects: List[String],
     sbtBuildOptions: List[String] = List.empty,
     versioning: DocsVersioning = SemanticVersioning,
     updateReadmeCondition: Option[Condition] = None,
@@ -195,15 +197,21 @@ object WebsiteUtils {
         parameters = Map("fetch-depth" -> "0".asJson)
       )
 
-      val SetupJava: Step.SingleStep = Step.SingleStep(
+      def SetupJava(version: String = "17"): Step.SingleStep = Step.SingleStep(
         name = "Setup Scala",
         uses = Some(`setup-java`),
         parameters = Map(
           "distribution" -> "temurin".asJson,
-          "java-version" -> 17.asJson,
+          "java-version" -> version.asJson,
           "check-latest" -> true.asJson
         )
       )
+
+      val Test: Step.SingleStep =
+        Step.SingleStep(
+          name = "Test",
+          run = Some("sbt 'project ${{ matrix.project }}' '++${{ matrix.scala }}' test")
+        )
 
       val SetupNodeJs: Step.SingleStep = Step.SingleStep(
         name = "Setup NodeJs",
@@ -212,6 +220,23 @@ object WebsiteUtils {
           "node-version" -> "16.x".asJson,
           "registry-url" -> "https://registry.npmjs.org".asJson
         )
+      )
+
+      val Release: Step.SingleStep =
+        Step.SingleStep(
+          name = "Release",
+          run = Some("sbt ci-release"),
+          env = Map(
+            "PGP_PASSPHRASE"    -> "${{ secrets.PGP_PASSPHRASE }}",
+            "PGP_SECRET"        -> "${{ secrets.PGP_SECRET }}",
+            "SONATYPE_PASSWORD" -> "${{ secrets.SONATYPE_PASSWORD }}",
+            "SONATYPE_USERNAME" -> "${{ secrets.SONATYPE_USERNAME }}"
+          )
+        )
+
+      val Lint: Step.SingleStep = Step.SingleStep(
+        name = "Lint",
+        run = Some("sbt lint")
       )
 
       val GenerateReadme: Step.SingleStep = Step.SingleStep(
@@ -257,6 +282,13 @@ object WebsiteUtils {
       .pretty(
         Workflow(
           name = "Website",
+          env = Map(
+            // JDK_JAVA_OPTIONS is _the_ env. variable to use for modern Java
+            "JDK_JAVA_OPTIONS" -> "-XX:+PrintCommandLineFlags -Xmx6G -Xss4M -XX:+UseG1GC",
+            // For Java 8 only (sadly, it is not modern enough for JDK_JAVA_OPTIONS)
+            "JVM_OPTS"     -> "-XX:+PrintCommandLineFlags -Xmx6G -Xss4M -XX:+UseG1GC",
+            "NODE_OPTIONS" -> "--max_old_space_size=6144"
+          ),
           triggers = Seq(
             Trigger.WorkflowDispatch(),
             Trigger.Release(Seq("published")),
@@ -276,7 +308,7 @@ object WebsiteUtils {
                     case Some(artifactBuildProcess) =>
                       Seq(
                         Checkout,
-                        SetupJava,
+                        SetupJava(),
                         CheckReadme,
                         CheckGithubWorkflow,
                         artifactBuildProcess,
@@ -285,7 +317,7 @@ object WebsiteUtils {
                     case None =>
                       Seq(
                         Checkout,
-                        SetupJava,
+                        SetupJava(),
                         CheckReadme,
                         CheckGithubWorkflow,
                         CheckWebsiteBuildProcess
@@ -295,8 +327,51 @@ object WebsiteUtils {
               )
             ),
             Job(
+              id = "lint",
+              name = "Lint",
+              steps = Seq(
+                Checkout,
+                SetupJava(),
+                Lint
+              )
+            ),
+            Job(
+              id = "test",
+              name = "Test",
+              strategy = Some(
+                Strategy(
+                  Map(
+                    "java"    -> List("8", "11", "17"),
+                    "scala"   -> scalaVersions,
+                    "project" -> projects
+                  )
+                )
+              ),
+              steps = Seq(
+                SetupJava("${{ matrix.java }}"),
+                Checkout,
+                Test
+              )
+            ),
+            Job(
+              id = "release",
+              name = "Release",
+              need = Seq("build", "lint", "test"),
+              condition = Some(
+                Condition.Expression("github.event_name != 'pull_request'") &&
+                  (Condition.Expression("github.ref == 'refs/heads/main'") ||
+                    Condition.Expression("startsWith(github.ref, 'refs/tags/v')"))
+              ),
+              steps = Seq(
+                Checkout,
+                SetupJava(),
+                Release
+              )
+            ),
+            Job(
               id = "publish-docs",
               name = "Publish Docs",
+              need = Seq("release"),
               condition = Some(
                 Condition.Expression("github.event_name == 'release'") &&
                   Condition.Expression("github.event.action == 'published'") || Condition.Expression(
@@ -307,7 +382,7 @@ object WebsiteUtils {
                 Step.StepSequence(
                   Seq(
                     Checkout,
-                    SetupJava,
+                    SetupJava(),
                     SetupNodeJs,
                     PublishToNpmRegistry
                   )
@@ -331,7 +406,7 @@ object WebsiteUtils {
                     "fetch-depth" -> "0".asJson
                   )
                 ),
-                SetupJava,
+                SetupJava(),
                 GenerateReadme,
                 Step.SingleStep(
                   name = "Commit Changes",

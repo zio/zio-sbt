@@ -1,17 +1,13 @@
-import zio.sbt.Commands._
+import Versions._
+
 sbtPlugin         := true
 publishMavenStyle := true
 
 enablePlugins(EcosystemPlugin)
 
-addCommand(
-  (ComposableCommand
-    .make(
-      "project zioSbtEcosystem"
-    ) >> "scripted" >> "project zioSbtWebsite" >> "scripted" >> "project root") ?? ("testPlugins", "Runs the scripted SBT plugin tests.")
-)
+addCommandAlias("test", "scripted")
 
-ThisBuild / scalaVersion       := V.Scala212
+ThisBuild / scalaVersion       := Scala212
 ThisBuild / crossScalaVersions := Seq(scalaVersion.value)
 
 inThisBuild(
@@ -32,10 +28,7 @@ inThisBuild(
         homepage.value.get,
         "scm:git:git@github.com:zio/zio-sbt.git"
       )
-    ),
-    pgpPassphrase := sys.env.get("PGP_PASSWORD").map(_.toArray),
-    pgpPublicRing := file("/tmp/public.asc"),
-    pgpSecretRing := file("/tmp/secret.asc")
+    )
   )
 )
 
@@ -72,8 +65,8 @@ lazy val zioSbtWebsite =
       stdSettings(
         name = "zio-sbt-website",
         packageName = "zio.sbt.website",
-        scalaVersion = V.Scala212,
-        crossScalaVersions = Seq(V.Scala212)
+        scalaVersion = Scala212,
+        crossScalaVersions = Seq(Scala212)
       )
     )
     .settings(
@@ -93,8 +86,8 @@ lazy val zioSbtEcosystem =
       stdSettings(
         name = "zio-sbt-ecosystem",
         packageName = "zio.sbt.ecosystem",
-        scalaVersion = V.Scala212,
-        crossScalaVersions = Seq(V.Scala212)
+        scalaVersion = Scala212,
+        crossScalaVersions = Seq(Scala212)
       )
     )
     .settings(
@@ -129,7 +122,8 @@ lazy val docs = project
          |
          |sbt testPlugin
          |```
-         |""".stripMargin
+         |""".stripMargin,
+    supportedScalaVersions := List(Scala212)
   )
   .dependsOn(zioSbtWebsite, zioSbtEcosystem)
   .enablePlugins(WebsitePlugin)
