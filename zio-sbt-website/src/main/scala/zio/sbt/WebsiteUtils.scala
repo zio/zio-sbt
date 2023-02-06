@@ -222,9 +222,9 @@ object WebsiteUtils {
         )
       )
 
-      val Publish =
+      val Release =
         Step.SingleStep(
-          name = "Publish",
+          name = "Release",
           run = Some("sbt ci-release"),
           env = Map(
             "PGP_PASSPHRASE"    -> "${{ secrets.PGP_PASSPHRASE }}",
@@ -365,12 +365,13 @@ object WebsiteUtils {
               steps = Seq(
                 Checkout,
                 SetupJava(),
-                Publish
+                Release
               )
             ),
             Job(
               id = "publish-docs",
               name = "Publish Docs",
+              need = Seq("release"),
               condition = Some(
                 Condition.Expression("github.event_name == 'release'") &&
                   Condition.Expression("github.event.action == 'published'") || Condition.Expression(
