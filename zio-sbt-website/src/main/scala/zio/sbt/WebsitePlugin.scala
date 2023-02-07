@@ -31,38 +31,39 @@ import zio.sbt.githubactions.{Condition, Step}
 object WebsitePlugin extends sbt.AutoPlugin {
 
   object autoImport {
-    val compileDocs: InputKey[Unit]                      = inputKey[Unit]("Compile docs")
-    val installWebsite: TaskKey[Unit]                    = taskKey[Unit]("Install the website for the first time")
-    val buildWebsite: TaskKey[Unit]                      = taskKey[Unit]("Build website (default output: target/website/build)")
-    val previewWebsite: TaskKey[Unit]                    = taskKey[Unit]("preview website")
-    val publishToNpm: InputKey[Unit]                     = inputKey[Unit]("Publish website to the npm registry")
-    val publishSnapshotToNpm: InputKey[Unit]             = inputKey[Unit]("Publish snapshot version of website to the npm registry")
-    val publishHashverToNpm: InputKey[Unit]              = inputKey[Unit]("Publish hash version of website to the npm registry")
-    val generateGithubWorkflow: TaskKey[Unit]            = taskKey[Unit]("Generate github workflow")
-    val checkGithubWorkflow: TaskKey[Unit]               = taskKey[Unit]("Make sure if the site.yml file is up-to-date")
-    val checkReadme: TaskKey[Unit]                       = taskKey[Unit]("Make sure if the README.md file is up-to-date")
-    val generateReadme: TaskKey[Unit]                    = taskKey[Unit]("Generate readme file")
-    val npmToken: SettingKey[String]                     = settingKey[String]("NPM Token")
-    val docsDependencies: SettingKey[Seq[ModuleID]]      = settingKey[Seq[ModuleID]]("documentation project dependencies")
-    val websiteDir: SettingKey[Path]                     = settingKey[Path]("Website directory")
-    val docsPublishBranch: SettingKey[String]            = settingKey[String]("Publish branch for documentation")
-    val projectStage: SettingKey[ProjectStage]           = settingKey[ProjectStage]("Project stage")
-    val projectName: SettingKey[String]                  = settingKey[String]("Project name e.g. ZIO SBT")
-    val mainModuleName: SettingKey[String]               = settingKey[String]("Main Module Name e.g. zio-sbt")
-    val ciWorkflowName: SettingKey[String]               = settingKey[String]("CI Workflow Name")
-    val projectHomePage: SettingKey[String]              = settingKey[String]("Project home page url e.g. https://zio.dev/zio-sbt")
-    val readmeBanner: SettingKey[String]                 = settingKey[String]("Readme banner section")
-    val readmeDocumentation: SettingKey[String]          = settingKey[String]("Readme documentation section")
-    val readmeContribution: SettingKey[String]           = settingKey[String]("Readme contribution section")
-    val readmeCodeOfConduct: SettingKey[String]          = settingKey[String]("Readme code of conduct")
-    val readmeSupport: SettingKey[String]                = settingKey[String]("Readme support section")
-    val readmeLicense: SettingKey[String]                = settingKey[String]("Readme license section")
-    val readmeAcknowledgement: SettingKey[String]        = settingKey[String]("Acknowledgement section")
-    val readmeCredits: SettingKey[String]                = settingKey[String]("Credits section")
-    val readmeMaintainers: SettingKey[String]            = settingKey[String]("Maintainers section")
-    val docsVersioning: SettingKey[DocsVersioning]       = settingKey[DocsVersioning]("Docs versioning style")
-    val sbtBuildOptions: SettingKey[List[String]]        = settingKey[List[String]]("SBT build options")
-    val supportedScalaVersions: SettingKey[List[String]] = settingKey[List[String]]("List of supported scala versions")
+    val compileDocs: InputKey[Unit]                 = inputKey[Unit]("Compile docs")
+    val installWebsite: TaskKey[Unit]               = taskKey[Unit]("Install the website for the first time")
+    val buildWebsite: TaskKey[Unit]                 = taskKey[Unit]("Build website (default output: target/website/build)")
+    val previewWebsite: TaskKey[Unit]               = taskKey[Unit]("preview website")
+    val publishToNpm: InputKey[Unit]                = inputKey[Unit]("Publish website to the npm registry")
+    val publishSnapshotToNpm: InputKey[Unit]        = inputKey[Unit]("Publish snapshot version of website to the npm registry")
+    val publishHashverToNpm: InputKey[Unit]         = inputKey[Unit]("Publish hash version of website to the npm registry")
+    val generateGithubWorkflow: TaskKey[Unit]       = taskKey[Unit]("Generate github workflow")
+    val checkGithubWorkflow: TaskKey[Unit]          = taskKey[Unit]("Make sure if the site.yml file is up-to-date")
+    val checkReadme: TaskKey[Unit]                  = taskKey[Unit]("Make sure if the README.md file is up-to-date")
+    val generateReadme: TaskKey[Unit]               = taskKey[Unit]("Generate readme file")
+    val npmToken: SettingKey[String]                = settingKey[String]("NPM Token")
+    val docsDependencies: SettingKey[Seq[ModuleID]] = settingKey[Seq[ModuleID]]("documentation project dependencies")
+    val websiteDir: SettingKey[Path]                = settingKey[Path]("Website directory")
+    val docsPublishBranch: SettingKey[String]       = settingKey[String]("Publish branch for documentation")
+    val projectStage: SettingKey[ProjectStage]      = settingKey[ProjectStage]("Project stage")
+    val projectName: SettingKey[String]             = settingKey[String]("Project name e.g. ZIO SBT")
+    val mainModuleName: SettingKey[String]          = settingKey[String]("Main Module Name e.g. zio-sbt")
+    val ciWorkflowName: SettingKey[String]          = settingKey[String]("CI Workflow Name")
+    val projectHomePage: SettingKey[String]         = settingKey[String]("Project home page url e.g. https://zio.dev/zio-sbt")
+    val readmeBanner: SettingKey[String]            = settingKey[String]("Readme banner section")
+    val readmeDocumentation: SettingKey[String]     = settingKey[String]("Readme documentation section")
+    val readmeContribution: SettingKey[String]      = settingKey[String]("Readme contribution section")
+    val readmeCodeOfConduct: SettingKey[String]     = settingKey[String]("Readme code of conduct")
+    val readmeSupport: SettingKey[String]           = settingKey[String]("Readme support section")
+    val readmeLicense: SettingKey[String]           = settingKey[String]("Readme license section")
+    val readmeAcknowledgement: SettingKey[String]   = settingKey[String]("Acknowledgement section")
+    val readmeCredits: SettingKey[String]           = settingKey[String]("Credits section")
+    val readmeMaintainers: SettingKey[String]       = settingKey[String]("Maintainers section")
+    val docsVersioning: SettingKey[DocsVersioning]  = settingKey[DocsVersioning]("Docs versioning style")
+    val sbtBuildOptions: SettingKey[List[String]]   = settingKey[List[String]]("SBT build options")
+    val supportedScalaVersions: SettingKey[Map[String, Seq[String]]] =
+      settingKey[Map[String, Seq[String]]]("List of supported scala versions")
     val updateReadmeCondition: SettingKey[Option[Condition]] =
       settingKey[Option[Condition]]("Condition to update readme")
     val checkArtifactBuildProcessWorkflowStep: SettingKey[Option[Step]] =
@@ -132,7 +133,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
       docsVersioning         := DocsVersioning.SemanticVersioning,
       sbtBuildOptions        := List.empty[String],
       updateReadmeCondition  := None,
-      supportedScalaVersions := List.empty,
+      supportedScalaVersions := Map.empty,
       ciWorkflowName         := "CI",
       checkArtifactBuildProcessWorkflowStep :=
         Some(
@@ -370,7 +371,6 @@ object WebsitePlugin extends sbt.AutoPlugin {
       val workflow = WebsiteUtils.websiteWorkflow(
         docsPublishBranch = docsPublishBranch.value,
         scalaVersions = supportedScalaVersions.value,
-        projects = (buildDependencies.value.classpath.keys.map(_.project).toSet -- Set("root", "docs")).toList,
         sbtBuildOptions = sbtBuildOptions.value,
         versioning = docsVersioning.value,
         updateReadmeCondition = updateReadmeCondition.value,

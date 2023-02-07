@@ -175,8 +175,7 @@ object WebsiteUtils {
   @nowarn("msg=detected an interpolated expression")
   def websiteWorkflow(
     docsPublishBranch: String,
-    scalaVersions: List[String],
-    projects: List[String],
+    scalaVersions: Map[String, Seq[String]],
     sbtBuildOptions: List[String] = List.empty,
     versioning: DocsVersioning = SemanticVersioning,
     updateReadmeCondition: Option[Condition] = None,
@@ -210,7 +209,7 @@ object WebsiteUtils {
       val Test: Step.SingleStep =
         Step.SingleStep(
           name = "Test",
-          run = Some("sbt 'project ${{ matrix.project }}' '++${{ matrix.scala }}' test")
+          run = Some("sbt ${{ matrix.project-scala }} test")
         )
 
       val SetupNodeJs: Step.SingleStep = Step.SingleStep(
@@ -341,9 +340,12 @@ object WebsiteUtils {
               strategy = Some(
                 Strategy(
                   Map(
-                    "java"    -> List("8", "11", "17"),
-                    "scala"   -> scalaVersions,
-                    "project" -> projects
+                    "java" -> List("8", "11", "17"),
+                    "scala-project" -> scalaVersions.flatMap { case (moduleName, versions) =>
+                      versions.map { version =>
+                        s"'project $moduleName' '++$version'"
+                      }
+                    }.toList
                   )
                 )
               ),

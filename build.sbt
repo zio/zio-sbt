@@ -123,7 +123,11 @@ lazy val docs = project
          |sbt testPlugin
          |```
          |""".stripMargin,
-    supportedScalaVersions := List(Scala212)
+    supportedScalaVersions := Map(
+      (zioSbtWebsite / moduleName).value   -> (zioSbtWebsite / crossScalaVersions).value,
+      (zioSbtEcosystem / moduleName).value -> (zioSbtEcosystem / crossScalaVersions).value,
+      (tests / moduleName).value           -> (tests / crossScalaVersions).value
+    )
   )
   .dependsOn(zioSbtWebsite, zioSbtEcosystem)
   .enablePlugins(WebsitePlugin)
