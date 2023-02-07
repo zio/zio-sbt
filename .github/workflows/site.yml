@@ -19,6 +19,7 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - name: Git Checkout
       uses: actions/checkout@v3.3.0
@@ -41,6 +42,7 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
+    continue-on-error: false
     steps:
     - name: Git Checkout
       uses: actions/checkout@v3.3.0
@@ -57,7 +59,9 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    continue-on-error: false
     strategy:
+      fail-fast: false
       matrix:
         java:
         - '8'
@@ -83,6 +87,7 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
+    continue-on-error: false
     needs:
     - build
     - lint
@@ -109,6 +114,7 @@ jobs:
   publish-docs:
     name: Publish Docs
     runs-on: ubuntu-latest
+    continue-on-error: false
     needs:
     - release
     if: ${{ ((github.event_name == 'release') && (github.event.action == 'published')) || (github.event_name == 'workflow_dispatch') }}
@@ -135,6 +141,7 @@ jobs:
   generate-readme:
     name: Generate README
     runs-on: ubuntu-latest
+    continue-on-error: false
     if: ${{ (github.event_name == 'push') || ((github.event_name == 'release') && (github.event.action == 'published')) }}
     steps:
     - name: Git Checkout

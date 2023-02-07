@@ -94,13 +94,14 @@ object Trigger {
   }
 }
 
-case class Strategy(matrix: Map[String, List[String]])
+case class Strategy(matrix: Map[String, List[String]], failFast: Boolean = true)
 
 object Strategy {
   implicit val encoder: Encoder[Strategy] =
     (s: Strategy) =>
       Json.obj(
-        "matrix" := s.matrix
+        "fail-fast" := s.failFast,
+        "matrix"    := s.matrix
       )
 }
 
@@ -225,6 +226,7 @@ case class Job(
   name: String,
   runsOn: String = "ubuntu-latest",
   timeoutMinutes: Int = 30,
+  continueOnError: Boolean = false,
   strategy: Option[Strategy] = None,
   steps: Seq[Step] = Seq.empty,
   need: Seq[String] = Seq.empty,
@@ -246,9 +248,10 @@ object Job {
     (job: Job) =>
       Json
         .obj(
-          "name"     := job.name,
-          "runs-on"  := job.runsOn,
-          "strategy" := job.strategy,
+          "name"              := job.name,
+          "runs-on"           := job.runsOn,
+          "continue-on-error" := job.continueOnError,
+          "strategy"          := job.strategy,
           "needs" := (if (job.need.nonEmpty) job.need.asJson
                       else Json.Null),
           "services" := (if (job.services.nonEmpty) {
