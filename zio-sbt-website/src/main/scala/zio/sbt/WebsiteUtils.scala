@@ -343,7 +343,7 @@ object WebsiteUtils {
                   Map(
                     "java"    -> List("8", "11", "17"),
                     "scala-project"   -> scalaVersions.map { case (moduleName, versions) =>
-                      s"'project $moduleName' " + "'++${{" + versions + " }}'"
+                      s"project $moduleName " + "++${{" + versions + " }}"
                     }.toList,
                     "project" -> projects
                   )
