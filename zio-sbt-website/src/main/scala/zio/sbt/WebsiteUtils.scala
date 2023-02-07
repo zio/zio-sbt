@@ -341,9 +341,11 @@ object WebsiteUtils {
               strategy = Some(
                 Strategy(
                   Map(
-                    "java"    -> List("8", "11", "17"),
-                    "scala-project"   -> scalaVersions.map { case (moduleName, versions) =>
-                      s"project $moduleName " + "++${{" + versions + " }}"
+                    "java" -> List("8", "11", "17"),
+                    "scala-project" -> scalaVersions.flatMap { case (moduleName, versions) =>
+                      versions.map { version =>
+                        s"'project $moduleName' " + "'++${{ " + version + " }}'"
+                      }
                     }.toList,
                     "project" -> projects
                   )

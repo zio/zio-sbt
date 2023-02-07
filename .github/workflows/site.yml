@@ -65,9 +65,9 @@ jobs:
         - '11'
         - '17'
         scala-project:
-        - project zio-sbt-website ++${{List(2.12.17) }}
-        - project zio-sbt-ecosystem ++${{List(2.12.17) }}
-        - project zio-sbt-tests ++${{List(2.12.17) }}
+        - '''project zio-sbt-website'' ''++${{ 2.12.17 }}'''
+        - '''project zio-sbt-ecosystem'' ''++${{ 2.12.17 }}'''
+        - '''project zio-sbt-tests'' ''++${{ 2.12.17 }}'''
         project:
         - tests
         - zioSbtEcosystem
