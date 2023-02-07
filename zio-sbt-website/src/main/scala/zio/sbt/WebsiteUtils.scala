@@ -347,7 +347,6 @@ object WebsiteUtils {
                         s"'project $moduleName' '++$version'"
                       }
                     }.toList,
-                    "project" -> projects
                   )
                 )
               ),
