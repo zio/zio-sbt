@@ -176,7 +176,6 @@ object WebsiteUtils {
   def websiteWorkflow(
     docsPublishBranch: String,
     scalaVersions: Map[String, Seq[String]],
-    projects: List[String],
     sbtBuildOptions: List[String] = List.empty,
     versioning: DocsVersioning = SemanticVersioning,
     updateReadmeCondition: Option[Condition] = None,
