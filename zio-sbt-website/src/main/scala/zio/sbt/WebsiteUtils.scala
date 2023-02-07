@@ -183,7 +183,7 @@ object WebsiteUtils {
   ): String = {
     object Actions {
       val checkout: ActionRef     = ActionRef("actions/checkout@v3.3.0")
-      val `setup-java`: ActionRef = ActionRef("actions/setup-java@v3.9.0")
+      val `setup-java`: ActionRef = ActionRef("actions/setup-java@v3.10.0")
       val `setup-node`: ActionRef = ActionRef("actions/setup-node@v3")
     }
 
