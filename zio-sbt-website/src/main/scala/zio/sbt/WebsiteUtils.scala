@@ -297,10 +297,8 @@ object WebsiteUtils {
           jobs = Seq(
             Job(
               id = "build",
-              name = "Build and Test",
-              condition = Some(
-                Condition.Expression("github.event_name == 'pull_request'")
-              ),
+              name = "Build",
+              continueOnError = true,
               steps = Seq(
                 Step.StepSequence(
                   checkArtifactBuildProcess match {
@@ -339,14 +337,15 @@ object WebsiteUtils {
               name = "Test",
               strategy = Some(
                 Strategy(
-                  Map(
+                  matrix = Map(
                     "java" -> List("8", "11", "17"),
                     "project-scala" -> scalaVersions.flatMap { case (moduleName, versions) =>
                       versions.map { version =>
                         s"'project $moduleName' '++$version'"
                       }
                     }.toList
-                  )
+                  ),
+                  failFast = false
                 )
               ),
               steps = Seq(
