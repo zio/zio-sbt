@@ -344,7 +344,7 @@ object WebsiteUtils {
                     "java" -> List("8", "11", "17"),
                     "scala-project" -> scalaVersions.flatMap { case (moduleName, versions) =>
                       versions.map { version =>
-                        s"'project $moduleName' " + "'++${{ " + version + " }}'"
+                        s"'project $moduleName' '++$version'"
                       }
                     }.toList,
                     "project" -> projects
