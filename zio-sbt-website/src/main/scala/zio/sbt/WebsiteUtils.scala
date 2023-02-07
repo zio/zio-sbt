@@ -345,7 +345,7 @@ object WebsiteUtils {
                       versions.map { version =>
                         s"'project $moduleName' '++$version'"
                       }
-                    }.toList,
+                    }.toList
                   )
                 )
               ),
