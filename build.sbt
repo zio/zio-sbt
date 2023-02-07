@@ -124,9 +124,9 @@ lazy val docs = project
          |```
          |""".stripMargin,
     supportedScalaVersions := Map(
-      (zioSbtWebsite / moduleName).value   -> (zioSbtWebsite / crossScalaVersions).value,
-      (zioSbtEcosystem / moduleName).value -> (zioSbtEcosystem / crossScalaVersions).value,
-      (tests / moduleName).value           -> (tests / crossScalaVersions).value
+      (zioSbtWebsite / thisProject).value.id   -> (zioSbtWebsite / crossScalaVersions).value,
+      (zioSbtEcosystem / thisProject).value.id -> (zioSbtEcosystem / crossScalaVersions).value,
+      (tests / thisProject).value.id           -> (tests / crossScalaVersions).value
     )
   )
   .dependsOn(zioSbtWebsite, zioSbtEcosystem)
