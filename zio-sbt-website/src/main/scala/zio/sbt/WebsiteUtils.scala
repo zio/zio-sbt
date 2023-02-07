@@ -297,10 +297,7 @@ object WebsiteUtils {
           jobs = Seq(
             Job(
               id = "build",
-              name = "Build and Test",
-              condition = Some(
-                Condition.Expression("github.event_name == 'pull_request'")
-              ),
+              name = "Build",
               steps = Seq(
                 Step.StepSequence(
                   checkArtifactBuildProcess match {

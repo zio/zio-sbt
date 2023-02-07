@@ -17,9 +17,8 @@ env:
   pull_request: {}
 jobs:
   build:
-    name: Build and Test
+    name: Build
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'pull_request' }}
     steps:
     - name: Git Checkout
       uses: actions/checkout@v3.3.0
