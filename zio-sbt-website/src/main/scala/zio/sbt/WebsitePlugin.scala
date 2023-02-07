@@ -62,6 +62,8 @@ object WebsitePlugin extends sbt.AutoPlugin {
     val readmeMaintainers: SettingKey[String]       = settingKey[String]("Maintainers section")
     val docsVersioning: SettingKey[DocsVersioning]  = settingKey[DocsVersioning]("Docs versioning style")
     val sbtBuildOptions: SettingKey[List[String]]   = settingKey[List[String]]("SBT build options")
+    val supportedScalaVersions: SettingKey[Map[String, Seq[String]]] =
+      settingKey[Map[String, Seq[String]]]("List of supported scala versions")
     val updateReadmeCondition: SettingKey[Option[Condition]] =
       settingKey[Option[Condition]]("Condition to update readme")
     val checkArtifactBuildProcessWorkflowStep: SettingKey[Option[Step]] =
@@ -119,19 +121,20 @@ object WebsitePlugin extends sbt.AutoPlugin {
         projectName.value,
         homepage.value.getOrElse(new URL(s"https://zio.dev/ecosystem/"))
       ),
-      readmeContribution    := readmeContributionSection,
-      readmeSupport         := readmeSupportSection,
-      readmeLicense         := readmeLicenseSection,
-      readmeAcknowledgement := "",
-      readmeContribution    := readmeContributionSection,
-      readmeCodeOfConduct   := readmeCodeOfConductSection,
-      readmeCredits         := "",
-      readmeBanner          := "",
-      readmeMaintainers     := "",
-      docsVersioning        := DocsVersioning.SemanticVersioning,
-      sbtBuildOptions       := List.empty[String],
-      updateReadmeCondition := None,
-      ciWorkflowName        := "CI",
+      readmeContribution     := readmeContributionSection,
+      readmeSupport          := readmeSupportSection,
+      readmeLicense          := readmeLicenseSection,
+      readmeAcknowledgement  := "",
+      readmeContribution     := readmeContributionSection,
+      readmeCodeOfConduct    := readmeCodeOfConductSection,
+      readmeCredits          := "",
+      readmeBanner           := "",
+      readmeMaintainers      := "",
+      docsVersioning         := DocsVersioning.SemanticVersioning,
+      sbtBuildOptions        := List.empty[String],
+      updateReadmeCondition  := None,
+      supportedScalaVersions := Map.empty,
+      ciWorkflowName         := "CI",
       checkArtifactBuildProcessWorkflowStep :=
         Some(
           Step.SingleStep(
@@ -367,6 +370,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
     Def.task {
       val workflow = WebsiteUtils.websiteWorkflow(
         docsPublishBranch = docsPublishBranch.value,
+        scalaVersions = supportedScalaVersions.value,
         sbtBuildOptions = sbtBuildOptions.value,
         versioning = docsVersioning.value,
         updateReadmeCondition = updateReadmeCondition.value,

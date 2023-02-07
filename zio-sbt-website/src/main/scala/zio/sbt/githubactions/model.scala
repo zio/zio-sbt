@@ -94,13 +94,14 @@ object Trigger {
   }
 }
 
-case class Strategy(matrix: Map[String, List[String]])
+case class Strategy(matrix: Map[String, List[String]], failFast: Boolean = true)
 
 object Strategy {
   implicit val encoder: Encoder[Strategy] =
     (s: Strategy) =>
       Json.obj(
-        "matrix" := s.matrix
+        "fail-fast" := s.failFast,
+        "matrix"    := s.matrix
       )
 }
 
@@ -224,6 +225,8 @@ case class Job(
   id: String,
   name: String,
   runsOn: String = "ubuntu-latest",
+  timeoutMinutes: Int = 30,
+  continueOnError: Boolean = false,
   strategy: Option[Strategy] = None,
   steps: Seq[Step] = Seq.empty,
   need: Seq[String] = Seq.empty,
@@ -245,9 +248,10 @@ object Job {
     (job: Job) =>
       Json
         .obj(
-          "name"     := job.name,
-          "runs-on"  := job.runsOn,
-          "strategy" := job.strategy,
+          "name"              := job.name,
+          "runs-on"           := job.runsOn,
+          "continue-on-error" := job.continueOnError,
+          "strategy"          := job.strategy,
           "needs" := (if (job.need.nonEmpty) job.need.asJson
                       else Json.Null),
           "services" := (if (job.services.nonEmpty) {
@@ -264,6 +268,7 @@ object Job {
 
 case class Workflow(
   name: String,
+  env: Map[String, String] = Map.empty,
   triggers: Seq[Trigger] = Seq.empty,
   jobs: Seq[Job] = Seq.empty
 ) {
@@ -286,6 +291,7 @@ object Workflow {
       Json
         .obj(
           "name" := wf.name,
+          "env"  := wf.env,
           "on" := (if (wf.triggers.isEmpty)
                      Json.Null
                    else {

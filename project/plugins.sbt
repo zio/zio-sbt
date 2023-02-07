@@ -1,5 +1,5 @@
 // Build Server Plugins
-addSbtPlugin("ch.epfl.scala" % "sbt-bloop" % "1.5.6")
+addSbtPlugin("ch.epfl.scala" % "sbt-bloop" % "1.5.6-61-e5171d3c")
 
 // Linting Plugins
 addSbtPlugin("org.scalameta"    % "sbt-scalafmt"              % "2.5.0")
@@ -10,7 +10,7 @@ addSbtPlugin("com.github.cb372" % "sbt-explicit-dependencies" % "0.2.16")
 addSbtPlugin("com.eed3si9n"   % "sbt-buildinfo"  % "0.11.0")
 addSbtPlugin("com.jsuereth"   % "sbt-pgp"        % "2.1.1")
 addSbtPlugin("com.dwijnand"   % "sbt-dynver"     % "4.1.1")
-addSbtPlugin("org.xerial.sbt" % "sbt-sonatype"   % "3.9.15")
+addSbtPlugin("org.xerial.sbt" % "sbt-sonatype"   % "3.9.17")
 addSbtPlugin("com.geirsson"   % "sbt-ci-release" % "1.5.7")
 
 // Docs Plugins
@@ -28,5 +28,5 @@ addSbtPlugin("org.portable-scala" % "sbt-scala-native-crossproject" % "1.2.0")
 addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.4.4")
 
 libraryDependencies += "org.snakeyaml" % "snakeyaml-engine" % "2.5"
-libraryDependencies += "dev.zio"      %% "zio"              % "2.0.6"
+libraryDependencies += "dev.zio"      %% "zio"              % "2.0.7"
 libraryDependencies += "io.circe"     %% "circe-yaml"       % "0.14.2"
