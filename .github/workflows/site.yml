@@ -92,7 +92,7 @@ jobs:
     - build
     - lint
     - test
-    if: ${{ (github.event_name != 'pull_request') && ((github.ref == 'refs/heads/main') || (startsWith(github.ref, 'refs/tags/v'))) }}
+    if: ${{ github.event_name != 'pull_request' }}
     steps:
     - name: Git Checkout
       uses: actions/checkout@v3.3.0
