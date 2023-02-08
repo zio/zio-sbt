@@ -37,10 +37,10 @@ ThisBuild / publishTo := sonatypePublishToBundle.value
 lazy val root = project
   .in(file("."))
   .settings(
-    name              := "zio-sbt",
-    headerEndYear     := Some(2023),
-    publish / skip    := true,
-    ciEnabledBranches := Seq("main"),
+    name                 := "zio-sbt",
+    headerEndYear        := Some(2023),
+    publish / skip       := true,
+    ciEnabledBranches    := Seq("main"),
     documentationProject := Some(docs),
     supportedScalaVersions := Map(
       (zioSbtWebsite / thisProject).value.id   -> (zioSbtWebsite / crossScalaVersions).value,

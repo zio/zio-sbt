@@ -15,15 +15,15 @@
  */
 
 package zio.sbt
+import scala.annotation.nowarn
+import scala.sys.process.*
+
 import io.circe.*
 import io.circe.syntax.*
 import io.circe.yaml.Printer.{LineBreak, YamlVersion}
-import sbt.{Def, io as _, *}
-import zio.sbt.githubactions.*
-import sbt.Keys.*
+import sbt.{Def, io => _, *}
 
-import scala.annotation.nowarn
-import scala.sys.process.*
+import zio.sbt.githubactions.*
 
 object ZioSbtCiPlugin extends AutoPlugin {
 
@@ -31,7 +31,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
 
   object autoImport {
     val docsVersioning: SettingKey[DocsVersioning] = settingKey[DocsVersioning]("Docs versioning style")
-    val ciEnabledBranches: SettingKey[Seq[String]]      = settingKey[Seq[String]]("Publish branch for documentation")
+    val ciEnabledBranches: SettingKey[Seq[String]] = settingKey[Seq[String]]("Publish branch for documentation")
     val generateGithubWorkflow: TaskKey[Unit]      = taskKey[Unit]("Generate github workflow")
     val sbtBuildOptions: SettingKey[List[String]]  = settingKey[List[String]]("SBT build options")
     val updateReadmeCondition: SettingKey[Option[Condition]] =
@@ -42,7 +42,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
     val checkArtifactBuildProcessWorkflowStep: SettingKey[Option[Step]] =
       settingKey[Option[Step]]("Workflow step for checking artifact build process")
     val documentationProject: SettingKey[Option[Project]] = settingKey[Option[Project]]("Documentation project")
-    val ciWorkflowName: SettingKey[String]          = settingKey[String]("CI Workflow Name")
+    val ciWorkflowName: SettingKey[String]                = settingKey[String]("CI Workflow Name")
   }
   import autoImport.*
 
@@ -70,9 +70,9 @@ object ZioSbtCiPlugin extends AutoPlugin {
 
   override lazy val projectSettings: Seq[Setting[_ <: Object]] =
     Seq(
-    ciWorkflowName := "CI",
-      documentationProject := None,
-      ciEnabledBranches := Seq.empty,
+      ciWorkflowName         := "CI",
+      documentationProject   := None,
+      ciEnabledBranches      := Seq.empty,
       generateGithubWorkflow := generateGithubWorkflowTask.value,
       docsVersioning         := DocsVersioning.SemanticVersioning,
       checkGithubWorkflow    := checkGithubWorkflowTask.value,
@@ -116,6 +116,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
     updateReadmeCondition: Option[Condition] = None,
     checkArtifactBuildProcess: Option[Step] = None
   ): String = {
+    val _ = docsProjectId
     object Actions {
       val checkout: ActionRef     = ActionRef("actions/checkout@v3.3.0")
       val `setup-java`: ActionRef = ActionRef("actions/setup-java@v3.10.0")
