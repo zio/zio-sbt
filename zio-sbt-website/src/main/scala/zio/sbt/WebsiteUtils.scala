@@ -358,11 +358,7 @@ object WebsiteUtils {
               id = "release",
               name = "Release",
               need = Seq("build", "lint", "test"),
-              condition = Some(
-                Condition.Expression("github.event_name != 'pull_request'") &&
-                  (Condition.Expression("github.ref == 'refs/heads/main'") ||
-                    Condition.Expression("startsWith(github.ref, 'refs/tags/v')"))
-              ),
+              condition = Some(Condition.Expression("github.event_name != 'pull_request'")),
               steps = Seq(
                 Checkout,
                 SetupJava(),
