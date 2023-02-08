@@ -3,7 +3,7 @@ import Versions._
 sbtPlugin         := true
 publishMavenStyle := true
 
-enablePlugins(EcosystemPlugin)
+enablePlugins(EcosystemPlugin, ZioSbtCiPlugin)
 
 addCommandAlias("test", "scripted")
 
@@ -37,15 +37,26 @@ ThisBuild / publishTo := sonatypePublishToBundle.value
 lazy val root = project
   .in(file("."))
   .settings(
-    name           := "zio-sbt",
-    headerEndYear  := Some(2023),
-    publish / skip := true
+    name              := "zio-sbt",
+    headerEndYear     := Some(2023),
+    publish / skip    := true,
+    ciEnabledBranches := Seq("main"),
+    documentationProject := Some(docs),
+    supportedScalaVersions := Map(
+      (zioSbtWebsite / thisProject).value.id   -> (zioSbtWebsite / crossScalaVersions).value,
+      (zioSbtEcosystem / thisProject).value.id -> (zioSbtEcosystem / crossScalaVersions).value,
+      (zioSbtCi / thisProject).value.id        -> (zioSbtCi / crossScalaVersions).value,
+      (tests / thisProject).value.id           -> (tests / crossScalaVersions).value
+    )
   )
   .aggregate(
+    zioSbtGithubActions,
     zioSbtWebsite,
     zioSbtEcosystem,
+    zioSbtCi,
     tests
   )
+  .enablePlugins(ZioSbtCiPlugin)
 
 lazy val tests =
   project
@@ -78,6 +89,7 @@ lazy val zioSbtWebsite =
       scriptedBufferLog := false
     )
     .enablePlugins(SbtPlugin, EcosystemPlugin)
+    .dependsOn(zioSbtGithubActions)
 
 lazy val zioSbtEcosystem =
   project
@@ -99,6 +111,42 @@ lazy val zioSbtEcosystem =
       scriptedBufferLog := false
     )
     .enablePlugins(SbtPlugin, EcosystemPlugin)
+
+lazy val zioSbtCi =
+  project
+    .in(file("zio-sbt-ci"))
+    .settings(
+      stdSettings(
+        name = "zio-sbt-ci",
+        packageName = "zio.sbt.ci",
+        scalaVersion = Scala212,
+        crossScalaVersions = Seq(Scala212)
+      )
+    )
+    .settings(
+      headerEndYear := Some(2023),
+      scriptedLaunchOpts := {
+        scriptedLaunchOpts.value ++
+          Seq("-Xmx1024M", "-Dplugin.version=" + version.value)
+      },
+      scriptedBufferLog := false
+    )
+    .enablePlugins(SbtPlugin, EcosystemPlugin)
+    .dependsOn(zioSbtGithubActions)
+
+lazy val zioSbtGithubActions =
+  project
+    .in(file("zio-sbt-githubactions"))
+    .settings(
+      stdSettings(
+        name = "zio-sbt-githubactions",
+        packageName = "zio.sbt.githubactions",
+        scalaVersion = Scala212,
+        crossScalaVersions = Seq( /*Scala211, */ Scala212 /*, Scala213, Scala3*/ )
+      )
+    )
+    .settings(headerEndYear := Some(2023))
+    .enablePlugins(EcosystemPlugin)
 
 lazy val docs = project
   .in(file("zio-sbt-docs"))
@@ -122,12 +170,7 @@ lazy val docs = project
          |
          |sbt testPlugin
          |```
-         |""".stripMargin,
-    supportedScalaVersions := Map(
-      (zioSbtWebsite / thisProject).value.id   -> (zioSbtWebsite / crossScalaVersions).value,
-      (zioSbtEcosystem / thisProject).value.id -> (zioSbtEcosystem / crossScalaVersions).value,
-      (tests / thisProject).value.id           -> (tests / crossScalaVersions).value
-    )
+         |""".stripMargin
   )
   .dependsOn(zioSbtWebsite, zioSbtEcosystem)
   .enablePlugins(WebsitePlugin)
