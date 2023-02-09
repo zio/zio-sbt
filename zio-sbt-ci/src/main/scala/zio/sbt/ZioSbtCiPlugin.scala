@@ -145,7 +145,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
       val Test: Step.SingleStep =
         Step.SingleStep(
           name = "Test",
-          run = Some("sbt ${{ matrix.project-scala }} test")
+          run = Some("sbt ${{ matrix.scala-project }}/test")
         )
 
       val SetupNodeJs: Step.SingleStep = Step.SingleStep(
@@ -275,9 +275,9 @@ object ZioSbtCiPlugin extends AutoPlugin {
                 Strategy(
                   matrix = Map(
                     "java" -> List("8", "11", "17"),
-                    "project-scala" -> scalaVersionMatrix.flatMap { case (moduleName, versions) =>
+                    "scala-project" -> scalaVersionMatrix.flatMap { case (moduleName, versions) =>
                       versions.map { version =>
-                        s"'project $moduleName' '++$version'"
+                        s"++$version $moduleName"
                       }
                     }.toList
                   ),
