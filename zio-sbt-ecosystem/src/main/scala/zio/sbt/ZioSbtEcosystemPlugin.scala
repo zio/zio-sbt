@@ -16,9 +16,7 @@
 
 package zio.sbt
 
-import scala.collection.immutable.ListMap
-
-import com.jsuereth.sbtpgp.SbtPgp.autoImport.{pgpPassphrase, pgpPublicRing, pgpSecretRing}
+import com.jsuereth.sbtpgp.SbtPgp.autoImport.*
 import org.scalafmt.sbt.ScalafmtPlugin
 import sbt.Keys.*
 import sbt.{Def, *}
@@ -27,6 +25,9 @@ import sbtbuildinfo.BuildInfoPlugin.autoImport.*
 import sbtcrossproject.CrossPlugin.autoImport.crossProjectPlatform
 import scalafix.sbt.ScalafixPlugin
 import scalafix.sbt.ScalafixPlugin.autoImport.*
+import zio.sbt.Versions.*
+
+import scala.collection.immutable.ListMap
 
 object ZioSbtEcosystemPlugin extends AutoPlugin {
 
@@ -76,7 +77,7 @@ object ZioSbtEcosystemPlugin extends AutoPlugin {
       libraryDependencies ++= {
         if (Keys.scalaVersion.value.startsWith("3"))
           Seq(
-            "com.github.ghik" % s"silencer-lib_$scala213Version" % V.SilencerVersion % Provided
+            "com.github.ghik" % s"silencer-lib_$scala213Version" % SilencerVersion % Provided
           )
         else
           Seq.empty
@@ -203,12 +204,12 @@ object ZioSbtEcosystemPlugin extends AutoPlugin {
 
     val silencerModules: Seq[ModuleID] =
       Seq(
-        "com.github.ghik" % "silencer-lib" % V.SilencerVersion % Provided cross CrossVersion.full,
-        compilerPlugin("com.github.ghik" % "silencer-plugin" % V.SilencerVersion cross CrossVersion.full)
+        "com.github.ghik" % "silencer-lib" % SilencerVersion % Provided cross CrossVersion.full,
+        compilerPlugin("com.github.ghik" % "silencer-plugin" % SilencerVersion cross CrossVersion.full)
       )
 
     val kindProjectorModule: ModuleID =
-      compilerPlugin("org.typelevel" %% "kind-projector" % V.KindProjectorVersion cross CrossVersion.full)
+      compilerPlugin("org.typelevel" %% "kind-projector" % KindProjectorVersion cross CrossVersion.full)
 
     def stdSettings(
       name: String,
@@ -238,8 +239,8 @@ object ZioSbtEcosystemPlugin extends AutoPlugin {
         semanticdbVersion                      := scalafixSemanticdb.revision, // use Scalafix compatible version
         ThisBuild / scalafixScalaBinaryVersion := CrossVersion.binaryScalaVersion(Keys.scalaVersion.value),
         ThisBuild / scalafixDependencies ++= List(
-          "com.github.liancheng" %% "organize-imports" % V.OrganizeImportsVersion,
-          "com.github.vovapolu"  %% "scaluzzi"         % V.ScaluzziVersion
+          "com.github.liancheng" %% "organize-imports" % OrganizeImportsVersion,
+          "com.github.vovapolu"  %% "scaluzzi"         % ScaluzziVersion
         ),
         Test / parallelExecution := true,
         incOptions ~= (_.withLogRecompileOnMacro(false)),
