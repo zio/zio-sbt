@@ -249,7 +249,7 @@ object ZioSbtEcosystemPlugin extends AutoPlugin {
       ) ++ (if (enableCrossProject) crossProjectSettings else Seq.empty) ++ buildInfoSettings(packageName) ++ {
         crossScalaVersions.find(_.startsWith("3")) match {
           case Some(version) =>
-            enableScala3(version, crossScalaVersions.find(_.startsWith("2.13")).getOrElse(Defaults.scala213))
+            enableScala3(version, crossScalaVersions.find(_.startsWith("2.13")).getOrElse(Versions.scala213))
           case None => Seq.empty
         }
       }
@@ -291,13 +291,6 @@ object ZioSbtEcosystemPlugin extends AutoPlugin {
         commands += command.toCommand,
         usefulTasksAndSettings += command.toItem
       )
-
-    object Defaults {
-      val scala3   = "3.2.1"
-      val scala211 = "2.11.12"
-      val scala212 = "2.12.17"
-      val scala213 = "2.13.10"
-    }
 
     lazy val scala3: SettingKey[String]   = settingKey[String]("Scala 3 version")
     lazy val scala211: SettingKey[String] = settingKey[String]("Scala 2.11 version")
@@ -374,11 +367,11 @@ object ZioSbtEcosystemPlugin extends AutoPlugin {
 
   override def globalSettings: Seq[Def.Setting[_]] =
     super.globalSettings ++ Seq(
-      scala3        := Defaults.scala3,
-      scala211      := Defaults.scala211,
-      scala212      := Defaults.scala212,
-      scala213      := Defaults.scala213,
-      scalaVersion  := Defaults.scala213,
+      scala3        := Versions.scala3,
+      scala211      := Versions.scala211,
+      scala212      := Versions.scala212,
+      scala213      := Versions.scala213,
+      scalaVersion  := Versions.scala213,
       licenses      := Seq(License.Apache2),
       pgpPassphrase := sys.env.get("PGP_PASSPHRASE").map(_.toArray),
       pgpPublicRing := file("/tmp/public.asc"),
