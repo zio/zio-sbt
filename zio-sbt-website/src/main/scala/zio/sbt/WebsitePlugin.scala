@@ -26,7 +26,6 @@ import sbt.Keys.*
 import sbt.{Def, *}
 
 import zio.sbt.WebsiteUtils.{readFile, removeYamlHeader}
-import zio.sbt.githubactions.{Condition, Step}
 
 object WebsitePlugin extends sbt.AutoPlugin {
 
@@ -38,14 +37,11 @@ object WebsitePlugin extends sbt.AutoPlugin {
     val publishToNpm: InputKey[Unit]                = inputKey[Unit]("Publish website to the npm registry")
     val publishSnapshotToNpm: InputKey[Unit]        = inputKey[Unit]("Publish snapshot version of website to the npm registry")
     val publishHashverToNpm: InputKey[Unit]         = inputKey[Unit]("Publish hash version of website to the npm registry")
-    val generateGithubWorkflow: TaskKey[Unit]       = taskKey[Unit]("Generate github workflow")
-    val checkGithubWorkflow: TaskKey[Unit]          = taskKey[Unit]("Make sure if the site.yml file is up-to-date")
     val checkReadme: TaskKey[Unit]                  = taskKey[Unit]("Make sure if the README.md file is up-to-date")
     val generateReadme: TaskKey[Unit]               = taskKey[Unit]("Generate readme file")
     val npmToken: SettingKey[String]                = settingKey[String]("NPM Token")
     val docsDependencies: SettingKey[Seq[ModuleID]] = settingKey[Seq[ModuleID]]("documentation project dependencies")
     val websiteDir: SettingKey[Path]                = settingKey[Path]("Website directory")
-    val docsPublishBranch: SettingKey[String]       = settingKey[String]("Publish branch for documentation")
     val projectStage: SettingKey[ProjectStage]      = settingKey[ProjectStage]("Project stage")
     val projectName: SettingKey[String]             = settingKey[String]("Project name e.g. ZIO SBT")
     val mainModuleName: SettingKey[String]          = settingKey[String]("Main Module Name e.g. zio-sbt")
@@ -60,20 +56,9 @@ object WebsitePlugin extends sbt.AutoPlugin {
     val readmeAcknowledgement: SettingKey[String]   = settingKey[String]("Acknowledgement section")
     val readmeCredits: SettingKey[String]           = settingKey[String]("Credits section")
     val readmeMaintainers: SettingKey[String]       = settingKey[String]("Maintainers section")
-    val docsVersioning: SettingKey[DocsVersioning]  = settingKey[DocsVersioning]("Docs versioning style")
-    val sbtBuildOptions: SettingKey[List[String]]   = settingKey[List[String]]("SBT build options")
-    val supportedScalaVersions: SettingKey[Map[String, Seq[String]]] =
-      settingKey[Map[String, Seq[String]]]("List of supported scala versions")
-    val updateReadmeCondition: SettingKey[Option[Condition]] =
-      settingKey[Option[Condition]]("Condition to update readme")
-    val checkArtifactBuildProcessWorkflowStep: SettingKey[Option[Step]] =
-      settingKey[Option[Step]]("Workflow step for checking artifact build process")
 
     val ProjectStage = zio.sbt.WebsiteUtils.ProjectStage
     type ProjectStage = zio.sbt.WebsiteUtils.ProjectStage
-
-    val DocsVersioning = zio.sbt.WebsiteUtils.DocsVersioning
-    type DocsVersioning = zio.sbt.WebsiteUtils.DocsVersioning
   }
 
   import autoImport.*
@@ -82,20 +67,18 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
   override lazy val projectSettings: Seq[Setting[_ <: Object]] =
     Seq(
-      compileDocs            := compileDocsTask.evaluated,
-      websiteDir             := Paths.get(target.value.getPath, "website"),
-      mdocOut                := websiteDir.value.resolve("docs").toFile,
-      installWebsite         := installWebsiteTask.value,
-      buildWebsite           := buildWebsiteTask.value,
-      previewWebsite         := previewWebsiteTask.value,
-      publishToNpm           := publishWebsiteTask.value,
-      publishSnapshotToNpm   := publishSnapshotToNpmTask.value,
-      publishHashverToNpm    := publishHashverToNpmTask.value,
-      generateGithubWorkflow := generateGithubWorkflowTask.value,
-      checkGithubWorkflow    := checkGithubWorkflowTask.value,
-      checkReadme            := checkReadmeTask.value,
-      generateReadme         := generateReadmeTask.value,
-      docsDependencies       := Seq.empty,
+      compileDocs          := compileDocsTask.evaluated,
+      websiteDir           := Paths.get(target.value.getPath, "website"),
+      mdocOut              := websiteDir.value.resolve("docs").toFile,
+      installWebsite       := installWebsiteTask.value,
+      buildWebsite         := buildWebsiteTask.value,
+      previewWebsite       := previewWebsiteTask.value,
+      publishToNpm         := publishWebsiteTask.value,
+      publishSnapshotToNpm := publishSnapshotToNpmTask.value,
+      publishHashverToNpm  := publishHashverToNpmTask.value,
+      checkReadme          := checkReadmeTask.value,
+      generateReadme       := generateReadmeTask.value,
+      docsDependencies     := Seq.empty,
       libraryDependencies ++= docsDependencies.value,
       mdocVariables ++= {
         Map(
@@ -116,32 +99,20 @@ object WebsitePlugin extends sbt.AutoPlugin {
           }
         )
       },
-      docsPublishBranch := "main",
       readmeDocumentation := readmeDocumentationSection(
         projectName.value,
         homepage.value.getOrElse(new URL(s"https://zio.dev/ecosystem/"))
       ),
-      readmeContribution     := readmeContributionSection,
-      readmeSupport          := readmeSupportSection,
-      readmeLicense          := readmeLicenseSection,
-      readmeAcknowledgement  := "",
-      readmeContribution     := readmeContributionSection,
-      readmeCodeOfConduct    := readmeCodeOfConductSection,
-      readmeCredits          := "",
-      readmeBanner           := "",
-      readmeMaintainers      := "",
-      docsVersioning         := DocsVersioning.SemanticVersioning,
-      sbtBuildOptions        := List.empty[String],
-      updateReadmeCondition  := None,
-      supportedScalaVersions := Map.empty,
-      ciWorkflowName         := "CI",
-      checkArtifactBuildProcessWorkflowStep :=
-        Some(
-          Step.SingleStep(
-            name = "Check artifacts build process",
-            run = Some(s"sbt ${sbtBuildOptions.value.mkString(" ")} +publishLocal")
-          )
-        )
+      readmeContribution    := readmeContributionSection,
+      readmeSupport         := readmeSupportSection,
+      readmeLicense         := readmeLicenseSection,
+      readmeAcknowledgement := "",
+      readmeContribution    := readmeContributionSection,
+      readmeCodeOfConduct   := readmeCodeOfConductSection,
+      readmeCredits         := "",
+      readmeBanner          := "",
+      readmeMaintainers     := "",
+      ciWorkflowName        := "CI"
     )
 
   private def exit(exitCode: Int, errorMessage: String = "") = if (exitCode != 0) sys.error(errorMessage: String)
@@ -365,38 +336,6 @@ object WebsitePlugin extends sbt.AutoPlugin {
       logger.info("The new README.md file generated")
     }
   }
-
-  lazy val generateGithubWorkflowTask: Def.Initialize[Task[Unit]] =
-    Def.task {
-      val workflow = WebsiteUtils.websiteWorkflow(
-        docsPublishBranch = docsPublishBranch.value,
-        scalaVersions = supportedScalaVersions.value,
-        sbtBuildOptions = sbtBuildOptions.value,
-        versioning = docsVersioning.value,
-        updateReadmeCondition = updateReadmeCondition.value,
-        checkArtifactBuildProcess = checkArtifactBuildProcessWorkflowStep.value
-      )
-
-      val template =
-        s"""|# This file was autogenerated using `zio-sbt-website` via `sbt generateGithubWorkflow` 
-            |# task and should be included in the git repository. Please do not edit it manually.
-            |
-            |$workflow""".stripMargin
-
-      IO.write(new File(".github/workflows/site.yml"), template)
-    }
-
-  lazy val checkGithubWorkflowTask: Def.Initialize[Task[Unit]] =
-    Def.task {
-      val _ = generateGithubWorkflow.value
-
-      if ("git diff --exit-code".! == 1) {
-        sys.error(
-          "The site.yml workflow is not up-to-date!\n" +
-            "Please run `sbt docs/generateGithubWorkflow` and commit new changes."
-        )
-      }
-    }
 
   lazy val checkReadmeTask: Def.Initialize[Task[Unit]] =
     Def.task {
