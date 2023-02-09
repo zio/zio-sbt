@@ -18,11 +18,8 @@ package zio.sbt
 
 import scala.Console
 
-import sbt.Keys._
-import sbt._
-// import org.scalafmt.sbt.ScalafmtPlugin.autoImport._
-// import de.heikoseeberger.sbtheader.HeaderPlugin.autoImport._
-// import scalafix.sbt.ScalafixPlugin.autoImport._
+import sbt.Keys.*
+import sbt.*
 
 object Tasks {
   private val strictCompilationProp = "enable.strict.compilation"
