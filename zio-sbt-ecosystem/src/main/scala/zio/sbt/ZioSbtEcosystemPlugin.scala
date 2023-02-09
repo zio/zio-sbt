@@ -28,7 +28,7 @@ import sbtcrossproject.CrossPlugin.autoImport.crossProjectPlatform
 import scalafix.sbt.ScalafixPlugin
 import scalafix.sbt.ScalafixPlugin.autoImport.*
 
-object EcosystemPlugin extends AutoPlugin {
+object ZioSbtEcosystemPlugin extends AutoPlugin {
 
   override def trigger = allRequirements
 

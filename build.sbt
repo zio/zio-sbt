@@ -3,7 +3,7 @@ import Versions._
 sbtPlugin         := true
 publishMavenStyle := true
 
-enablePlugins(EcosystemPlugin, ZioSbtCiPlugin)
+enablePlugins(ZioSbtEcosystemPlugin, ZioSbtCiPlugin)
 
 addCommandAlias("test", "scripted")
 
@@ -67,7 +67,7 @@ lazy val tests =
       headerEndYear  := Some(2023)
     )
     .settings(buildInfoSettings("zio.sbt"))
-    .enablePlugins(EcosystemPlugin)
+    .enablePlugins(ZioSbtEcosystemPlugin)
 
 lazy val zioSbtWebsite =
   project
@@ -88,7 +88,7 @@ lazy val zioSbtWebsite =
       },
       scriptedBufferLog := false
     )
-    .enablePlugins(SbtPlugin, EcosystemPlugin)
+    .enablePlugins(SbtPlugin, ZioSbtEcosystemPlugin)
     .dependsOn(zioSbtGithubActions)
 
 lazy val zioSbtEcosystem =
@@ -110,7 +110,7 @@ lazy val zioSbtEcosystem =
       },
       scriptedBufferLog := false
     )
-    .enablePlugins(SbtPlugin, EcosystemPlugin)
+    .enablePlugins(SbtPlugin, ZioSbtEcosystemPlugin)
 
 lazy val zioSbtCi =
   project
@@ -131,7 +131,7 @@ lazy val zioSbtCi =
       },
       scriptedBufferLog := false
     )
-    .enablePlugins(SbtPlugin, EcosystemPlugin)
+    .enablePlugins(SbtPlugin, ZioSbtEcosystemPlugin)
     .dependsOn(zioSbtGithubActions)
 
 lazy val zioSbtGithubActions =
@@ -146,7 +146,7 @@ lazy val zioSbtGithubActions =
       )
     )
     .settings(headerEndYear := Some(2023))
-    .enablePlugins(EcosystemPlugin)
+    .enablePlugins(ZioSbtEcosystemPlugin)
 
 lazy val docs = project
   .in(file("zio-sbt-docs"))
