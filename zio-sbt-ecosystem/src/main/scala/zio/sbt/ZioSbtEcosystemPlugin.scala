@@ -16,6 +16,8 @@
 
 package zio.sbt
 
+import scala.collection.immutable.ListMap
+
 import com.jsuereth.sbtpgp.SbtPgp.autoImport.*
 import org.scalafmt.sbt.ScalafmtPlugin
 import sbt.Keys.*
@@ -25,9 +27,8 @@ import sbtbuildinfo.BuildInfoPlugin.autoImport.*
 import sbtcrossproject.CrossPlugin.autoImport.crossProjectPlatform
 import scalafix.sbt.ScalafixPlugin
 import scalafix.sbt.ScalafixPlugin.autoImport.*
-import zio.sbt.Versions.*
 
-import scala.collection.immutable.ListMap
+import zio.sbt.Versions.*
 
 object ZioSbtEcosystemPlugin extends AutoPlugin {
 
