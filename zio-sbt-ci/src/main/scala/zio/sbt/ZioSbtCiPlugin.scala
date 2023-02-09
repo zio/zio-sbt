@@ -100,7 +100,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
       if ("git diff --exit-code".! == 1) {
         sys.error(
           "The site.yml workflow is not up-to-date!\n" +
-            "Please run `sbt docs/generateGithubWorkflow` and commit new changes."
+            "Please run `sbt generateGithubWorkflow` and commit new changes."
         )
       }
     }
@@ -186,7 +186,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
 
       val CheckGithubWorkflow: Step.SingleStep = Step.SingleStep(
         name = "Check if the site workflow is up to date",
-        run = Some(s"sbt ${sbtBuildOptions.mkString(" ")} docs/checkGithubWorkflow")
+        run = Some(s"sbt ${sbtBuildOptions.mkString(" ")} checkGithubWorkflow")
       )
 
       val CheckReadme: Step.SingleStep = Step.SingleStep(
