@@ -90,7 +90,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
 //        )
 //    )
 
-  override lazy val buildSettings = {
+  override lazy val buildSettings: Seq[Setting[_ <: Object]] = {
     Seq(
       ciWorkflowName         := "CI",
       documentationProject   := None,
