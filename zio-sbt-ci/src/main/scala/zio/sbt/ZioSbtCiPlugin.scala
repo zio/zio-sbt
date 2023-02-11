@@ -68,7 +68,29 @@ object ZioSbtCiPlugin extends AutoPlugin {
       IO.write(new File(s".github/workflows/${ciWorkflowName.value.toLowerCase}.yml"), template)
     }
 
-  override lazy val projectSettings: Seq[Setting[_ <: Object]] =
+  override def trigger = noTrigger
+
+//  override lazy val projectSettings: Seq[Setting[_ <: Object]] =
+//    Seq(
+//      ciWorkflowName         := "CI",
+//      documentationProject   := None,
+//      ciEnabledBranches      := Seq.empty,
+//      generateGithubWorkflow := generateGithubWorkflowTask.value,
+//      docsVersioning         := DocsVersioning.SemanticVersioning,
+//      checkGithubWorkflow    := checkGithubWorkflowTask.value,
+//      supportedScalaVersions := Map.empty,
+//      sbtBuildOptions        := List.empty[String],
+//      updateReadmeCondition  := None,
+//      checkArtifactBuildProcessWorkflowStep :=
+//        Some(
+//          Step.SingleStep(
+//            name = "Check artifacts build process",
+//            run = Some(s"sbt ${sbtBuildOptions.value.mkString(" ")} +publishLocal")
+//          )
+//        )
+//    )
+
+  override lazy val buildSettings = {
     Seq(
       ciWorkflowName         := "CI",
       documentationProject   := None,
@@ -87,6 +109,8 @@ object ZioSbtCiPlugin extends AutoPlugin {
           )
         )
     )
+  }
+
   abstract class DocsVersioning(val npmCommand: String)
   object DocsVersioning {
     object SemanticVersioning extends DocsVersioning("publishToNpm")

@@ -15,15 +15,7 @@ inThisBuild(
     crossScalaVersions := Seq(scalaVersion.value),
     developers := List(
       Developer("khajavi", "Milad Khajavi", "khajavi@gmail.com", url("https://github.com/khajavi"))
-    )
-  )
-)
-
-lazy val root = project
-  .in(file("."))
-  .settings(
-    headerEndYear        := Some(2023),
-    publish / skip       := true,
+    ),
     ciEnabledBranches    := Seq("main"),
     documentationProject := Some(docs),
     supportedScalaVersions := Map(
@@ -32,6 +24,14 @@ lazy val root = project
       (zioSbtCi / thisProject).value.id        -> (zioSbtCi / crossScalaVersions).value,
       (zioSbtTests / thisProject).value.id     -> (zioSbtTests / crossScalaVersions).value
     )
+  )
+)
+
+lazy val root = project
+  .in(file("."))
+  .settings(
+    headerEndYear  := Some(2023),
+    publish / skip := true
   )
   .aggregate(
     zioSbtGithubActions,
@@ -46,7 +46,7 @@ lazy val zioSbtTests =
   project
     .in(file("zio-sbt-tests"))
     .settings(
-      name           := baseDirectory.value.getName,
+      stdSettings(packageName = "zio.sbt"),
       publish / skip := true,
       headerEndYear  := Some(2023)
     )
