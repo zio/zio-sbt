@@ -121,12 +121,21 @@ object ZioSbtEcosystemPlugin extends AutoPlugin {
 
   override def globalSettings: Seq[Def.Setting[_]] =
     super.globalSettings ++ Seq(
-      scala3        := Versions.scala3,
-      scala211      := Versions.scala211,
-      scala212      := Versions.scala212,
-      scala213      := Versions.scala213,
-      scalaVersion  := Versions.scala213,
-      licenses      := Seq(License.Apache2),
+      scala3         := Versions.scala3,
+      scala211       := Versions.scala211,
+      scala212       := Versions.scala212,
+      scala213       := Versions.scala213,
+      scalaVersion   := Versions.scala213,
+      licenses       := Seq(License.Apache2),
+      organization   := "dev.zio",
+      homepage       := Some(url(s"https://zio.dev/${normalizedName.value}")),
+      normalizedName := (ThisBuild / name).value.toLowerCase.replaceAll(" ", "-"),
+      scmInfo := Some(
+        ScmInfo(
+          homepage.value.get,
+          s"scm:git:git@github.com:zio/${normalizedName}.git"
+        )
+      ),
       pgpPassphrase := sys.env.get("PGP_PASSPHRASE").map(_.toArray),
       pgpPublicRing := file("/tmp/public.asc"),
       pgpSecretRing := file("/tmp/secret.asc")

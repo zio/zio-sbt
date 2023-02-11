@@ -16,8 +16,6 @@
 
 package zio.sbt
 
-import scala.annotation.nowarn
-
 import sbt.Keys.*
 import sbt.*
 import sbtbuildinfo.BuildInfoPlugin.autoImport.{BuildInfoKey, buildInfoKeys, buildInfoPackage}
@@ -70,10 +68,10 @@ trait ScalaCompilerSettings {
     //  "-language:implicitConversions",   // Allow definition of implicit functions called views. Disabled, as it might be dropped in Scala 3. Instead use extension methods (implemented as implicit class Wrapper(val inner: Foo) extends AnyVal {}
   )
 
-  private val scala3Settings: Seq[String] = Seq("-Xignore-scala2-macros", "-noindent")
+//  private val scala3Settings: Seq[String] = Seq("-Xignore-scala2-macros", "-noindent")
 
   // RECOMMENDED SETTINGS: https://tpolecat.github.io/2017/04/25/scalac-flags.html
-  private val scala213Settings: Seq[String] = baseSettings ++ Seq(
+  val scala213Settings: Seq[String] = baseSettings ++ Seq(
     "-Xlint:nonlocal-return",    // A return statement used an exception for flow control.
     "-Xlint:implicit-not-found", // Check @implicitNotFound and @implicitAmbiguous messages.
     "-Xlint:serial",             // @SerialVersionUID on traits and non-serializable classes.
@@ -92,7 +90,7 @@ trait ScalaCompilerSettings {
     "-Wvalue-discard"            // Warn when non-Unit expression results are unused.
   )
 
-  private val scala212Settings: Seq[String] = baseSettings ++ Seq(
+  val scala212Settings: Seq[String] = baseSettings ++ Seq(
     "-explaintypes",
     "-Yrangepos",
     "-Xlint:_,-missing-interpolator,-type-parameter-shadow",
@@ -101,30 +99,30 @@ trait ScalaCompilerSettings {
     "-Ywarn-unused:-implicits"
   )
 
-  @nowarn
-  private def stdScalacOptions(scalaVersion: String, optimize: Boolean): Seq[String] = {
-    val versionedSettings = CrossVersion.partialVersion(scalaVersion) match {
-      case Some((3, _))  => scala3Settings
-      case Some((2, 13)) => scala213Settings
-      case Some((2, 12)) => scala212Settings
-      case _             => Seq.empty
-    }
-
-    val strictCompilation = sys.props.get("enable.strict.compilation").map(_.toBoolean).getOrElse(false)
-
-    val s1 = if (sys.env.contains("CI") || strictCompilation) {
-      versionedSettings :+ "-Xfatal-warnings"
-    } else {
-      versionedSettings
-    }
-
-    val s2 =
-      if (optimize)
-        s1 :+ "-opt:l:inline"
-      else s1
-
-    s2.filterNot(_.contains("semanticdb:targetroot")) // The presence of this flag causes scalac to fail.
-  }
+//  @nowarn
+//  private def stdScalacOptions(scalaVersion: String, optimize: Boolean): Seq[String] = {
+//    val versionedSettings = CrossVersion.partialVersion(scalaVersion) match {
+//      case Some((3, _))  => scala3Settings
+//      case Some((2, 13)) => scala213Settings
+//      case Some((2, 12)) => scala212Settings
+//      case _             => Seq.empty
+//    }
+//
+//    val strictCompilation = sys.props.get("enable.strict.compilation").map(_.toBoolean).getOrElse(false)
+//
+//    val s1 = if (sys.env.contains("CI") || strictCompilation) {
+//      versionedSettings :+ "-Xfatal-warnings"
+//    } else {
+//      versionedSettings
+//    }
+//
+//    val s2 =
+//      if (optimize)
+//        s1 :+ "-opt:l:inline"
+//      else s1
+//
+//    s2.filterNot(_.contains("semanticdb:targetroot")) // The presence of this flag causes scalac to fail.
+//  }
 
   private val stdOptions = Seq(
     "-deprecation",
@@ -158,11 +156,9 @@ trait ScalaCompilerSettings {
       )
     else Nil
 
-  def enableScala3(scala3Version: String, scala213Version: String): Seq[Setting[_]] = Seq(
-    crossScalaVersions ++= {
-      if (crossScalaVersions.value.contains(scala3Version)) Seq.empty else Seq(scala3Version)
-    },
+  lazy val scala3Settings: Seq[Setting[_]] = Seq(
     libraryDependencies ++= {
+      val scala213Version = Keys.crossScalaVersions.value.find(_.startsWith("2.13")).getOrElse(Versions.scala213)
       if (Keys.scalaVersion.value.startsWith("3"))
         Seq(
           "com.github.ghik" % s"silencer-lib_$scala213Version" % SilencerVersion % Provided
@@ -300,18 +296,13 @@ trait ScalaCompilerSettings {
     compilerPlugin("org.typelevel" %% "kind-projector" % KindProjectorVersion cross CrossVersion.full)
 
   def stdSettings(
-    name: String,
     packageName: String,
-    scalaVersion: String,
-    crossScalaVersions: Seq[String],
     enableSilencer: Boolean = false,
     enableKindProjector: Boolean = false,
     enableCrossProject: Boolean = false
   ): Seq[Setting[_]] =
     Seq(
-      Keys.name               := name,
-      Keys.scalaVersion       := scalaVersion,
-      Keys.crossScalaVersions := crossScalaVersions,
+      Keys.name := baseDirectory.value.getName,
       scalacOptions ++= stdOptions ++ extraOptions(Keys.scalaVersion.value, optimize = !isSnapshot.value),
       Compile / console / scalacOptions ~= {
         _.filterNot(Set("-Xfatal-warnings"))
@@ -334,13 +325,9 @@ trait ScalaCompilerSettings {
       incOptions ~= (_.withLogRecompileOnMacro(false)),
       autoAPIMappings := true
       //      unusedCompileDependenciesFilter -= moduleFilter("org.scala-js", "scalajs-library")
-    ) ++ (if (enableCrossProject) crossProjectSettings else Seq.empty) ++ buildInfoSettings(packageName) ++ {
-      crossScalaVersions.find(_.startsWith("3")) match {
-        case Some(version) =>
-          enableScala3(version, crossScalaVersions.find(_.startsWith("2.13")).getOrElse(Versions.scala213))
-        case None => Seq.empty
-      }
-    }
+    ) ++ (if (enableCrossProject) crossProjectSettings else Seq.empty) ++ buildInfoSettings(
+      packageName
+    ) ++ scala3Settings
 
   def scalaReflectTestSettings(scala213Version: String): List[Setting[_]] = List(
     libraryDependencies ++= {
