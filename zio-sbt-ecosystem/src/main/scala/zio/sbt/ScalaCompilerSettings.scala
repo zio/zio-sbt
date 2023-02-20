@@ -296,13 +296,14 @@ trait ScalaCompilerSettings {
     compilerPlugin("org.typelevel" %% "kind-projector" % KindProjectorVersion cross CrossVersion.full)
 
   def stdSettings(
+    name: String,
     packageName: String,
     enableSilencer: Boolean = false,
     enableKindProjector: Boolean = false,
     enableCrossProject: Boolean = false
   ): Seq[Setting[_]] =
     Seq(
-      Keys.name := baseDirectory.value.getName,
+      Keys.name := name,
       scalacOptions ++= stdOptions ++ extraOptions(Keys.scalaVersion.value, optimize = !isSnapshot.value),
       Compile / console / scalacOptions ~= {
         _.filterNot(Set("-Xfatal-warnings"))
