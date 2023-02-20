@@ -297,7 +297,7 @@ trait ScalaCompilerSettings {
 
   def stdSettings(
     name: String,
-    packageName: String,
+    packageName: Option[String] = None,
     enableSilencer: Boolean = false,
     enableKindProjector: Boolean = false,
     enableCrossProject: Boolean = false
@@ -326,9 +326,11 @@ trait ScalaCompilerSettings {
       incOptions ~= (_.withLogRecompileOnMacro(false)),
       autoAPIMappings := true
       //      unusedCompileDependenciesFilter -= moduleFilter("org.scala-js", "scalajs-library")
-    ) ++ (if (enableCrossProject) crossProjectSettings else Seq.empty) ++ buildInfoSettings(
-      packageName
-    ) ++ scala3Settings
+    ) ++ (if (enableCrossProject) crossProjectSettings else Seq.empty) ++
+      (packageName match {
+        case Some(name) => buildInfoSettings(name)
+        case None       => Seq.empty
+      }) ++ scala3Settings
 
   def scalaReflectTestSettings(scala213Version: String): List[Setting[_]] = List(
     libraryDependencies ++= {
