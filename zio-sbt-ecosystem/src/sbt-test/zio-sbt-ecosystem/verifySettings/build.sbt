@@ -6,4 +6,4 @@ lazy val root = (project in file("."))
       ()
     }
   )
-  .enablePlugins(EcosystemPlugin)
+  .enablePlugins(ZioSbtEcosystemPlugin)
