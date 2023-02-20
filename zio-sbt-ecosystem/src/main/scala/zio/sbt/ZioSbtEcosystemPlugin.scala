@@ -22,6 +22,7 @@ import com.jsuereth.sbtpgp.SbtPgp.autoImport.*
 import de.heikoseeberger.sbtheader.HeaderPlugin
 import org.scalafmt.sbt.ScalafmtPlugin
 import sbt.Keys.*
+import sbt.nio.Keys.{ReloadOnSourceChanges, onChangedBuildSource}
 import sbt.{Def, *}
 import sbtbuildinfo.BuildInfoPlugin
 import scalafix.sbt.ScalafixPlugin
@@ -136,8 +137,9 @@ object ZioSbtEcosystemPlugin extends AutoPlugin {
           s"scm:git:git@github.com:zio/${normalizedName}.git"
         )
       ),
-      pgpPassphrase := sys.env.get("PGP_PASSPHRASE").map(_.toArray),
-      pgpPublicRing := file("/tmp/public.asc"),
-      pgpSecretRing := file("/tmp/secret.asc")
+      pgpPassphrase        := sys.env.get("PGP_PASSPHRASE").map(_.toArray),
+      pgpPublicRing        := file("/tmp/public.asc"),
+      pgpSecretRing        := file("/tmp/secret.asc"),
+      onChangedBuildSource := ReloadOnSourceChanges
     )
 }
