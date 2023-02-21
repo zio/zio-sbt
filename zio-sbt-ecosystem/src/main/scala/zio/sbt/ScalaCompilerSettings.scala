@@ -26,6 +26,20 @@ import zio.sbt.Versions.*
 
 trait ScalaCompilerSettings {
 
+  private val stdOptions = Seq(
+    "-deprecation",
+    "-encoding",
+    "UTF-8",
+    "-feature",
+    "-unchecked"
+  ) ++ {
+    if (sys.env.contains("CI")) {
+      Seq("-Xfatal-warnings")
+    } else {
+      Nil // to enable Scalafix locally
+    }
+  }
+
   private val std2xOptions = Seq(
     "-language:higherKinds",
     "-language:existentials",
@@ -202,11 +216,11 @@ trait ScalaCompilerSettings {
           ZioSbtEcosystemPlugin.autoImport.scala213.value,
           ZioSbtEcosystemPlugin.autoImport.scala3.value
         ),
+      scalacOptions ++= stdOptions ++ extraOptions(Keys.scalaVersion.value, javaPlatform, optimize = !isSnapshot.value),
       javacOptions := Seq("-source", javaPlatform, "-target", javaPlatform),
 //      Compile / console / scalacOptions ~= {
 //        _.filterNot(Set("-Xfatal-warnings"))
 //      },
-
       libraryDependencies ++= {
         if (enableSilencer) {
           if (scalaBinaryVersion.value == "3")
