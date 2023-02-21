@@ -46,16 +46,15 @@ lazy val zioSbtTests =
   project
     .in(file("zio-sbt-tests"))
     .settings(
-      stdSettings(name = "zio-sbt-tests", packageName = "zio.sbt"),
+      stdSettings(name = "zio-sbt-tests"),
       publish / skip := true,
       headerEndYear  := Some(2023)
     )
-    .settings(buildInfoSettings("zio.sbt"))
 
 lazy val zioSbtWebsite =
   project
     .in(file("zio-sbt-website"))
-    .settings(stdSettings(name = "zio-sbt-website", packageName = "zio.sbt"))
+    .settings(stdSettings(name = "zio-sbt-website"))
     .settings(
       headerEndYear := Some(2023),
       scriptedLaunchOpts := {
@@ -69,7 +68,7 @@ lazy val zioSbtWebsite =
 lazy val zioSbtEcosystem =
   project
     .in(file("zio-sbt-ecosystem"))
-    .settings(stdSettings(name = "zio-sbt-ecosystem", packageName = "zio.sbt"))
+    .settings(stdSettings(name = "zio-sbt-ecosystem"))
     .settings(
       headerEndYear := Some(2023),
       scriptedLaunchOpts := {
@@ -83,7 +82,7 @@ lazy val zioSbtEcosystem =
 lazy val zioSbtCi =
   project
     .in(file("zio-sbt-ci"))
-    .settings(stdSettings(name = "zio-sbt-ci", packageName = "zio.sbt"))
+    .settings(stdSettings(name = "zio-sbt-ci"))
     .settings(
       headerEndYear := Some(2023),
       scriptedLaunchOpts := {
@@ -99,7 +98,7 @@ lazy val zioSbtGithubActions =
   project
     .in(file("zio-sbt-githubactions"))
     .settings(
-      stdSettings(name = "zio-sbt-githubactions", packageName = "zio.sbt.githubactions"),
+      stdSettings(name = "zio-sbt-githubactions"),
       headerEndYear := Some(2023)
     )
 

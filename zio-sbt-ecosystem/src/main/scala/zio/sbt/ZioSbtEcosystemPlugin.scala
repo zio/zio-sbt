@@ -122,15 +122,16 @@ object ZioSbtEcosystemPlugin extends AutoPlugin {
 
   override def globalSettings: Seq[Def.Setting[_]] =
     super.globalSettings ++ Seq(
-      scala3         := Versions.scala3,
-      scala211       := Versions.scala211,
-      scala212       := Versions.scala212,
-      scala213       := Versions.scala213,
-      scalaVersion   := Versions.scala213,
-      licenses       := Seq(License.Apache2),
-      organization   := "dev.zio",
-      homepage       := Some(url(s"https://zio.dev/${normalizedName.value}")),
-      normalizedName := (ThisBuild / name).value.toLowerCase.replaceAll(" ", "-"),
+      scala3             := Versions.scala3,
+      scala211           := Versions.scala211,
+      scala212           := Versions.scala212,
+      scala213           := Versions.scala213,
+      scalaVersion       := scala213.value,
+      crossScalaVersions := Seq(scala211.value, scala212.value, scala213.value, scala3.value),
+      licenses           := Seq(License.Apache2),
+      organization       := "dev.zio",
+      homepage           := Some(url(s"https://zio.dev/${normalizedName.value}")),
+      normalizedName     := (ThisBuild / name).value.toLowerCase.replaceAll(" ", "-"),
       scmInfo := Some(
         ScmInfo(
           homepage.value.get,

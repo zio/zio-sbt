@@ -297,7 +297,7 @@ trait ScalaCompilerSettings {
 
   def stdSettings(
     name: String,
-    packageName: String,
+    packageName: Option[String] = None,
     enableSilencer: Boolean = false,
     enableKindProjector: Boolean = false,
     enableCrossProject: Boolean = false
@@ -326,9 +326,11 @@ trait ScalaCompilerSettings {
       incOptions ~= (_.withLogRecompileOnMacro(false)),
       autoAPIMappings := true
       //      unusedCompileDependenciesFilter -= moduleFilter("org.scala-js", "scalajs-library")
-    ) ++ (if (enableCrossProject) crossProjectSettings else Seq.empty) ++ buildInfoSettings(
-      packageName
-    ) ++ scala3Settings
+    ) ++ (if (enableCrossProject) crossProjectSettings else Seq.empty) ++
+      (packageName match {
+        case Some(name) => buildInfoSettings(name)
+        case None       => Seq.empty
+      }) ++ scala3Settings
 
   def scalaReflectTestSettings(scala213Version: String): List[Setting[_]] = List(
     libraryDependencies ++= {
@@ -339,17 +341,23 @@ trait ScalaCompilerSettings {
     }
   )
 
-  def enableZIO(zioVersion: String, enableTesting: Boolean = false): Seq[Def.Setting[_]] =
+  def enableZIO(
+    zioVersion: String,
+    enableStreaming: Boolean = false,
+    enableTesting: Boolean = false
+  ): Seq[Def.Setting[_]] =
     Seq(libraryDependencies += "dev.zio" %% "zio" % zioVersion) ++
       (if (enableTesting)
          Seq(
            libraryDependencies ++= Seq(
-             "dev.zio" %% "zio-test"     % zioVersion,
+             "dev.zio" %% "zio-test"     % zioVersion % Test,
              "dev.zio" %% "zio-test-sbt" % zioVersion % Test
            ),
            testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
          )
-       else Seq.empty)
+       else Seq.empty) ++ {
+        if (enableStreaming) libraryDependencies += "dev.zio" %% "zio-streams" % zioVersion else Seq.empty
+      }
 
   def buildInfoSettings(packageName: String): Seq[Setting[_ <: Object]] =
     Seq(
@@ -357,4 +365,16 @@ trait ScalaCompilerSettings {
       buildInfoPackage := packageName
     )
 
+  def macroDefinitionSettings: Seq[Setting[_ <: Equals]] =
+    Seq(
+      scalacOptions += "-language:experimental.macros",
+      libraryDependencies ++= {
+        if (scalaBinaryVersion.value == "3") Seq()
+        else
+          Seq(
+            "org.scala-lang" % "scala-reflect"  % scalaVersion.value % "provided",
+            "org.scala-lang" % "scala-compiler" % scalaVersion.value % "provided"
+          )
+      }
+    )
 }
