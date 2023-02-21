@@ -16,12 +16,12 @@
 
 package zio.sbt
 
+import explicitdeps.ExplicitDepsPlugin.autoImport._
 import sbt.Keys.*
 import sbt.*
 import sbtbuildinfo.BuildInfoPlugin.autoImport.{BuildInfoKey, buildInfoKeys, buildInfoPackage}
 import sbtcrossproject.CrossPlugin.autoImport.crossProjectPlatform
 import scalafix.sbt.ScalafixPlugin.autoImport.{scalafixDependencies, scalafixScalaBinaryVersion, scalafixSemanticdb}
-
 import zio.sbt.Versions.*
 
 trait ScalaCompilerSettings {
@@ -158,29 +158,28 @@ trait ScalaCompilerSettings {
 
   lazy val scala3Settings: Seq[Setting[_]] = Seq(
     libraryDependencies ++= {
-      val scala213Version = Keys.crossScalaVersions.value.find(_.startsWith("2.13")).getOrElse(Versions.scala213)
-      if (Keys.scalaVersion.value.startsWith("3"))
+      if (Keys.scalaBinaryVersion.value == "3")
         Seq(
-          "com.github.ghik" % s"silencer-lib_$scala213Version" % SilencerVersion % Provided
+          "com.github.ghik" % s"silencer-lib_${ZioSbtEcosystemPlugin.autoImport.scala213.value}" % SilencerVersion % Provided
         )
       else
         Seq.empty
     },
     scalacOptions ++= {
-      if (Keys.scalaVersion.value.startsWith("3"))
+      if (Keys.scalaBinaryVersion.value == "3")
         Seq("-noindent")
       else
         Seq()
     },
     scalacOptions --= {
-      if (Keys.scalaVersion.value.startsWith("3"))
+      if (Keys.scalaBinaryVersion.value == "3")
         Seq("-Xfatal-warnings")
       else
         Seq()
     },
     Compile / doc / sources := {
       val old = (Compile / doc / sources).value
-      if (Keys.scalaVersion.value.startsWith("3")) {
+      if (Keys.scalaBinaryVersion.value == "3") {
         Nil
       } else {
         old
@@ -188,7 +187,7 @@ trait ScalaCompilerSettings {
     },
     Test / parallelExecution := {
       val old = (Test / parallelExecution).value
-      if (Keys.scalaVersion.value.startsWith("3")) {
+      if (Keys.scalaBinaryVersion.value == "3") {
         false
       } else {
         old
@@ -196,16 +195,22 @@ trait ScalaCompilerSettings {
     }
   )
 
-  def extraOptions(scalaVersion: String, optimize: Boolean): Seq[String] =
+  def extraOptions(scalaVersion: String, javaPlatform: String, optimize: Boolean): Seq[String] =
     CrossVersion.partialVersion(scalaVersion) match {
-      case Some((3, 0)) =>
+      case Some((3, _)) =>
         Seq(
           "-language:implicitConversions",
-          "-Xignore-scala2-macros"
+          "-Xignore-scala2-macros",
+          "-noindent",
+          "-release",
+          javaPlatform
         )
       case Some((2, 13)) =>
         Seq(
-          "-Ywarn-unused:params,-implicits"
+          "-Ywarn-unused:params,-implicits",
+          "-release",
+          javaPlatform,
+          s"-target:$javaPlatform"
         ) ++ std2xOptions ++ optimizerOptions(optimize)
       case Some((2, 12)) =>
         Seq(
@@ -259,7 +264,7 @@ trait ScalaCompilerSettings {
         List("2.12", "2.11+", "2.12+", "2.11-2.12", "2.12-2.13", "2.x")
       case Some((2, 13)) =>
         List("2.13", "2.11+", "2.12+", "2.13+", "2.12-2.13", "2.x")
-      case Some((3, 0)) =>
+      case Some((3, _)) =>
         List("dotty", "2.11+", "2.12+", "2.13+", "3.x")
       case _ =>
         List()
@@ -292,29 +297,49 @@ trait ScalaCompilerSettings {
       compilerPlugin("com.github.ghik" % "silencer-plugin" % SilencerVersion cross CrossVersion.full)
     )
 
-  val kindProjectorModule: ModuleID =
-    compilerPlugin("org.typelevel" %% "kind-projector" % KindProjectorVersion cross CrossVersion.full)
-
   def stdSettings(
     name: String,
     packageName: Option[String] = None,
-    enableSilencer: Boolean = false,
-    enableKindProjector: Boolean = false,
+    javaPlatform: String = "8",
+    enableSilencer: Boolean = true,
+    enableKindProjector: Boolean = true,
     enableCrossProject: Boolean = false
   ): Seq[Setting[_]] =
     Seq(
       Keys.name := name,
-      scalacOptions ++= stdOptions ++ extraOptions(Keys.scalaVersion.value, optimize = !isSnapshot.value),
-      Compile / console / scalacOptions ~= {
-        _.filterNot(Set("-Xfatal-warnings"))
-      },
+      crossScalaVersions :=
+        Seq(
+          ZioSbtEcosystemPlugin.autoImport.scala211.value,
+          ZioSbtEcosystemPlugin.autoImport.scala212.value,
+          ZioSbtEcosystemPlugin.autoImport.scala213.value,
+          ZioSbtEcosystemPlugin.autoImport.scala3.value
+        ),
+      javacOptions := Seq("-source", javaPlatform, "-target", javaPlatform),
+//      Compile / console / scalacOptions ~= {
+//        _.filterNot(Set("-Xfatal-warnings"))
+//      },
+
       libraryDependencies ++= {
-        if (!Keys.scalaVersion.value.startsWith("3")) {
-          (if (enableSilencer) silencerModules else Seq.empty) ++
-            (if (enableKindProjector) Seq(kindProjectorModule) else Seq.empty)
+        if (enableSilencer) {
+          if (scalaBinaryVersion.value == "3")
+            Seq(
+              "com.github.ghik" % s"silencer-lib_${ZioSbtEcosystemPlugin.autoImport.scala213.value}" % SilencerVersion % Provided
+            )
+          else
+            Seq(
+              "com.github.ghik" % "silencer-lib" % SilencerVersion % Provided cross CrossVersion.full,
+              compilerPlugin("com.github.ghik" % "silencer-plugin" % SilencerVersion cross CrossVersion.full)
+            )
         } else Seq.empty
       },
-      semanticdbEnabled := !Keys.scalaVersion.value.startsWith("3"),
+      libraryDependencies ++= {
+        if (enableKindProjector && scalaBinaryVersion.value != "3") {
+          Seq(
+            compilerPlugin("org.typelevel" %% "kind-projector" % KindProjectorVersion cross CrossVersion.full)
+          )
+        } else Seq.empty
+      },
+      semanticdbEnabled := Keys.scalaBinaryVersion.value != "3",
       semanticdbOptions += "-P:semanticdb:synthetics:on",
       semanticdbVersion                      := scalafixSemanticdb.revision, // use Scalafix compatible version
       ThisBuild / scalafixScalaBinaryVersion := CrossVersion.binaryScalaVersion(Keys.scalaVersion.value),
@@ -322,10 +347,10 @@ trait ScalaCompilerSettings {
         "com.github.liancheng" %% "organize-imports" % OrganizeImportsVersion,
         "com.github.vovapolu"  %% "scaluzzi"         % ScaluzziVersion
       ),
-      Test / parallelExecution := true,
+      Test / parallelExecution := scalaBinaryVersion.value != "3",
       incOptions ~= (_.withLogRecompileOnMacro(false)),
-      autoAPIMappings := true
-      //      unusedCompileDependenciesFilter -= moduleFilter("org.scala-js", "scalajs-library")
+      autoAPIMappings := true,
+      unusedCompileDependenciesFilter -= moduleFilter("org.scala-js", "scalajs-library")
     ) ++ (if (enableCrossProject) crossProjectSettings else Seq.empty) ++
       (packageName match {
         case Some(name) => buildInfoSettings(name)
