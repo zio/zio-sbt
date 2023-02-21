@@ -17,7 +17,6 @@
 package zio.sbt
 
 import scala.collection.immutable.ListMap
-
 import com.jsuereth.sbtpgp.SbtPgp.autoImport.*
 import de.heikoseeberger.sbtheader.HeaderPlugin
 import org.scalafmt.sbt.ScalafmtPlugin
@@ -117,21 +116,23 @@ object ZioSbtEcosystemPlugin extends AutoPlugin {
     Commands.settings ++ welcomeMessage ++ Seq(
       usefulTasksAndSettings := defaultTasksAndSettings,
       welcomeBannerEnabled   := true
-    ) ++ Tasks.settings
-//    stdSettings ++ Tasks.settings
+    ) ++ Tasks.settings // ++ Tasks.settings
+
+  override def buildSettings: Seq[Def.Setting[_]] = super.buildSettings ++ Seq(
+    scala3             := Versions.scala3,
+    scala211           := Versions.scala211,
+    scala212           := Versions.scala212,
+    scala213           := Versions.scala213,
+    scalaVersion       := scala213.value,
+    crossScalaVersions := Seq(scala211.value, scala212.value, scala213.value, scala3.value)
+  )
 
   override def globalSettings: Seq[Def.Setting[_]] =
     super.globalSettings ++ Seq(
-      scala3             := Versions.scala3,
-      scala211           := Versions.scala211,
-      scala212           := Versions.scala212,
-      scala213           := Versions.scala213,
-      scalaVersion       := scala213.value,
-      crossScalaVersions := Seq(scala211.value, scala212.value, scala213.value, scala3.value),
-      licenses           := Seq(License.Apache2),
-      organization       := "dev.zio",
-      homepage           := Some(url(s"https://zio.dev/${normalizedName.value}")),
-      normalizedName     := (ThisBuild / name).value.toLowerCase.replaceAll(" ", "-"),
+      licenses       := Seq(License.Apache2),
+      organization   := "dev.zio",
+      homepage       := Some(url(s"https://zio.dev/${normalizedName.value}")),
+      normalizedName := (ThisBuild / name).value.toLowerCase.replaceAll(" ", "-"),
       scmInfo := Some(
         ScmInfo(
           homepage.value.get,

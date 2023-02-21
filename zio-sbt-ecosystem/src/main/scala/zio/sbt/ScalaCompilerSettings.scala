@@ -210,13 +210,6 @@ trait ScalaCompilerSettings {
   ): Seq[Setting[_]] =
     Seq(
       Keys.name := name,
-      crossScalaVersions :=
-        Seq(
-          ZioSbtEcosystemPlugin.autoImport.scala211.value,
-          ZioSbtEcosystemPlugin.autoImport.scala212.value,
-          ZioSbtEcosystemPlugin.autoImport.scala213.value,
-          ZioSbtEcosystemPlugin.autoImport.scala3.value
-        ),
       scalacOptions ++= stdOptions ++ extraOptions(Keys.scalaVersion.value, javaPlatform, optimize = !isSnapshot.value),
       javacOptions := Seq("-source", javaPlatform, "-target", javaPlatform),
 //      Compile / console / scalacOptions ~= {
