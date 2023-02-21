@@ -22,6 +22,7 @@ import sbt.*
 import sbtbuildinfo.BuildInfoPlugin.autoImport.{BuildInfoKey, buildInfoKeys, buildInfoPackage}
 import sbtcrossproject.CrossPlugin.autoImport.crossProjectPlatform
 import scalafix.sbt.ScalafixPlugin.autoImport.{scalafixDependencies, scalafixScalaBinaryVersion, scalafixSemanticdb}
+
 import zio.sbt.Versions.*
 
 trait ScalaCompilerSettings {
