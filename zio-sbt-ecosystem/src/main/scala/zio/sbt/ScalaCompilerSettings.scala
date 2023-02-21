@@ -332,10 +332,10 @@ trait ScalaCompilerSettings {
         case None       => Seq.empty
       }) ++ scala3Settings
 
-  def scalaReflectTestSettings(scala213Version: String): List[Setting[_]] = List(
+  def scalaReflectTestSettings: List[Setting[_]] = List(
     libraryDependencies ++= {
-      if (scalaVersion.value.startsWith("3"))
-        Seq("org.scala-lang" % "scala-reflect" % scala213Version % Test)
+      if (scalaBinaryVersion.value == "3")
+        Seq("org.scala-lang" % "scala-reflect" % ZioSbtEcosystemPlugin.autoImport.scala213.value % Test)
       else
         Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value % Test)
     }
