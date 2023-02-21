@@ -17,6 +17,7 @@
 package zio.sbt
 
 import scala.collection.immutable.ListMap
+
 import com.jsuereth.sbtpgp.SbtPgp.autoImport.*
 import de.heikoseeberger.sbtheader.HeaderPlugin
 import org.scalafmt.sbt.ScalafmtPlugin
