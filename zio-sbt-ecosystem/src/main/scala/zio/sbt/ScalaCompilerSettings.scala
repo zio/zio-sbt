@@ -54,7 +54,6 @@ trait ScalaCompilerSettings {
     else Nil
 
   lazy val scala3Settings: Seq[Setting[_]] = Seq(
-    crossScalaVersions += ZioSbtEcosystemPlugin.autoImport.scala3.value,
     scalacOptions ++= {
       if (Keys.scalaBinaryVersion.value == "3")
         Seq("-noindent")
@@ -198,11 +197,6 @@ trait ScalaCompilerSettings {
   ): Seq[Setting[_]] =
     Seq(
       Keys.name := name,
-      Keys.crossScalaVersions := Seq(
-        ZioSbtEcosystemPlugin.autoImport.scala211.value,
-        ZioSbtEcosystemPlugin.autoImport.scala212.value,
-        ZioSbtEcosystemPlugin.autoImport.scala213.value
-      ),
       scalacOptions ++= stdOptions ++ extraOptions(
         Keys.scalaVersion.value,
         javaPlatform,
