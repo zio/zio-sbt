@@ -33,13 +33,7 @@ trait ScalaCompilerSettings {
     "UTF-8",
     "-feature",
     "-unchecked"
-  ) ++ {
-    if (sys.env.contains("CI")) {
-      Seq("-Xfatal-warnings")
-    } else {
-      Nil // to enable Scalafix locally
-    }
-  }
+  )
 
   private val std2xOptions = Seq(
     "-language:higherKinds",
@@ -206,11 +200,21 @@ trait ScalaCompilerSettings {
     javaPlatform: String = "8",
     enableSilencer: Boolean = true,
     enableKindProjector: Boolean = true,
-    enableCrossProject: Boolean = false
+    enableCrossProject: Boolean = false,
+    turnCompilerWarningIntoErrors: Boolean = true
   ): Seq[Setting[_]] =
     Seq(
       Keys.name := name,
-      scalacOptions ++= stdOptions ++ extraOptions(Keys.scalaVersion.value, javaPlatform, optimize = !isSnapshot.value),
+      scalacOptions ++= stdOptions ++ extraOptions(
+        Keys.scalaVersion.value,
+        javaPlatform,
+        optimize = !isSnapshot.value
+      ) ++ {
+        if (turnCompilerWarningIntoErrors && sys.env.contains("CI"))
+          Seq("-Xfatal-warnings")
+        else
+          Nil // to enable Scalafix locally
+      },
       javacOptions := Seq("-source", javaPlatform, "-target", javaPlatform),
 //      Compile / console / scalacOptions ~= {
 //        _.filterNot(Set("-Xfatal-warnings"))
