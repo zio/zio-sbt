@@ -197,6 +197,11 @@ trait ScalaCompilerSettings {
   ): Seq[Setting[_]] =
     Seq(
       Keys.name := name,
+      Keys.crossScalaVersions := Seq(
+        ZioSbtEcosystemPlugin.autoImport.scala211.value,
+        ZioSbtEcosystemPlugin.autoImport.scala212.value,
+        ZioSbtEcosystemPlugin.autoImport.scala213.value
+      ),
       scalacOptions ++= stdOptions ++ extraOptions(
         Keys.scalaVersion.value,
         javaPlatform,
