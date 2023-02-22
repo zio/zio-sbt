@@ -298,7 +298,7 @@ trait ScalaCompilerSettings {
   def jsSettings: Seq[Setting[_]] = Seq()
 
   def nativeSettings: Seq[Setting[_]] = Seq(
-    Test / test             := (Test / compile).value,
+    Test / test             := { val _ = (Test / compile).value; () },
     doc / skip              := true,
     Compile / doc / sources := Seq.empty
   )
