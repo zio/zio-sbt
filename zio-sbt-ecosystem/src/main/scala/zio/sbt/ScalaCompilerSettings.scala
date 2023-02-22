@@ -54,14 +54,6 @@ trait ScalaCompilerSettings {
     else Nil
 
   lazy val scala3Settings: Seq[Setting[_]] = Seq(
-    libraryDependencies ++= {
-      if (Keys.scalaBinaryVersion.value == "3")
-        Seq(
-          "com.github.ghik" % s"silencer-lib_${ZioSbtEcosystemPlugin.autoImport.scala213.value}" % SilencerVersion % Provided
-        )
-      else
-        Seq.empty
-    },
     scalacOptions ++= {
       if (Keys.scalaBinaryVersion.value == "3")
         Seq("-noindent")
@@ -255,7 +247,7 @@ trait ScalaCompilerSettings {
       (packageName match {
         case Some(name) => buildInfoSettings(name)
         case None       => Seq.empty
-      }) ++ scala3Settings
+      })
 
   def scalaReflectTestSettings: List[Setting[_]] = List(
     libraryDependencies ++= {
