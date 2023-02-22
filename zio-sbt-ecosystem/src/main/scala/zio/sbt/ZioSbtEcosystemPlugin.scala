@@ -72,25 +72,6 @@ object ZioSbtEcosystemPlugin extends AutoPlugin {
     """testOnly *.YourSpec -- -t \"YourLabel\"""" -> "Only runs tests with matching term e.g."
   )
 
-//  def stdSettings: Seq[Setting[_]] = Seq.empty
-//    Seq(
-//      licenses               := List("Apache-2.0" -> new URL("http://www.apache.org/licenses/LICENSE-2.0.txt")),
-//      welcomeBannerEnabled   := true,
-//      usefulTasksAndSettings := defaultTasksAndSettings,
-//      scalacOptions          := ScalaCompilerSettings.stdScalacOptions(scalaVersion.value, !isSnapshot.value),
-//      semanticdbEnabled      := scalaVersion.value != scala3.value, // enable SemanticDB
-//      semanticdbOptions += "-P:semanticdb:synthetics:on",
-//      semanticdbVersion                      := scalafixSemanticdb.revision, // use Scalafix compatible version
-//      ThisBuild / scalafixScalaBinaryVersion := CrossVersion.binaryScalaVersion(scalaVersion.value),
-//      ThisBuild / scalafixDependencies ++= List(
-//        "com.github.liancheng" %% "organize-imports" % "0.6.0",
-//        "com.github.vovapolu"  %% "scaluzzi"         % "0.1.23"
-//      ),
-//      Test / parallelExecution := !sys.env.contains("CI"),
-//      incOptions ~= (_.withLogRecompileOnMacro(false)),
-//      autoAPIMappings := true
-//    )
-
   def welcomeMessage: Setting[String] =
     onLoadMessage := {
       if (welcomeBannerEnabled.value) {
@@ -117,21 +98,23 @@ object ZioSbtEcosystemPlugin extends AutoPlugin {
     Commands.settings ++ welcomeMessage ++ Seq(
       usefulTasksAndSettings := defaultTasksAndSettings,
       welcomeBannerEnabled   := true
-    ) ++ Tasks.settings
-//    stdSettings ++ Tasks.settings
+    ) ++ Tasks.settings // ++ Tasks.settings
+
+  override def buildSettings: Seq[Def.Setting[_]] = super.buildSettings ++ Seq(
+    scala3             := Versions.scala3,
+    scala211           := Versions.scala211,
+    scala212           := Versions.scala212,
+    scala213           := Versions.scala213,
+    scalaVersion       := scala213.value,
+    crossScalaVersions := Seq(scala211.value, scala212.value, scala213.value, scala3.value)
+  )
 
   override def globalSettings: Seq[Def.Setting[_]] =
     super.globalSettings ++ Seq(
-      scala3             := Versions.scala3,
-      scala211           := Versions.scala211,
-      scala212           := Versions.scala212,
-      scala213           := Versions.scala213,
-      scalaVersion       := scala213.value,
-      crossScalaVersions := Seq(scala211.value, scala212.value, scala213.value, scala3.value),
-      licenses           := Seq(License.Apache2),
-      organization       := "dev.zio",
-      homepage           := Some(url(s"https://zio.dev/${normalizedName.value}")),
-      normalizedName     := (ThisBuild / name).value.toLowerCase.replaceAll(" ", "-"),
+      licenses       := Seq(License.Apache2),
+      organization   := "dev.zio",
+      homepage       := Some(url(s"https://zio.dev/${normalizedName.value}")),
+      normalizedName := (ThisBuild / name).value.toLowerCase.replaceAll(" ", "-"),
       scmInfo := Some(
         ScmInfo(
           homepage.value.get,
