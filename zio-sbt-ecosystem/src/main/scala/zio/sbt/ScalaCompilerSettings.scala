@@ -198,7 +198,7 @@ trait ScalaCompilerSettings {
   ): Seq[Setting[_]] =
     Seq(
       Keys.name := name,
-      scalacOptions ++= stdOptions ++ extraOptions(
+      scalacOptions := stdOptions ++ extraOptions(
         Keys.scalaVersion.value,
         javaPlatform,
         optimize = !isSnapshot.value
@@ -262,7 +262,7 @@ trait ScalaCompilerSettings {
   def enableZIO(
     zioVersion: String,
     enableStreaming: Boolean = false,
-    enableTesting: Boolean = false
+    enableTesting: Boolean = true
   ): Seq[Def.Setting[_]] =
     Seq(libraryDependencies += "dev.zio" %% "zio" % zioVersion) ++
       (if (enableTesting)
