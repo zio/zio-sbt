@@ -260,21 +260,22 @@ trait ScalaCompilerSettings {
   )
 
   def enableZIO(
-    zioVersion: String,
     enableStreaming: Boolean = false,
     enableTesting: Boolean = true
   ): Seq[Def.Setting[_]] =
-    Seq(libraryDependencies += "dev.zio" %% "zio" % zioVersion) ++
+    Seq(libraryDependencies += "dev.zio" %% "zio" % ZioSbtEcosystemPlugin.autoImport.zioVersion.value) ++
       (if (enableTesting)
          Seq(
            libraryDependencies ++= Seq(
-             "dev.zio" %% "zio-test"     % zioVersion % Test,
-             "dev.zio" %% "zio-test-sbt" % zioVersion % Test
+             "dev.zio" %% "zio-test"     % ZioSbtEcosystemPlugin.autoImport.zioVersion.value % Test,
+             "dev.zio" %% "zio-test-sbt" % ZioSbtEcosystemPlugin.autoImport.zioVersion.value % Test
            ),
            testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
          )
        else Seq.empty) ++ {
-        if (enableStreaming) libraryDependencies += "dev.zio" %% "zio-streams" % zioVersion else Seq.empty
+        if (enableStreaming)
+          libraryDependencies += "dev.zio" %% "zio-streams" % ZioSbtEcosystemPlugin.autoImport.zioVersion.value
+        else Seq.empty
       }
 
   def buildInfoSettings(packageName: String): Seq[Setting[_ <: Object]] =

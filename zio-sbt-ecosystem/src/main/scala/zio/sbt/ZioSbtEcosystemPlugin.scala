@@ -47,10 +47,11 @@ object ZioSbtEcosystemPlugin extends AutoPlugin {
         usefulTasksAndSettings += command.toItem
       )
 
-    lazy val scala3: SettingKey[String]   = settingKey[String]("Scala 3 version")
-    lazy val scala211: SettingKey[String] = settingKey[String]("Scala 2.11 version")
-    lazy val scala212: SettingKey[String] = settingKey[String]("Scala 2.12 version")
-    lazy val scala213: SettingKey[String] = settingKey[String]("Scala 2.13 version")
+    lazy val scala3: SettingKey[String]     = settingKey[String]("Scala 3 version")
+    lazy val scala211: SettingKey[String]   = settingKey[String]("Scala 2.11 version")
+    lazy val scala212: SettingKey[String]   = settingKey[String]("Scala 2.12 version")
+    lazy val scala213: SettingKey[String]   = settingKey[String]("Scala 2.13 version")
+    lazy val zioVersion: SettingKey[String] = settingKey[String]("ZIO version")
 
     val welcomeBannerEnabled: SettingKey[Boolean] =
       settingKey[Boolean]("Indicates whether or not to enable the welcome banner.")
@@ -106,7 +107,8 @@ object ZioSbtEcosystemPlugin extends AutoPlugin {
     scala212           := Versions.scala212,
     scala213           := Versions.scala213,
     scalaVersion       := scala213.value,
-    crossScalaVersions := Seq(scala211.value, scala212.value, scala213.value)
+    crossScalaVersions := Seq(scala211.value, scala212.value, scala213.value, scala3.value),
+    zioVersion         := Versions.zioVersion
   )
 
   override def globalSettings: Seq[Def.Setting[_]] =
