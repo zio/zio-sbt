@@ -197,7 +197,8 @@ trait ScalaCompilerSettings {
     turnCompilerWarningIntoErrors: Boolean = true
   ): Seq[Setting[_]] =
     Seq(
-      Keys.name := name,
+      Keys.name                                     := name,
+      ZioSbtEcosystemPlugin.autoImport.javaPlatform := javaPlatform,
       scalacOptions := stdOptions ++ extraOptions(
         Keys.scalaVersion.value,
         javaPlatform,

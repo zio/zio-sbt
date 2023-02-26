@@ -3,7 +3,7 @@ import Versions._
 sbtPlugin         := true
 publishMavenStyle := true
 
-enablePlugins(ZioSbtEcosystemPlugin)
+enablePlugins(ZioSbtEcosystemPlugin, ZioSbtCiPlugin)
 
 addCommandAlias("test", "scripted")
 
@@ -92,7 +92,7 @@ lazy val zioSbtCi =
       scriptedBufferLog := false
     )
     .enablePlugins(SbtPlugin)
-    .dependsOn(zioSbtGithubActions)
+    .dependsOn(zioSbtGithubActions, zioSbtEcosystem)
 
 lazy val zioSbtGithubActions =
   project

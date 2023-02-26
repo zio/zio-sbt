@@ -29,15 +29,20 @@ object ZioSbtCiPlugin extends AutoPlugin {
 
   import DocsVersioning.SemanticVersioning
 
+  override def requires: Plugins =
+    super.requires && ZioSbtEcosystemPlugin
+
   object autoImport {
     val docsVersioning: SettingKey[DocsVersioning] = settingKey[DocsVersioning]("Docs versioning style")
     val ciEnabledBranches: SettingKey[Seq[String]] = settingKey[Seq[String]]("Publish branch for documentation")
     val generateGithubWorkflow: TaskKey[Unit]      = taskKey[Unit]("Generate github workflow")
     val sbtBuildOptions: SettingKey[List[String]]  = settingKey[List[String]]("SBT build options")
     val updateReadmeCondition: SettingKey[Option[Condition]] =
-      settingKey[Option[Condition]]("Condition to update readme")
+      settingKey[Option[Condition]]("condition to update readme")
+    val supportedJavaPlatform: SettingKey[Map[String, String]] =
+      SettingKey[Map[String, String]]("supported Java platform for each module, default is '8'")
     val supportedScalaVersions: SettingKey[Map[String, Seq[String]]] =
-      settingKey[Map[String, Seq[String]]]("List of supported scala versions")
+      settingKey[Map[String, Seq[String]]]("list of supported scala versions")
     val checkGithubWorkflow: TaskKey[Unit] = taskKey[Unit]("Make sure if the site.yml file is up-to-date")
     val checkArtifactBuildProcessWorkflowStep: SettingKey[Option[Step]] =
       settingKey[Option[Step]]("Workflow step for checking artifact build process")
@@ -52,6 +57,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
         workflowName = ciWorkflowName.value,
         ciEnabledBranches = ciEnabledBranches.value,
         scalaVersionMatrix = supportedScalaVersions.value,
+        javaPlatformMatrix = supportedJavaPlatform.value,
         sbtBuildOptions = sbtBuildOptions.value,
         docsProjectId = documentationProject.value.map(_.id),
         docsVersioning = docsVersioning.value,
@@ -99,6 +105,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
       docsVersioning         := DocsVersioning.SemanticVersioning,
       checkGithubWorkflow    := checkGithubWorkflowTask.value,
       supportedScalaVersions := Map.empty,
+      supportedJavaPlatform  := Map.empty,
       sbtBuildOptions        := List.empty[String],
       updateReadmeCondition  := None,
       checkArtifactBuildProcessWorkflowStep :=
@@ -134,6 +141,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
     workflowName: String,
     ciEnabledBranches: Seq[String] = Seq("main"),
     scalaVersionMatrix: Map[String, Seq[String]] = Map.empty,
+    javaPlatformMatrix: Map[String, String] = Map.empty,
     sbtBuildOptions: List[String] = List.empty,
     docsProjectId: Option[String] = None,
     docsVersioning: DocsVersioning = SemanticVersioning,
@@ -165,12 +173,6 @@ object ZioSbtCiPlugin extends AutoPlugin {
           "check-latest" -> true.asJson
         )
       )
-
-      val Test: Step.SingleStep =
-        Step.SingleStep(
-          name = "Test",
-          run = Some("sbt ${{ matrix.scala-project }}/test")
-        )
 
       val SetupNodeJs: Step.SingleStep = Step.SingleStep(
         name = "Setup NodeJs",
@@ -298,20 +300,58 @@ object ZioSbtCiPlugin extends AutoPlugin {
               strategy = Some(
                 Strategy(
                   matrix = Map(
-                    "java" -> List("8", "11", "17"),
-                    "scala-project" -> scalaVersionMatrix.flatMap { case (moduleName, versions) =>
-                      versions.map { version =>
-                        s"++$version $moduleName"
-                      }
-                    }.toList
-                  ),
+                    "java" -> List("8", "11", "17")
+                  ) ++
+                    (if (javaPlatformMatrix.isEmpty) {
+                       Map("scala-project" -> scalaVersionMatrix.flatMap { case (moduleName, versions) =>
+                         versions.map { version =>
+                           s"++$version $moduleName"
+                         }
+                       }.toList)
+                     } else {
+                       def generateScalaProjectJavaPlatform(javaPlatform: String) =
+                         s"scala-project-java${javaPlatform}" -> scalaVersionMatrix.filterKeys { p =>
+                           (javaPlatformMatrix.getOrElse(p, javaPlatform).toInt <= javaPlatform.toInt)
+                         }.flatMap { case (moduleName, versions) =>
+                           versions.map { version =>
+                             s"++$version $moduleName"
+                           }
+                         }.toList
+                       Seq("8", "11", "17").map(jp => generateScalaProjectJavaPlatform(jp))
+                     }),
                   failFast = false
                 )
               ),
               steps = Seq(
                 SetupJava("${{ matrix.java }}"),
                 Checkout,
-                Test
+                if (javaPlatformMatrix.values.toSet.isEmpty) {
+                  Step.SingleStep(
+                    name = "Test",
+                    run = Some("sbt ${{ matrix.scala-project }}/test")
+                  )
+                } else {
+                  Step.StepSequence(
+                    Seq(
+                      Step.SingleStep(
+                        name = "Java 8 Tests",
+                        condition = Some(Condition.Expression("endsWith(matrix.java, '.8')")),
+                        run = Some("sbt ${{ matrix.scala-project-java8 }}/test")
+                      ),
+                      Step.SingleStep(
+                        name = "Java 11 Tests",
+                        condition = Some(Condition.Expression("endsWith(matrix.java, '.11')")),
+                        run = Some("sbt ${{ matrix.scala-project-java11 }}/test")
+                      ),
+                      Step.SingleStep(
+                        name = "Java 17 Tests",
+                        condition = Some(Condition.Expression("endsWith(matrix.java, '.17')")),
+                        run = Some("sbt ${{ matrix.scala-project-java17 }}/test")
+                      )
+                    )
+                  )
+
+                }
               )
             ),
             Job(
