@@ -35,6 +35,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
   object autoImport {
     val docsVersioning: SettingKey[DocsVersioning] = settingKey[DocsVersioning]("Docs versioning style")
     val ciEnabledBranches: SettingKey[Seq[String]] = settingKey[Seq[String]]("Publish branch for documentation")
+    val parallelTestExecution: SettingKey[Boolean] = settingKey[Boolean]("Parallel Test Execution, default: true")
     val generateGithubWorkflow: TaskKey[Unit]      = taskKey[Unit]("Generate github workflow")
     val sbtBuildOptions: SettingKey[List[String]]  = settingKey[List[String]]("SBT build options")
     val updateReadmeCondition: SettingKey[Option[Condition]] =
@@ -56,6 +57,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
       val workflow = websiteWorkflow(
         workflowName = ciWorkflowName.value,
         ciEnabledBranches = ciEnabledBranches.value,
+        parallelTest = parallelTestExecution.value,
         scalaVersionMatrix = supportedScalaVersions.value,
         javaPlatformMatrix = supportedJavaPlatform.value,
         sbtBuildOptions = sbtBuildOptions.value,
@@ -76,27 +78,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
 
   override def trigger = noTrigger
 
-//  override lazy val projectSettings: Seq[Setting[_ <: Object]] =
-//    Seq(
-//      ciWorkflowName         := "CI",
-//      documentationProject   := None,
-//      ciEnabledBranches      := Seq.empty,
-//      generateGithubWorkflow := generateGithubWorkflowTask.value,
-//      docsVersioning         := DocsVersioning.SemanticVersioning,
-//      checkGithubWorkflow    := checkGithubWorkflowTask.value,
-//      supportedScalaVersions := Map.empty,
-//      sbtBuildOptions        := List.empty[String],
-//      updateReadmeCondition  := None,
-//      checkArtifactBuildProcessWorkflowStep :=
-//        Some(
-//          Step.SingleStep(
-//            name = "Check artifacts build process",
-//            run = Some(s"sbt ${sbtBuildOptions.value.mkString(" ")} +publishLocal")
-//          )
-//        )
-//    )
-
-  override lazy val buildSettings: Seq[Setting[_ <: Object]] = {
+  override lazy val buildSettings: Seq[Setting[_]] = {
     Seq(
       ciWorkflowName         := "CI",
       documentationProject   := None,
@@ -108,6 +90,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
       supportedJavaPlatform  := Map.empty,
       sbtBuildOptions        := List.empty[String],
       updateReadmeCondition  := None,
+      parallelTestExecution  := true,
       checkArtifactBuildProcessWorkflowStep :=
         Some(
           Step.SingleStep(
@@ -140,6 +123,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
   def websiteWorkflow(
     workflowName: String,
     ciEnabledBranches: Seq[String] = Seq("main"),
+    parallelTest: Boolean = true,
     scalaVersionMatrix: Map[String, Seq[String]] = Map.empty,
     javaPlatformMatrix: Map[String, String] = Map.empty,
     sbtBuildOptions: List[String] = List.empty,
@@ -230,6 +214,126 @@ object ZioSbtCiPlugin extends AutoPlugin {
         )
     }
 
+    val ParallelTestJob =
+      Job(
+        id = "test",
+        name = "Test",
+        strategy = Some(
+          Strategy(
+            matrix = Map(
+              "java" -> List("8", "11", "17")
+            ) ++
+              (if (javaPlatformMatrix.isEmpty) {
+                 Map("scala-project" -> scalaVersionMatrix.flatMap { case (moduleName, versions) =>
+                   versions.map { version =>
+                     s"++$version $moduleName"
+                   }
+                 }.toList)
+               } else {
+                 def generateScalaProjectJavaPlatform(javaPlatform: String) =
+                   s"scala-project-java${javaPlatform}" -> scalaVersionMatrix.filterKeys { p =>
+                     (javaPlatformMatrix.getOrElse(p, javaPlatform).toInt <= javaPlatform.toInt)
+                   }.flatMap { case (moduleName, versions) =>
+                     versions.map { version =>
+                       s"++$version $moduleName"
+                     }
+                   }.toList
+                 Seq("8", "11", "17").map(jp => generateScalaProjectJavaPlatform(jp))
+               }),
+            failFast = false
+          )
+        ),
+        steps = Seq(
+          Steps.SetupJava("${{ matrix.java }}"),
+          Steps.Checkout,
+          if (javaPlatformMatrix.values.toSet.isEmpty) {
+            Step.SingleStep(
+              name = "Test",
+              run = Some("sbt ${{ matrix.scala-project }}/test")
+            )
+          } else {
+            Step.StepSequence(
+              Seq(
+                Step.SingleStep(
+                  name = "Java 8 Tests",
+                  condition = Some(Condition.Expression("endsWith(matrix.java, '.8')")),
+                  run = Some("sbt ${{ matrix.scala-project-java8 }}/test")
+                ),
+                Step.SingleStep(
+                  name = "Java 11 Tests",
+                  condition = Some(Condition.Expression("endsWith(matrix.java, '.11')")),
+                  run = Some("sbt ${{ matrix.scala-project-java11 }}/test")
+                ),
+                Step.SingleStep(
+                  name = "Java 17 Tests",
+                  condition = Some(Condition.Expression("endsWith(matrix.java, '.17')")),
+                  run = Some("sbt ${{ matrix.scala-project-java17 }}/test")
+                )
+              )
+            )
+
+          }
+        )
+      )
+
+    val SequentalTestJob = {
+      def makeTests(scalaVersion: String) =
+        s" ${scalaVersionMatrix.filter { case (p, versions) =>
+          versions.contains(scalaVersion)
+        }.map(e => e._1 + "/test").mkString(" ")}"
+
+      Job(
+        id = "test",
+        name = "Test",
+        strategy = Some(
+          Strategy(
+            matrix = Map(
+              "java"  -> List("8", "11", "17"),
+              "scala" -> scalaVersionMatrix.values.flatten.toSet.toList
+            ),
+            failFast = false
+          )
+        ),
+        steps = Seq(
+          Steps.SetupJava("${{ matrix.java }}"),
+          Steps.Checkout
+        ) ++ (if (javaPlatformMatrix.values.toSet.isEmpty) {
+                scalaVersionMatrix.values.toSeq.flatten.toSet.toSeq.map { scalaVersion: String =>
+                  Step.SingleStep(
+                    name = "Test",
+                    condition = Some(Condition.Expression(s"matrix.scala == '$scalaVersion'")),
+                    run = Some("sbt ++${{ matrix.scala }}" + makeTests(scalaVersion))
+                  )
+                }
+              } else {
+                (for {
+                  javaPlatform: String <- Set("8", "11", "17")
+                  scalaVersion: String <- scalaVersionMatrix.values.toSeq.flatten.toSet
+                  projects = scalaVersionMatrix.filterKeys { p =>
+                               (javaPlatformMatrix.getOrElse(p, javaPlatform).toInt <= javaPlatform.toInt)
+                             }.filter { case (p, versions) =>
+                               versions.contains(scalaVersion)
+                             }.map(_._1)
+                } yield
+                  (
+                    if (projects.nonEmpty)
+                      Seq(
+                        Step.SingleStep(
+                          name = "Test",
+                          condition = Some(
+                            Condition.Expression(s"matrix.java == '$javaPlatform'") && Condition.Expression(
+                              s"matrix.scala == '$scalaVersion'"
+                            )
+                          ),
+                          run = Some("sbt ++${{ matrix.scala }}" ++ s" ${projects.mkString("/test ")}")
+                        )
+                      )
+                    else Seq.empty
+                  )).flatten
+              })
+      )
+    }
+
     import Steps.*
 
     yaml
@@ -294,66 +398,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
                 Lint
               )
             ),
-            Job(
-              id = "test",
-              name = "Test",
-              strategy = Some(
-                Strategy(
-                  matrix = Map(
-                    "java" -> List("8", "11", "17")
-                  ) ++
-                    (if (javaPlatformMatrix.isEmpty) {
-                       Map("scala-project" -> scalaVersionMatrix.flatMap { case (moduleName, versions) =>
-                         versions.map { version =>
-                           s"++$version $moduleName"
-                         }
-                       }.toList)
-                     } else {
-                       def generateScalaProjectJavaPlatform(javaPlatform: String) =
-                         s"scala-project-java${javaPlatform}" -> scalaVersionMatrix.filterKeys { p =>
-                           (javaPlatformMatrix.getOrElse(p, javaPlatform).toInt <= javaPlatform.toInt)
-                         }.flatMap { case (moduleName, versions) =>
-                           versions.map { version =>
-                             s"++$version $moduleName"
-                           }
-                         }.toList
-                       Seq("8", "11", "17").map(jp => generateScalaProjectJavaPlatform(jp))
-                     }),
-                  failFast = false
-                )
-              ),
-              steps = Seq(
-                SetupJava("${{ matrix.java }}"),
-                Checkout,
-                if (javaPlatformMatrix.values.toSet.isEmpty) {
-                  Step.SingleStep(
-                    name = "Test",
-                    run = Some("sbt ${{ matrix.scala-project }}/test")
-                  )
-                } else {
-                  Step.StepSequence(
-                    Seq(
-                      Step.SingleStep(
-                        name = "Java 8 Tests",
-                        condition = Some(Condition.Expression("endsWith(matrix.java, '.8')")),
-                        run = Some("sbt ${{ matrix.scala-project-java8 }}/test")
-                      ),
-                      Step.SingleStep(
-                        name = "Java 11 Tests",
-                        condition = Some(Condition.Expression("endsWith(matrix.java, '.11')")),
-                        run = Some("sbt ${{ matrix.scala-project-java11 }}/test")
-                      ),
-                      Step.SingleStep(
-                        name = "Java 17 Tests",
-                        condition = Some(Condition.Expression("endsWith(matrix.java, '.17')")),
-                        run = Some("sbt ${{ matrix.scala-project-java17 }}/test")
-                      )
-                    )
-                  )
-
-                }
-              )
-            ),
+            if (parallelTest) ParallelTestJob else SequentalTestJob,
             Job(
               id = "release",
               name = "Release",

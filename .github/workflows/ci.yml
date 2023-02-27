@@ -70,6 +70,7 @@ jobs:
         scala-project:
         - ++2.12.17 zioSbtWebsite
         - ++2.12.17 zioSbtEcosystem
+        - ++2.13.10 zioSbtEcosystem
         - ++2.12.17 zioSbtCi
         - ++2.12.17 zioSbtTests
     steps:
