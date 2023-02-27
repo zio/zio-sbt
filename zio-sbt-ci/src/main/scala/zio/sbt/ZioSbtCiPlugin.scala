@@ -298,7 +298,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
           Steps.SetupJava("${{ matrix.java }}"),
           Steps.Checkout
         ) ++ (if (javaPlatformMatrix.values.toSet.isEmpty) {
-                scalaVersionMatrix.values.toSeq.flatten.toSet.toSeq.map { scalaVersion: String =>
+                scalaVersionMatrix.values.toSeq.flatten.distinct.map { scalaVersion: String =>
                   Step.SingleStep(
                     name = "Test",
                     condition = Some(Condition.Expression(s"matrix.scala == '$scalaVersion'")),
@@ -309,27 +309,26 @@ object ZioSbtCiPlugin extends AutoPlugin {
                 (for {
                   javaPlatform: String <- Set("8", "11", "17")
                   scalaVersion: String <- scalaVersionMatrix.values.toSeq.flatten.toSet
-                  projects = scalaVersionMatrix.filterKeys { p =>
-                               (javaPlatformMatrix.getOrElse(p, javaPlatform).toInt <= javaPlatform.toInt)
-                             }.filter { case (p, versions) =>
-                               versions.contains(scalaVersion)
-                             }.map(_._1)
+                  projects =
+                    scalaVersionMatrix.filterKeys { p =>
+                      javaPlatformMatrix.getOrElse(p, javaPlatform).toInt <= javaPlatform.toInt
+                    }.filter { case (_, versions) =>
+                      versions.contains(scalaVersion)
+                    }.keys
                 } yield
-                  (
-                    if (projects.nonEmpty)
-                      Seq(
-                        Step.SingleStep(
-                          name = "Test",
-                          condition = Some(
-                            Condition.Expression(s"matrix.java == '$javaPlatform'") && Condition.Expression(
-                              s"matrix.scala == '$scalaVersion'"
-                            )
-                          ),
-                          run = Some("sbt ++${{ matrix.scala }}" ++ s" ${projects.mkString("/test ")}")
-                        )
+                  if (projects.nonEmpty)
+                    Seq(
+                      Step.SingleStep(
+                        name = "Test",
+                        condition = Some(
+                          Condition.Expression(s"matrix.java == '$javaPlatform'") && Condition.Expression(
+                            s"matrix.scala == '$scalaVersion'"
+                          )
+                        ),
+                        run = Some("sbt ++${{ matrix.scala }}" ++ s" ${projects.mkString("/test ")}")
                       )
-                    else Seq.empty
-                  )).flatten
+                    )
+                  else Seq.empty).flatten
               })
       )
     }
