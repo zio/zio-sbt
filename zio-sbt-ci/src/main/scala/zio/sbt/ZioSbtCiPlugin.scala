@@ -113,7 +113,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
 
       if ("git diff --exit-code".! == 1) {
         sys.error(
-          "The site.yml workflow is not up-to-date!\n" +
+          "The ci.yml workflow is not up-to-date!\n" +
             "Please run `sbt generateGithubWorkflow` and commit new changes."
         )
       }
