@@ -256,17 +256,17 @@ object ZioSbtCiPlugin extends AutoPlugin {
               Seq(
                 Step.SingleStep(
                   name = "Java 8 Tests",
-                  condition = Some(Condition.Expression("endsWith(matrix.java, '.8')")),
+                  condition = Some(Condition.Expression("matrix.java == '8'")),
                   run = Some("sbt ${{ matrix.scala-project-java8 }}/test")
                 ),
                 Step.SingleStep(
                   name = "Java 11 Tests",
-                  condition = Some(Condition.Expression("endsWith(matrix.java, '.11')")),
+                  condition = Some(Condition.Expression("matrix.java == '11'")),
                   run = Some("sbt ${{ matrix.scala-project-java11 }}/test")
                 ),
                 Step.SingleStep(
                   name = "Java 17 Tests",
-                  condition = Some(Condition.Expression("endsWith(matrix.java, '.17')")),
+                  condition = Some(Condition.Expression("matrix.java == '17'")),
                   run = Some("sbt ${{ matrix.scala-project-java17 }}/test")
                 )
               )
@@ -325,7 +325,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
                             s"matrix.scala == '$scalaVersion'"
                           )
                         ),
-                        run = Some("sbt ++${{ matrix.scala }}" ++ s" ${projects.mkString("/test ")}")
+                        run = Some("sbt ++${{ matrix.scala }}" ++ s" ${projects.map(_ + "/test ").mkString(" ")}")
                       )
                     )
                   else Seq.empty).flatten
