@@ -276,9 +276,9 @@ object ZioSbtCiPlugin extends AutoPlugin {
         )
       )
 
-    val SequentalTestJob = {
+    val SequentialTestJob = {
       def makeTests(scalaVersion: String) =
-        s" ${scalaVersionMatrix.filter { case (p, versions) =>
+        s" ${scalaVersionMatrix.filter { case (_, versions) =>
           versions.contains(scalaVersion)
         }.map(e => e._1 + "/test").mkString(" ")}"
 
@@ -398,7 +398,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
                 Lint
               )
             ),
-            if (parallelTest) ParallelTestJob else SequentalTestJob,
+            if (parallelTest) ParallelTestJob else SequentialTestJob,
             Job(
               id = "release",
               name = "Release",
