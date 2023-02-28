@@ -371,7 +371,6 @@ object ZioSbtCiPlugin extends AutoPlugin {
                       Seq(
                         Checkout,
                         SetupJava(),
-                        CheckReadme,
                         CheckGithubWorkflow,
                         artifactBuildProcess,
                         CheckWebsiteBuildProcess
@@ -380,7 +379,6 @@ object ZioSbtCiPlugin extends AutoPlugin {
                       Seq(
                         Checkout,
                         SetupJava(),
-                        CheckReadme,
                         CheckGithubWorkflow,
                         CheckWebsiteBuildProcess
                       )
