@@ -49,6 +49,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
       settingKey[Option[Step]]("Workflow step for checking artifact build process")
     val documentationProject: SettingKey[Option[Project]] = settingKey[Option[Project]]("Documentation project")
     val ciWorkflowName: SettingKey[String]                = settingKey[String]("CI Workflow Name")
+    val ciExtraTestSteps: SettingKey[Seq[Step]]           = settingKey[Seq[Step]]("Build steps")
   }
   import autoImport.*
 
@@ -64,7 +65,8 @@ object ZioSbtCiPlugin extends AutoPlugin {
         docsProjectId = documentationProject.value.map(_.id),
         docsVersioning = docsVersioning.value,
         updateReadmeCondition = updateReadmeCondition.value,
-        checkArtifactBuildProcess = checkArtifactBuildProcessWorkflowStep.value
+        checkArtifactBuildProcess = checkArtifactBuildProcessWorkflowStep.value,
+        extraTestSteps = ciExtraTestSteps.value
       )
 
       val template =
@@ -91,6 +93,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
       sbtBuildOptions        := List.empty[String],
       updateReadmeCondition  := None,
       parallelTestExecution  := true,
+      ciExtraTestSteps       := Seq.empty,
       checkArtifactBuildProcessWorkflowStep :=
         Some(
           Step.SingleStep(
@@ -130,7 +133,8 @@ object ZioSbtCiPlugin extends AutoPlugin {
     docsProjectId: Option[String] = None,
     docsVersioning: DocsVersioning = SemanticVersioning,
     updateReadmeCondition: Option[Condition] = None,
-    checkArtifactBuildProcess: Option[Step] = None
+    checkArtifactBuildProcess: Option[Step] = None,
+    extraTestSteps: Seq[Step] = Seq.empty
   ): String = {
     val _ = docsProjectId
     object Actions {
@@ -273,7 +277,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
             )
 
           }
-        )
+        ) ++ extraTestSteps
       )
 
     val SequentialTestJob = {
@@ -329,7 +333,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
                       )
                     )
                   else Seq.empty).flatten
-              })
+              }) ++ extraTestSteps
       )
     }
 
