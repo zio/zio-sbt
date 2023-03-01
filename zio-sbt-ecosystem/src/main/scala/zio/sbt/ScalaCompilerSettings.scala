@@ -64,7 +64,7 @@ trait ScalaCompilerSettings {
       if (Keys.scalaBinaryVersion.value == "3")
         Seq("-Xfatal-warnings")
       else
-        Seq()
+        Seq() //"-Xprint:typer" from zio-config
     },
     Compile / doc / sources := {
       val old = (Compile / doc / sources).value
@@ -248,7 +248,7 @@ trait ScalaCompilerSettings {
       (packageName match {
         case Some(name) => buildInfoSettings(name)
         case None       => Seq.empty
-      })
+      }) ++ scala3Settings
 
   def scalaReflectTestSettings: List[Setting[_]] = List(
     libraryDependencies ++= {
@@ -284,6 +284,22 @@ trait ScalaCompilerSettings {
       buildInfoPackage := packageName
     )
 
+  def macroExpansionSettings_ = Seq(
+    scalacOptions ++= {
+      CrossVersion.partialVersion(scalaVersion.value) match {
+        case Some((2, 13)) => Seq("-Ymacro-annotations")
+        case _             => Seq.empty
+      }
+    },
+    libraryDependencies ++= {
+      CrossVersion.partialVersion(scalaVersion.value) match {
+        case Some((2, x)) if x <= 12 =>
+          Seq(compilerPlugin(("org.scalamacros" % "paradise" % "2.1.1").cross(CrossVersion.full)))
+        case _ => Seq.empty
+      }
+    }
+  )
+
   def macroDefinitionSettings: Seq[Setting[_ <: Equals]] =
     Seq(
       scalacOptions += "-language:experimental.macros",
@@ -298,6 +314,11 @@ trait ScalaCompilerSettings {
     )
 
   def jsSettings: Seq[Setting[_]] = Seq()
+
+//  def jsSettings_ = Seq(
+//    libraryDependencies += "io.github.cquiroz" %%% "scala-java-time"      % "2.2.2",
+//    libraryDependencies += "io.github.cquiroz" %%% "scala-java-time-tzdb" % "2.2.2"
+//  )
 
   def nativeSettings: Seq[Setting[_]] = Seq(
     Test / test             := { val _ = (Test / compile).value; () },
