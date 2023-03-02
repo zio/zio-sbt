@@ -54,12 +54,6 @@ trait ScalaCompilerSettings {
     else Nil
 
   lazy val scala3Settings: Seq[Setting[_]] = Seq(
-    scalacOptions ++= {
-      if (Keys.scalaBinaryVersion.value == "3")
-        Seq("-noindent")
-      else
-        Seq()
-    },
     scalacOptions --= {
       if (Keys.scalaBinaryVersion.value == "3")
         Seq("-Xfatal-warnings")
