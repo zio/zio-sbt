@@ -17,7 +17,6 @@
 package zio.sbt
 import scala.annotation.nowarn
 import scala.sys.process.*
-
 import io.circe.*
 import io.circe.syntax.*
 import io.circe.yaml.Printer.{LineBreak, YamlVersion}
@@ -50,7 +49,8 @@ object ZioSbtCiPlugin extends AutoPlugin {
       settingKey[Option[Step]]("Workflow step for checking artifact build process")
     val documentationProject: SettingKey[Option[Project]] = settingKey[Option[Project]]("Documentation project")
     val ciWorkflowName: SettingKey[String]                = settingKey[String]("CI Workflow Name")
-    val ciExtraTestSteps: SettingKey[Seq[Step]]           = settingKey[Seq[Step]]("Build steps")
+    val ciExtraTestSteps: SettingKey[Seq[Step]]           = settingKey[Seq[Step]]("Extra test steps")
+    val ciSwapSizeGB: SettingKey[Int]                     = settingKey[Int]("Swap size, default is 0")
   }
   import autoImport.*
 
@@ -67,7 +67,8 @@ object ZioSbtCiPlugin extends AutoPlugin {
         docsVersioning = docsVersioning.value,
         updateReadmeCondition = updateReadmeCondition.value,
         checkArtifactBuildProcess = checkArtifactBuildProcessWorkflowStep.value,
-        extraTestSteps = ciExtraTestSteps.value
+        extraTestSteps = ciExtraTestSteps.value,
+        swapSizeGB = ciSwapSizeGB.value
       )
 
       val template =
@@ -95,6 +96,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
       updateReadmeCondition  := None,
       parallelTestExecution  := true,
       ciExtraTestSteps       := Seq.empty,
+      ciSwapSizeGB           := 0,
       checkArtifactBuildProcessWorkflowStep :=
         Some(
           Step.SingleStep(
@@ -135,13 +137,15 @@ object ZioSbtCiPlugin extends AutoPlugin {
     docsVersioning: DocsVersioning = SemanticVersioning,
     updateReadmeCondition: Option[Condition] = None,
     checkArtifactBuildProcess: Option[Step] = None,
-    extraTestSteps: Seq[Step] = Seq.empty
+    extraTestSteps: Seq[Step] = Seq.empty,
+    swapSizeGB: Int = 0
   ): String = {
     val _ = docsProjectId
     object Actions {
-      val checkout: ActionRef     = ActionRef("actions/checkout@v3.3.0")
-      val `setup-java`: ActionRef = ActionRef("actions/setup-java@v3.10.0")
-      val `setup-node`: ActionRef = ActionRef("actions/setup-node@v3")
+      val checkout: ActionRef         = ActionRef("actions/checkout@v3.3.0")
+      val `setup-java`: ActionRef     = ActionRef("actions/setup-java@v3.10.0")
+      val `setup-node`: ActionRef     = ActionRef("actions/setup-node@v3")
+      val `set-swap-space`: ActionRef = ActionRef("pierotofy/set-swap-space@master")
     }
 
     import Actions.*
@@ -209,6 +213,12 @@ object ZioSbtCiPlugin extends AutoPlugin {
         run = Some(s"sbt ${sbtBuildOptions.mkString(" ")} docs/checkReadme")
       )
 
+      val SetSwapSpace: Step.SingleStep = Step.SingleStep(
+        name = "Set Swap Space",
+        uses = Some(`set-swap-space`),
+        parameters = Map("swap-size-gb" -> swapSizeGB.asJson)
+      )
+
       val PublishToNpmRegistry: Step.SingleStep =
         Step.SingleStep(
           name = "Publish Docs to NPM Registry",
@@ -248,37 +258,38 @@ object ZioSbtCiPlugin extends AutoPlugin {
             failFast = false
           )
         ),
-        steps = Seq(
-          Steps.SetupJava("${{ matrix.java }}"),
-          Steps.Checkout,
-          if (javaPlatformMatrix.values.toSet.isEmpty) {
-            Step.SingleStep(
-              name = "Test",
-              run = Some("sbt ${{ matrix.scala-project }}/test")
-            )
-          } else {
-            Step.StepSequence(
-              Seq(
-                Step.SingleStep(
-                  name = "Java 8 Tests",
-                  condition = Some(Condition.Expression("matrix.java == '8'")),
-                  run = Some("sbt ${{ matrix.scala-project-java8 }}/test")
-                ),
-                Step.SingleStep(
-                  name = "Java 11 Tests",
-                  condition = Some(Condition.Expression("matrix.java == '11'")),
-                  run = Some("sbt ${{ matrix.scala-project-java11 }}/test")
-                ),
-                Step.SingleStep(
-                  name = "Java 17 Tests",
-                  condition = Some(Condition.Expression("matrix.java == '17'")),
-                  run = Some("sbt ${{ matrix.scala-project-java17 }}/test")
+        steps = (if (swapSizeGB > 0) Seq(Steps.SetSwapSpace) else Seq.empty) ++
+          Seq(
+            Steps.SetupJava("${{ matrix.java }}"),
+            Steps.Checkout,
+            if (javaPlatformMatrix.values.toSet.isEmpty) {
+              Step.SingleStep(
+                name = "Test",
+                run = Some("sbt ${{ matrix.scala-project }}/test")
+              )
+            } else {
+              Step.StepSequence(
+                Seq(
+                  Step.SingleStep(
+                    name = "Java 8 Tests",
+                    condition = Some(Condition.Expression("matrix.java == '8'")),
+                    run = Some("sbt ${{ matrix.scala-project-java8 }}/test")
+                  ),
+                  Step.SingleStep(
+                    name = "Java 11 Tests",
+                    condition = Some(Condition.Expression("matrix.java == '11'")),
+                    run = Some("sbt ${{ matrix.scala-project-java11 }}/test")
+                  ),
+                  Step.SingleStep(
+                    name = "Java 17 Tests",
+                    condition = Some(Condition.Expression("matrix.java == '17'")),
+                    run = Some("sbt ${{ matrix.scala-project-java17 }}/test")
+                  )
                 )
               )
-            )
 
-          }
-        ) ++ extraTestSteps
+            }
+          ) ++ extraTestSteps
       )
 
     val SequentialTestJob = {
@@ -299,42 +310,43 @@ object ZioSbtCiPlugin extends AutoPlugin {
             failFast = false
           )
         ),
-        steps = Seq(
-          Steps.SetupJava("${{ matrix.java }}"),
-          Steps.Checkout
-        ) ++ (if (javaPlatformMatrix.values.toSet.isEmpty) {
-                scalaVersionMatrix.values.toSeq.flatten.distinct.map { scalaVersion: String =>
-                  Step.SingleStep(
-                    name = "Test",
-                    condition = Some(Condition.Expression(s"matrix.scala == '$scalaVersion'")),
-                    run = Some("sbt ++${{ matrix.scala }}" + makeTests(scalaVersion))
-                  )
-                }
-              } else {
-                (for {
-                  javaPlatform: String <- Set("8", "11", "17")
-                  scalaVersion: String <- scalaVersionMatrix.values.toSeq.flatten.toSet
-                  projects =
-                    scalaVersionMatrix.filterKeys { p =>
-                      javaPlatformMatrix.getOrElse(p, javaPlatform).toInt <= javaPlatform.toInt
-                    }.filter { case (_, versions) =>
-                      versions.contains(scalaVersion)
-                    }.keys
-                } yield
-                  if (projects.nonEmpty)
-                    Seq(
-                      Step.SingleStep(
-                        name = "Test",
-                        condition = Some(
-                          Condition.Expression(s"matrix.java == '$javaPlatform'") && Condition.Expression(
-                            s"matrix.scala == '$scalaVersion'"
-                          )
-                        ),
-                        run = Some("sbt ++${{ matrix.scala }}" ++ s" ${projects.map(_ + "/test ").mkString(" ")}")
-                      )
+        steps = (if (swapSizeGB > 0) Seq(Steps.SetSwapSpace) else Seq.empty) ++
+          Seq(
+            Steps.SetupJava("${{ matrix.java }}"),
+            Steps.Checkout
+          ) ++ (if (javaPlatformMatrix.values.toSet.isEmpty) {
+                  scalaVersionMatrix.values.toSeq.flatten.distinct.map { scalaVersion: String =>
+                    Step.SingleStep(
+                      name = "Test",
+                      condition = Some(Condition.Expression(s"matrix.scala == '$scalaVersion'")),
+                      run = Some("sbt ++${{ matrix.scala }}" + makeTests(scalaVersion))
                     )
-                  else Seq.empty).flatten
-              }) ++ extraTestSteps
+                  }
+                } else {
+                  (for {
+                    javaPlatform: String <- Set("8", "11", "17")
+                    scalaVersion: String <- scalaVersionMatrix.values.toSeq.flatten.toSet
+                    projects =
+                      scalaVersionMatrix.filterKeys { p =>
+                        javaPlatformMatrix.getOrElse(p, javaPlatform).toInt <= javaPlatform.toInt
+                      }.filter { case (_, versions) =>
+                        versions.contains(scalaVersion)
+                      }.keys
+                  } yield
+                    if (projects.nonEmpty)
+                      Seq(
+                        Step.SingleStep(
+                          name = "Test",
+                          condition = Some(
+                            Condition.Expression(s"matrix.java == '$javaPlatform'") && Condition.Expression(
+                              s"matrix.scala == '$scalaVersion'"
+                            )
+                          ),
+                          run = Some("sbt ++${{ matrix.scala }}" ++ s" ${projects.map(_ + "/test ").mkString(" ")}")
+                        )
+                      )
+                    else Seq.empty).flatten
+                }) ++ extraTestSteps
       )
     }
 
@@ -369,36 +381,38 @@ object ZioSbtCiPlugin extends AutoPlugin {
               id = "build",
               name = "Build",
               continueOnError = true,
-              steps = Seq(
-                Step.StepSequence(
-                  checkArtifactBuildProcess match {
-                    case Some(artifactBuildProcess) =>
-                      Seq(
-                        Checkout,
-                        SetupJava(),
-                        CheckGithubWorkflow,
-                        artifactBuildProcess,
-                        CheckWebsiteBuildProcess
-                      )
-                    case None =>
-                      Seq(
-                        Checkout,
-                        SetupJava(),
-                        CheckGithubWorkflow,
-                        CheckWebsiteBuildProcess
-                      )
-                  }
+              steps = (if (swapSizeGB > 0) Seq(Steps.SetSwapSpace) else Seq.empty) ++
+                Seq(
+                  Step.StepSequence(
+                    checkArtifactBuildProcess match {
+                      case Some(artifactBuildProcess) =>
+                        Seq(
+                          Checkout,
+                          SetupJava(),
+                          CheckGithubWorkflow,
+                          artifactBuildProcess,
+                          CheckWebsiteBuildProcess
+                        )
+                      case None =>
+                        Seq(
+                          Checkout,
+                          SetupJava(),
+                          CheckGithubWorkflow,
+                          CheckWebsiteBuildProcess
+                        )
+                    }
+                  )
                 )
-              )
             ),
             Job(
               id = "lint",
               name = "Lint",
-              steps = Seq(
-                Checkout,
-                SetupJava(),
-                Lint
-              )
+              steps = (if (swapSizeGB > 0) Seq(Steps.SetSwapSpace) else Seq.empty) ++
+                Seq(
+                  Checkout,
+                  SetupJava(),
+                  Lint
+                )
             ),
             if (parallelTest) ParallelTestJob else SequentialTestJob,
             Job(
@@ -417,11 +431,12 @@ object ZioSbtCiPlugin extends AutoPlugin {
               name = "Release",
               need = Seq("build", "lint", "test"),
               condition = Some(Condition.Expression("github.event_name != 'pull_request'")),
-              steps = Seq(
-                Checkout,
-                SetupJava(),
-                Release
-              )
+              steps = (if (swapSizeGB > 0) Seq(Steps.SetSwapSpace) else Seq.empty) ++
+                Seq(
+                  Checkout,
+                  SetupJava(),
+                  Release
+                )
             ),
             Job(
               id = "publish-docs",
@@ -433,16 +448,17 @@ object ZioSbtCiPlugin extends AutoPlugin {
                     "github.event_name == 'workflow_dispatch'"
                   )
               ),
-              steps = Seq(
-                Step.StepSequence(
-                  Seq(
-                    Checkout,
-                    SetupJava(),
-                    SetupNodeJs,
-                    PublishToNpmRegistry
+              steps = (if (swapSizeGB > 0) Seq(Steps.SetSwapSpace) else Seq.empty) ++
+                Seq(
+                  Step.StepSequence(
+                    Seq(
+                      Checkout,
+                      SetupJava(),
+                      SetupNodeJs,
+                      PublishToNpmRegistry
+                    )
                   )
                 )
-              )
             ),
             Job(
               id = "generate-readme",
@@ -453,42 +469,43 @@ object ZioSbtCiPlugin extends AutoPlugin {
                   Condition.Expression("github.event_name == 'release'") &&
                   Condition.Expression("github.event.action == 'published'")
               ),
-              steps = Seq(
-                Step.SingleStep(
-                  name = "Git Checkout",
-                  uses = Some(checkout),
-                  parameters = Map(
-                    "ref"         -> "${{ github.head_ref }}".asJson,
-                    "fetch-depth" -> "0".asJson
-                  )
-                ),
-                SetupJava(),
-                GenerateReadme,
-                Step.SingleStep(
-                  name = "Commit Changes",
-                  run = Some("""|git config --local user.email "github-actions[bot]@users.noreply.github.com"
-                                |git config --local user.name "github-actions[bot]"
-                                |git add README.md
-                                |git commit -m "Update README.md" || echo "No changes to commit"
-                                |""".stripMargin)
-                ),
-                Step.SingleStep(
-                  name = "Create Pull Request",
-                  uses = Some(ActionRef("peter-evans/create-pull-request@v4.2.3")),
-                  parameters = Map(
-                    "title"          -> "Update README.md".asJson,
-                    "commit-message" -> "Update README.md".asJson,
-                    "branch"         -> "zio-sbt-website/update-readme".asJson,
-                    "delete-branch"  -> true.asJson,
-                    "body" ->
-                      """|Autogenerated changes after running the `sbt docs/generateReadme` command of the [zio-sbt-website](https://zio.dev/zio-sbt) plugin.
-                         |
-                         |I will automatically update the README.md file whenever there is new change for README.md, e.g.
-                         |  - After each release, I will update the version in the installation section.
-                         |  - After any changes to the "docs/index.md" file, I will update the README.md file accordingly.""".stripMargin.asJson
+              steps = (if (swapSizeGB > 0) Seq(Steps.SetSwapSpace) else Seq.empty) ++
+                Seq(
+                  Step.SingleStep(
+                    name = "Git Checkout",
+                    uses = Some(checkout),
+                    parameters = Map(
+                      "ref"         -> "${{ github.head_ref }}".asJson,
+                      "fetch-depth" -> "0".asJson
+                    )
+                  ),
+                  SetupJava(),
+                  GenerateReadme,
+                  Step.SingleStep(
+                    name = "Commit Changes",
+                    run = Some("""|git config --local user.email "github-actions[bot]@users.noreply.github.com"
+                                  |git config --local user.name "github-actions[bot]"
+                                  |git add README.md
+                                  |git commit -m "Update README.md" || echo "No changes to commit"
+                                  |""".stripMargin)
+                  ),
+                  Step.SingleStep(
+                    name = "Create Pull Request",
+                    uses = Some(ActionRef("peter-evans/create-pull-request@v4.2.3")),
+                    parameters = Map(
+                      "title"          -> "Update README.md".asJson,
+                      "commit-message" -> "Update README.md".asJson,
+                      "branch"         -> "zio-sbt-website/update-readme".asJson,
+                      "delete-branch"  -> true.asJson,
+                      "body" ->
+                        """|Autogenerated changes after running the `sbt docs/generateReadme` command of the [zio-sbt-website](https://zio.dev/zio-sbt) plugin.
+                           |
+                           |I will automatically update the README.md file whenever there is new change for README.md, e.g.
+                           |  - After each release, I will update the version in the installation section.
+                           |  - After any changes to the "docs/index.md" file, I will update the README.md file accordingly.""".stripMargin.asJson
+                    )
                   )
                 )
-              )
             )
           )
         ).asJson
