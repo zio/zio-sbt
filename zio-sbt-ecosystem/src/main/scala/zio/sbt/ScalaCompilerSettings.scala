@@ -271,7 +271,7 @@ trait ScalaCompilerSettings {
         else Seq.empty
       }
 
-  def buildInfoSettings(packageName: String): Seq[Setting[_ <: Object]] =
+  def buildInfoSettings(packageName: String): Seq[Setting[_]] =
     Seq(
       buildInfoKeys    := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion, isSnapshot),
       buildInfoPackage := packageName
@@ -293,7 +293,7 @@ trait ScalaCompilerSettings {
     }
   )
 
-  def macroDefinitionSettings: Seq[Setting[_ <: Equals]] =
+  def macroDefinitionSettings: Seq[Setting[_]] =
     Seq(
       scalacOptions += "-language:experimental.macros",
       libraryDependencies ++= {

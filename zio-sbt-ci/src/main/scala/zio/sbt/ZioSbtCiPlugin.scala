@@ -17,13 +17,12 @@
 package zio.sbt
 import scala.annotation.nowarn
 import scala.sys.process.*
-
 import io.circe.*
 import io.circe.syntax.*
 import io.circe.yaml.Printer.{LineBreak, YamlVersion}
-import sbt.{Def, io => _, *}
-
+import sbt.{Def, io as _, *}
 import zio.sbt.githubactions.*
+import zio.sbt.githubactions.Step.SingleStep
 
 object ZioSbtCiPlugin extends AutoPlugin {
 
@@ -400,6 +399,18 @@ object ZioSbtCiPlugin extends AutoPlugin {
               )
             ),
             if (parallelTest) ParallelTestJob else SequentialTestJob,
+            Job(
+              id = "ci",
+              name = "CI",
+              need = Seq("lint", "test", "build"),
+              steps = 
+                Seq(
+                  SingleStep(
+                    name = "Report Successful CI",
+                    run = Some("echo \"ci passed\"")
+                  ) 
+                )
+            ),
             Job(
               id = "release",
               name = "Release",
