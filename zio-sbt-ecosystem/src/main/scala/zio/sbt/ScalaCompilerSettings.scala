@@ -278,7 +278,7 @@ trait ScalaCompilerSettings {
       buildInfoPackage := packageName
     )
 
-  def macroExpansionSettings_ : Seq[Setting[_]] = Seq(
+  def macroExpansionSettings: Seq[Setting[_]] = Seq(
     scalacOptions ++= {
       CrossVersion.partialVersion(scalaVersion.value) match {
         case Some((2, 13)) => Seq("-Ymacro-annotations")
