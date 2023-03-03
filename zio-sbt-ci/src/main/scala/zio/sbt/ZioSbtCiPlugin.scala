@@ -17,12 +17,14 @@
 package zio.sbt
 import scala.annotation.nowarn
 import scala.sys.process.*
+
 import io.circe.*
 import io.circe.syntax.*
 import io.circe.yaml.Printer.{LineBreak, YamlVersion}
-import sbt.{Def, io as _, *}
-import zio.sbt.githubactions.*
+import sbt.{Def, io => _, *}
+
 import zio.sbt.githubactions.Step.SingleStep
+import zio.sbt.githubactions.*
 
 object ZioSbtCiPlugin extends AutoPlugin {
 
@@ -403,13 +405,12 @@ object ZioSbtCiPlugin extends AutoPlugin {
               id = "ci",
               name = "CI",
               need = Seq("lint", "test", "build"),
-              steps = 
-                Seq(
-                  SingleStep(
-                    name = "Report Successful CI",
-                    run = Some("echo \"ci passed\"")
-                  ) 
+              steps = Seq(
+                SingleStep(
+                  name = "Report Successful CI",
+                  run = Some("echo \"ci passed\"")
                 )
+              )
             ),
             Job(
               id = "release",
