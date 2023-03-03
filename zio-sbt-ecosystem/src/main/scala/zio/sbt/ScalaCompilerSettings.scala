@@ -16,13 +16,12 @@
 
 package zio.sbt
 
-import explicitdeps.ExplicitDepsPlugin.autoImport._
+import explicitdeps.ExplicitDepsPlugin.autoImport.*
 import sbt.Keys.*
 import sbt.*
 import sbtbuildinfo.BuildInfoPlugin.autoImport.{BuildInfoKey, buildInfoKeys, buildInfoPackage}
-import sbtcrossproject.CrossPlugin.autoImport.crossProjectPlatform
+import sbtcrossproject.CrossPlugin.autoImport.{JVMPlatform, crossProjectPlatform}
 import scalafix.sbt.ScalafixPlugin.autoImport.{scalafixDependencies, scalafixScalaBinaryVersion, scalafixSemanticdb}
-
 import zio.sbt.Versions.*
 
 trait ScalaCompilerSettings {
@@ -307,7 +306,9 @@ trait ScalaCompilerSettings {
       }
     )
 
-  def jsSettings: Seq[Setting[_]] = Seq()
+  def jsSettings: Seq[Setting[_]] = Seq(
+    Test / fork := crossProjectPlatform.value == JVMPlatform // set fork to `true` on JVM to improve log readability, JS and Native need `false`
+  )
 
 //  def jsSettings_ = Seq(
 //    libraryDependencies += "io.github.cquiroz" %%% "scala-java-time"      % "2.2.2",
@@ -315,8 +316,9 @@ trait ScalaCompilerSettings {
 //  )
 
   def nativeSettings: Seq[Setting[_]] = Seq(
-    Test / test             := { val _ = (Test / compile).value; () },
     doc / skip              := true,
-    Compile / doc / sources := Seq.empty
+    Compile / doc / sources := Seq.empty,
+    Test / test             := (Test / compile).value,
+    Test / fork             := crossProjectPlatform.value == JVMPlatform // set fork to `true` on JVM to improve log readability, JS and Native need `false`
   )
 }
