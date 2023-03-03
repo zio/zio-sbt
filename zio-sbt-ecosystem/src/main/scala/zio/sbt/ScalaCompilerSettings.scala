@@ -17,6 +17,7 @@
 package zio.sbt
 
 import explicitdeps.ExplicitDepsPlugin.autoImport.*
+import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
 import sbt.Keys.*
 import sbt.*
 import sbtbuildinfo.BuildInfoPlugin.autoImport.{BuildInfoKey, buildInfoKeys, buildInfoPackage}
@@ -257,18 +258,18 @@ trait ScalaCompilerSettings {
     enableStreaming: Boolean = false,
     enableTesting: Boolean = true
   ): Seq[Def.Setting[_]] =
-    Seq(libraryDependencies += "dev.zio" %% "zio" % ZioSbtEcosystemPlugin.autoImport.zioVersion.value) ++
+    Seq(libraryDependencies += "dev.zio" %%% "zio" % ZioSbtEcosystemPlugin.autoImport.zioVersion.value) ++
       (if (enableTesting)
          Seq(
            libraryDependencies ++= Seq(
-             "dev.zio" %% "zio-test"     % ZioSbtEcosystemPlugin.autoImport.zioVersion.value % Test,
-             "dev.zio" %% "zio-test-sbt" % ZioSbtEcosystemPlugin.autoImport.zioVersion.value % Test
+             "dev.zio" %%% "zio-test"     % ZioSbtEcosystemPlugin.autoImport.zioVersion.value % Test,
+             "dev.zio" %%% "zio-test-sbt" % ZioSbtEcosystemPlugin.autoImport.zioVersion.value % Test
            ),
            testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
          )
        else Seq.empty) ++ {
         if (enableStreaming)
-          libraryDependencies += "dev.zio" %% "zio-streams" % ZioSbtEcosystemPlugin.autoImport.zioVersion.value
+          libraryDependencies += "dev.zio" %%% "zio-streams" % ZioSbtEcosystemPlugin.autoImport.zioVersion.value
         else Seq.empty
       }
 
