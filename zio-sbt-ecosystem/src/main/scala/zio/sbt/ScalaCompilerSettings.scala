@@ -309,7 +309,6 @@ trait ScalaCompilerSettings {
     )
 
   def jsSettings: Seq[Setting[_]] = Seq(
-    scalacOptions += "-scalajs",
     Test / fork := crossProjectPlatform.value == JVMPlatform // set fork to `true` on JVM to improve log readability, JS and Native need `false`
   )
 
