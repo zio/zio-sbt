@@ -180,7 +180,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
       val Release: Step.SingleStep =
         Step.SingleStep(
           name = "Release",
-          run = Some("sbt ci-release"),
+          run = Some(s"sbt ${sbtBuildOptions.mkString(" ")} ci-release"),
           env = Map(
             "PGP_PASSPHRASE"    -> "${{ secrets.PGP_PASSPHRASE }}",
             "PGP_SECRET"        -> "${{ secrets.PGP_SECRET }}",
@@ -191,7 +191,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
 
       val Lint: Step.SingleStep = Step.SingleStep(
         name = "Lint",
-        run = Some("sbt lint")
+        run = Some(s"sbt ${sbtBuildOptions.mkString(" ")} lint")
       )
 
       val GenerateReadme: Step.SingleStep = Step.SingleStep(
@@ -266,7 +266,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
             if (javaPlatformMatrix.values.toSet.isEmpty) {
               Step.SingleStep(
                 name = "Test",
-                run = Some("sbt ${{ matrix.scala-project }}/test")
+                run = Some(s"sbt ${sbtBuildOptions.mkString(" ")} " ++ "${{ matrix.scala-project }}/test")
               )
             } else {
               Step.StepSequence(
@@ -274,17 +274,17 @@ object ZioSbtCiPlugin extends AutoPlugin {
                   Step.SingleStep(
                     name = "Java 8 Tests",
                     condition = Some(Condition.Expression("matrix.java == '8'")),
-                    run = Some("sbt ${{ matrix.scala-project-java8 }}/test")
+                    run = Some(s"sbt ${sbtBuildOptions.mkString(" ")} " ++ "${{ matrix.scala-project-java8 }}/test")
                   ),
                   Step.SingleStep(
                     name = "Java 11 Tests",
                     condition = Some(Condition.Expression("matrix.java == '11'")),
-                    run = Some("sbt ${{ matrix.scala-project-java11 }}/test")
+                    run = Some(s"sbt ${sbtBuildOptions.mkString(" ")} " ++ "${{ matrix.scala-project-java11 }}/test")
                   ),
                   Step.SingleStep(
                     name = "Java 17 Tests",
                     condition = Some(Condition.Expression("matrix.java == '17'")),
-                    run = Some("sbt ${{ matrix.scala-project-java17 }}/test")
+                    run = Some(s"sbt ${sbtBuildOptions.mkString(" ")} " ++ "${{ matrix.scala-project-java17 }}/test")
                   )
                 )
               )
@@ -320,7 +320,9 @@ object ZioSbtCiPlugin extends AutoPlugin {
                     Step.SingleStep(
                       name = "Test",
                       condition = Some(Condition.Expression(s"matrix.scala == '$scalaVersion'")),
-                      run = Some("sbt ++${{ matrix.scala }}" + makeTests(scalaVersion))
+                      run = Some(
+                        s"sbt ${sbtBuildOptions.mkString(" ")} " ++ "++${{ matrix.scala }}" + makeTests(scalaVersion)
+                      )
                     )
                   }
                 } else {
@@ -343,7 +345,9 @@ object ZioSbtCiPlugin extends AutoPlugin {
                               s"matrix.scala == '$scalaVersion'"
                             )
                           ),
-                          run = Some("sbt ++${{ matrix.scala }}" ++ s" ${projects.map(_ + "/test ").mkString(" ")}")
+                          run = Some(
+                            s"sbt ${sbtBuildOptions.mkString(" ")} " ++ "++${{ matrix.scala }}" ++ s" ${projects.map(_ + "/test ").mkString(" ")}"
+                          )
                         )
                       )
                     else Seq.empty).flatten
