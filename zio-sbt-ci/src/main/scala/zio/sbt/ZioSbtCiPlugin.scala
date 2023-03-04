@@ -45,6 +45,8 @@ object ZioSbtCiPlugin extends AutoPlugin {
       SettingKey[Map[String, String]]("supported Java platform for each module, default is '8'")
     val supportedScalaVersions: SettingKey[Map[String, Seq[String]]] =
       settingKey[Map[String, Seq[String]]]("list of supported scala versions")
+    val javaPlatforms: SettingKey[Seq[String]] =
+      settingKey[Seq[String]]("list of supported java platforms, default is 8, 11, 17")
     val checkGithubWorkflow: TaskKey[Unit] = taskKey[Unit]("Make sure if the site.yml file is up-to-date")
     val checkArtifactBuildProcessWorkflowStep: SettingKey[Option[Step]] =
       settingKey[Option[Step]]("Workflow step for checking artifact build process")
@@ -61,6 +63,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
         workflowName = ciWorkflowName.value,
         ciEnabledBranches = ciEnabledBranches.value,
         parallelTest = parallelTestExecution.value,
+        javaPlatforms = javaPlatforms.value,
         scalaVersionMatrix = supportedScalaVersions.value,
         javaPlatformMatrix = supportedJavaPlatform.value,
         sbtBuildOptions = sbtBuildOptions.value,
@@ -98,6 +101,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
       parallelTestExecution  := true,
       ciExtraTestSteps       := Seq.empty,
       ciSwapSizeGB           := 0,
+      javaPlatforms          := Seq("8", "11", "17"),
       checkArtifactBuildProcessWorkflowStep :=
         Some(
           Step.SingleStep(
@@ -131,6 +135,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
     workflowName: String,
     ciEnabledBranches: Seq[String] = Seq("main"),
     parallelTest: Boolean = true,
+    javaPlatforms: Seq[String] = Seq.empty,
     scalaVersionMatrix: Map[String, Seq[String]] = Map.empty,
     javaPlatformMatrix: Map[String, String] = Map.empty,
     sbtBuildOptions: List[String] = List.empty,
@@ -237,7 +242,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
         strategy = Some(
           Strategy(
             matrix = Map(
-              "java" -> List("8", "11", "17")
+              "java" -> javaPlatforms.toList
             ) ++
               (if (javaPlatformMatrix.isEmpty) {
                  Map("scala-project" -> scalaVersionMatrix.flatMap { case (moduleName, versions) =>
@@ -254,7 +259,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
                        s"++$version $moduleName"
                      }
                    }.toList
-                 Seq("8", "11", "17").map(jp => generateScalaProjectJavaPlatform(jp))
+                 javaPlatforms.map(jp => generateScalaProjectJavaPlatform(jp))
                }),
             failFast = false
           )
