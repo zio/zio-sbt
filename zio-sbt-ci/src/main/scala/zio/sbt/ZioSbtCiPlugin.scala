@@ -151,10 +151,10 @@ object ZioSbtCiPlugin extends AutoPlugin {
     backgroundJobs: Seq[String] = Seq.empty
   ): String = {
     val prefixJobs =
-      if (backgroundJobs.nonEmpty) 
+      if (backgroundJobs.nonEmpty)
         backgroundJobs.mkString(" & ") + " & "
       else ""
-  
+
     val _ = docsProjectId
     object Actions {
       val checkout: ActionRef         = ActionRef("actions/checkout@v3.3.0")
@@ -288,17 +288,23 @@ object ZioSbtCiPlugin extends AutoPlugin {
                   Step.SingleStep(
                     name = "Java 8 Tests",
                     condition = Some(Condition.Expression("matrix.java == '8'")),
-                    run = Some(prefixJobs + s"sbt ${sbtBuildOptions.mkString(" ")} " ++ "${{ matrix.scala-project-java8 }}/test")
+                    run = Some(
+                      prefixJobs + s"sbt ${sbtBuildOptions.mkString(" ")} " ++ "${{ matrix.scala-project-java8 }}/test"
+                    )
                   ),
                   Step.SingleStep(
                     name = "Java 11 Tests",
                     condition = Some(Condition.Expression("matrix.java == '11'")),
-                    run = Some(prefixJobs + s"sbt ${sbtBuildOptions.mkString(" ")} " ++ "${{ matrix.scala-project-java11 }}/test")
+                    run = Some(
+                      prefixJobs + s"sbt ${sbtBuildOptions.mkString(" ")} " ++ "${{ matrix.scala-project-java11 }}/test"
+                    )
                   ),
                   Step.SingleStep(
                     name = "Java 17 Tests",
                     condition = Some(Condition.Expression("matrix.java == '17'")),
-                    run = Some(prefixJobs + s"sbt ${sbtBuildOptions.mkString(" ")} " ++ "${{ matrix.scala-project-java17 }}/test")
+                    run = Some(
+                      prefixJobs + s"sbt ${sbtBuildOptions.mkString(" ")} " ++ "${{ matrix.scala-project-java17 }}/test"
+                    )
                   )
                 )
               )
@@ -335,7 +341,9 @@ object ZioSbtCiPlugin extends AutoPlugin {
                       name = "Test",
                       condition = Some(Condition.Expression(s"matrix.scala == '$scalaVersion'")),
                       run = Some(
-                        prefixJobs + s"sbt ${sbtBuildOptions.mkString(" ")} " ++ "++${{ matrix.scala }}" + makeTests(scalaVersion)
+                        prefixJobs + s"sbt ${sbtBuildOptions.mkString(" ")} " ++ "++${{ matrix.scala }}" + makeTests(
+                          scalaVersion
+                        )
                       )
                     )
                   }
@@ -360,7 +368,8 @@ object ZioSbtCiPlugin extends AutoPlugin {
                             )
                           ),
                           run = Some(
-                            prefixJobs + s"sbt ${sbtBuildOptions.mkString(" ")} " ++ "++${{ matrix.scala }}" ++ s" ${projects.map(_ + "/test ").mkString(" ")}"
+                            prefixJobs + s"sbt ${sbtBuildOptions
+                              .mkString(" ")} " ++ "++${{ matrix.scala }}" ++ s" ${projects.map(_ + "/test ").mkString(" ")}"
                           )
                         )
                       )
