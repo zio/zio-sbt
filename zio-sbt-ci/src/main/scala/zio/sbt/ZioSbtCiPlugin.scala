@@ -54,6 +54,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
     val ciWorkflowName: SettingKey[String]                = settingKey[String]("CI Workflow Name")
     val ciExtraTestSteps: SettingKey[Seq[Step]]           = settingKey[Seq[Step]]("Extra test steps")
     val ciSwapSizeGB: SettingKey[Int]                     = settingKey[Int]("Swap size, default is 0")
+    val ciBackgroundJobs: SettingKey[Seq[String]]         = settingKey[Seq[String]]("Background jobs")
   }
   import autoImport.*
 
@@ -72,7 +73,8 @@ object ZioSbtCiPlugin extends AutoPlugin {
         updateReadmeCondition = updateReadmeCondition.value,
         checkArtifactBuildProcess = checkArtifactBuildProcessWorkflowStep.value,
         extraTestSteps = ciExtraTestSteps.value,
-        swapSizeGB = ciSwapSizeGB.value
+        swapSizeGB = ciSwapSizeGB.value,
+        backgroundJobs = ciBackgroundJobs.value
       )
 
       val template =
@@ -108,7 +110,8 @@ object ZioSbtCiPlugin extends AutoPlugin {
             name = "Check artifacts build process",
             run = Some(s"sbt ${sbtBuildOptions.value.mkString(" ")} +publishLocal")
           )
-        )
+        ),
+      ciBackgroundJobs := Seq.empty
     )
   }
 
@@ -144,8 +147,14 @@ object ZioSbtCiPlugin extends AutoPlugin {
     updateReadmeCondition: Option[Condition] = None,
     checkArtifactBuildProcess: Option[Step] = None,
     extraTestSteps: Seq[Step] = Seq.empty,
-    swapSizeGB: Int = 0
+    swapSizeGB: Int = 0,
+    backgroundJobs: Seq[String] = Seq.empty
   ): String = {
+    val prefixJobs =
+      if (backgroundJobs.nonEmpty) 
+        backgroundJobs.mkString(" & ") + " & "
+      else ""
+  
     val _ = docsProjectId
     object Actions {
       val checkout: ActionRef         = ActionRef("actions/checkout@v3.3.0")
@@ -185,7 +194,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
       val Release: Step.SingleStep =
         Step.SingleStep(
           name = "Release",
-          run = Some(s"sbt ${sbtBuildOptions.mkString(" ")} ci-release"),
+          run = Some(prefixJobs + s"sbt ${sbtBuildOptions.mkString(" ")} ci-release"),
           env = Map(
             "PGP_PASSPHRASE"    -> "${{ secrets.PGP_PASSPHRASE }}",
             "PGP_SECRET"        -> "${{ secrets.PGP_SECRET }}",
@@ -196,27 +205,27 @@ object ZioSbtCiPlugin extends AutoPlugin {
 
       val Lint: Step.SingleStep = Step.SingleStep(
         name = "Lint",
-        run = Some(s"sbt ${sbtBuildOptions.mkString(" ")} lint")
+        run = Some(prefixJobs + s"sbt ${sbtBuildOptions.mkString(" ")} lint")
       )
 
       val GenerateReadme: Step.SingleStep = Step.SingleStep(
         name = "Generate Readme",
-        run = Some(s"sbt ${sbtBuildOptions.mkString(" ")} docs/generateReadme")
+        run = Some(prefixJobs + s"sbt ${sbtBuildOptions.mkString(" ")} docs/generateReadme")
       )
 
       val CheckWebsiteBuildProcess: Step.SingleStep = Step.SingleStep(
         name = "Check website build process",
-        run = Some(s"sbt docs/clean; sbt ${sbtBuildOptions.mkString(" ")} docs/buildWebsite")
+        run = Some(prefixJobs + s"sbt docs/clean; sbt ${sbtBuildOptions.mkString(" ")} docs/buildWebsite")
       )
 
       val CheckGithubWorkflow: Step.SingleStep = Step.SingleStep(
         name = "Check if the site workflow is up to date",
-        run = Some(s"sbt ${sbtBuildOptions.mkString(" ")} checkGithubWorkflow")
+        run = Some(prefixJobs + s"sbt ${sbtBuildOptions.mkString(" ")} checkGithubWorkflow")
       )
 
       val CheckReadme: Step.SingleStep = Step.SingleStep(
         name = "Check if the README file is up to date",
-        run = Some(s"sbt ${sbtBuildOptions.mkString(" ")} docs/checkReadme")
+        run = Some(prefixJobs + s"sbt ${sbtBuildOptions.mkString(" ")} docs/checkReadme")
       )
 
       val SetSwapSpace: Step.SingleStep = Step.SingleStep(
@@ -228,7 +237,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
       val PublishToNpmRegistry: Step.SingleStep =
         Step.SingleStep(
           name = "Publish Docs to NPM Registry",
-          run = Some(s"sbt ${sbtBuildOptions.mkString(" ")} docs/${docsVersioning.npmCommand}"),
+          run = Some(prefixJobs + s"sbt ${sbtBuildOptions.mkString(" ")} docs/${docsVersioning.npmCommand}"),
           env = Map(
             "NODE_AUTH_TOKEN" -> "${{ secrets.NPM_TOKEN }}"
           )
@@ -271,7 +280,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
             if (javaPlatformMatrix.values.toSet.isEmpty) {
               Step.SingleStep(
                 name = "Test",
-                run = Some(s"sbt ${sbtBuildOptions.mkString(" ")} " ++ "${{ matrix.scala-project }}/test")
+                run = Some(prefixJobs + s"sbt ${sbtBuildOptions.mkString(" ")} " ++ "${{ matrix.scala-project }}/test")
               )
             } else {
               Step.StepSequence(
@@ -279,17 +288,17 @@ object ZioSbtCiPlugin extends AutoPlugin {
                   Step.SingleStep(
                     name = "Java 8 Tests",
                     condition = Some(Condition.Expression("matrix.java == '8'")),
-                    run = Some(s"sbt ${sbtBuildOptions.mkString(" ")} " ++ "${{ matrix.scala-project-java8 }}/test")
+                    run = Some(prefixJobs + s"sbt ${sbtBuildOptions.mkString(" ")} " ++ "${{ matrix.scala-project-java8 }}/test")
                   ),
                   Step.SingleStep(
                     name = "Java 11 Tests",
                     condition = Some(Condition.Expression("matrix.java == '11'")),
-                    run = Some(s"sbt ${sbtBuildOptions.mkString(" ")} " ++ "${{ matrix.scala-project-java11 }}/test")
+                    run = Some(prefixJobs + s"sbt ${sbtBuildOptions.mkString(" ")} " ++ "${{ matrix.scala-project-java11 }}/test")
                   ),
                   Step.SingleStep(
                     name = "Java 17 Tests",
                     condition = Some(Condition.Expression("matrix.java == '17'")),
-                    run = Some(s"sbt ${sbtBuildOptions.mkString(" ")} " ++ "${{ matrix.scala-project-java17 }}/test")
+                    run = Some(prefixJobs + s"sbt ${sbtBuildOptions.mkString(" ")} " ++ "${{ matrix.scala-project-java17 }}/test")
                   )
                 )
               )
@@ -326,7 +335,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
                       name = "Test",
                       condition = Some(Condition.Expression(s"matrix.scala == '$scalaVersion'")),
                       run = Some(
-                        s"sbt ${sbtBuildOptions.mkString(" ")} " ++ "++${{ matrix.scala }}" + makeTests(scalaVersion)
+                        prefixJobs + s"sbt ${sbtBuildOptions.mkString(" ")} " ++ "++${{ matrix.scala }}" + makeTests(scalaVersion)
                       )
                     )
                   }
@@ -351,7 +360,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
                             )
                           ),
                           run = Some(
-                            s"sbt ${sbtBuildOptions.mkString(" ")} " ++ "++${{ matrix.scala }}" ++ s" ${projects.map(_ + "/test ").mkString(" ")}"
+                            prefixJobs + s"sbt ${sbtBuildOptions.mkString(" ")} " ++ "++${{ matrix.scala }}" ++ s" ${projects.map(_ + "/test ").mkString(" ")}"
                           )
                         )
                       )
