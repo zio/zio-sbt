@@ -323,4 +323,13 @@ trait ScalaCompilerSettings {
     Test / test             := { val _ = (Test / compile).value; () },
     Test / fork             := crossProjectPlatform.value == JVMPlatform // set fork to `true` on JVM to improve log readability, JS and Native need `false`
   )
+
+  private val scalajs: Seq[Setting[_]] =
+    Seq(
+      scalacOptions ++= {
+        if (scalaBinaryVersion.value == "3") {
+          Seq("-scalajs")
+        } else Seq.empty
+      }
+    )
 }
