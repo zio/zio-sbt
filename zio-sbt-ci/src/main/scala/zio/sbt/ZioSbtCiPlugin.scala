@@ -325,7 +325,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
         strategy = Some(
           Strategy(
             matrix = Map(
-              "java"  -> List("8", "11", "17"),
+              "java"  -> javaPlatforms.toList,
               "scala" -> scalaVersionMatrix.values.flatten.toSet.toList
             ),
             failFast = false
