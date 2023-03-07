@@ -58,6 +58,9 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     continue-on-error: false
+    concurrency:
+      group: 'test'
+      limit: 1
     strategy:
       fail-fast: false
       matrix:
