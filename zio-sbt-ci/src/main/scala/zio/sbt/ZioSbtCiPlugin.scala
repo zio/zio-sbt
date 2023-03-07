@@ -427,7 +427,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
             if (parallelTest) ParallelTestJob else SequentialTestJob,
             Job(
               id = "ci",
-              name = "CI",
+              name = "ci",
               need = Seq("lint", "test", "build"),
               steps = Seq(
                 SingleStep(
