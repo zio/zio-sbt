@@ -324,7 +324,7 @@ trait ScalaCompilerSettings {
     Test / fork             := crossProjectPlatform.value == JVMPlatform // set fork to `true` on JVM to improve log readability, JS and Native need `false`
   )
 
-  private val scalajs: Seq[Setting[_]] =
+  lazy val scalajs: Seq[Setting[_]] =
     Seq(
       scalacOptions ++= {
         if (scalaBinaryVersion.value == "3") {
