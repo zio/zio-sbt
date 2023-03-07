@@ -60,7 +60,7 @@ jobs:
     continue-on-error: false
     concurrency:
       group: 'test'
-      limit: 1
+      limit: 2
     strategy:
       fail-fast: false
       matrix:
