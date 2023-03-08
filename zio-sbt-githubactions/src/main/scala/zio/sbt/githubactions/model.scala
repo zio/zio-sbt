@@ -100,9 +100,9 @@ object Strategy {
   implicit val encoder: Encoder[Strategy] =
     (s: Strategy) =>
       Json.obj(
-        "fail-fast" := s.failFast,
+        "fail-fast"    := s.failFast,
         "max-parallel" := s.maxParallel,
-        "matrix"    := s.matrix
+        "matrix"       := s.matrix
       )
 }
 
