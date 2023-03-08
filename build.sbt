@@ -18,6 +18,7 @@ inThisBuild(
     ),
     ciEnabledBranches    := Seq("main"),
     documentationProject := Some(docs),
+    ciMatrixMaxParallel  := Some(3),
     supportedScalaVersions := Map(
       (zioSbtWebsite / thisProject).value.id   -> (zioSbtWebsite / crossScalaVersions).value,
       (zioSbtEcosystem / thisProject).value.id -> (zioSbtEcosystem / crossScalaVersions).value,

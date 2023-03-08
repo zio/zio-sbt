@@ -94,13 +94,14 @@ object Trigger {
   }
 }
 
-case class Strategy(matrix: Map[String, List[String]], failFast: Boolean = true)
+case class Strategy(matrix: Map[String, List[String]], maxParallel: Option[Int] = None, failFast: Boolean = true)
 
 object Strategy {
   implicit val encoder: Encoder[Strategy] =
     (s: Strategy) =>
       Json.obj(
         "fail-fast" := s.failFast,
+        "max-parallel" := s.maxParallel,
         "matrix"    := s.matrix
       )
 }
