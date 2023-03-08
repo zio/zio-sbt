@@ -191,6 +191,11 @@ object ZioSbtCiPlugin extends AutoPlugin {
         )
       )
 
+      val SetupLibuv: Step.SingleStep = Step.SingleStep(
+        name = "Install libuv",
+        run = Some("sudo apt-get update && sudo apt-get install -y libuv1-dev")
+      )
+
       val Release: Step.SingleStep =
         Step.SingleStep(
           name = "Release",
@@ -275,6 +280,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
         ),
         steps = (if (swapSizeGB > 0) Seq(Steps.SetSwapSpace) else Seq.empty) ++
           Seq(
+            Steps.SetupLibuv,
             Steps.SetupJava("${{ matrix.java }}"),
             Steps.Checkout,
             if (javaPlatformMatrix.values.toSet.isEmpty) {
@@ -325,7 +331,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
         strategy = Some(
           Strategy(
             matrix = Map(
-              "java"  -> List("8", "11", "17"),
+              "java"  -> javaPlatforms.toList,
               "scala" -> scalaVersionMatrix.values.flatten.toSet.toList
             ),
             failFast = false
@@ -333,6 +339,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
         ),
         steps = (if (swapSizeGB > 0) Seq(Steps.SetSwapSpace) else Seq.empty) ++
           Seq(
+            Steps.SetupLibuv,
             Steps.SetupJava("${{ matrix.java }}"),
             Steps.Checkout
           ) ++ (if (javaPlatformMatrix.values.toSet.isEmpty) {
@@ -416,6 +423,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
                       case Some(artifactBuildProcess) =>
                         Seq(
                           Checkout,
+                          SetupLibuv,
                           SetupJava(),
                           CheckGithubWorkflow,
                           artifactBuildProcess,
@@ -424,6 +432,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
                       case None =>
                         Seq(
                           Checkout,
+                          SetupLibuv,
                           SetupJava(),
                           CheckGithubWorkflow,
                           CheckWebsiteBuildProcess
@@ -438,6 +447,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
               steps = (if (swapSizeGB > 0) Seq(Steps.SetSwapSpace) else Seq.empty) ++
                 Seq(
                   Checkout,
+                  SetupLibuv,
                   SetupJava(),
                   Lint
                 )
@@ -462,6 +472,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
               steps = (if (swapSizeGB > 0) Seq(Steps.SetSwapSpace) else Seq.empty) ++
                 Seq(
                   Checkout,
+                  SetupLibuv,
                   SetupJava(),
                   Release
                 )
@@ -481,6 +492,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
                   Step.StepSequence(
                     Seq(
                       Checkout,
+                      SetupLibuv,
                       SetupJava(),
                       SetupNodeJs,
                       PublishToNpmRegistry
@@ -507,6 +519,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
                       "fetch-depth" -> "0".asJson
                     )
                   ),
+                  SetupLibuv,
                   SetupJava(),
                   GenerateReadme,
                   Step.SingleStep(
