@@ -36,9 +36,14 @@ object ZioSbtCiPlugin extends AutoPlugin {
   object autoImport {
     val docsVersioning: SettingKey[DocsVersioning] = settingKey[DocsVersioning]("Docs versioning style")
     val ciEnabledBranches: SettingKey[Seq[String]] = settingKey[Seq[String]]("Publish branch for documentation")
-    val parallelTestExecution: SettingKey[Boolean] = settingKey[Boolean]("Parallel Test Execution, default: true")
-    val generateGithubWorkflow: TaskKey[Unit]      = taskKey[Unit]("Generate github workflow")
-    val sbtBuildOptions: SettingKey[List[String]]  = settingKey[List[String]]("SBT build options")
+    val ciGroupSimilarTests: SettingKey[Boolean] =
+      settingKey[Boolean]("Group similar test by their Java and Scala versions, default is false")
+    val ciMatrixMaxParallel: SettingKey[Option[Int]] =
+      settingKey[Option[Int]](
+        "Set the maximum number of jobs that can run simultaneously when using a matrix job strategy, default is None"
+      )
+    val generateGithubWorkflow: TaskKey[Unit]     = taskKey[Unit]("Generate github workflow")
+    val sbtBuildOptions: SettingKey[List[String]] = settingKey[List[String]]("SBT build options")
     val updateReadmeCondition: SettingKey[Option[Condition]] =
       settingKey[Option[Condition]]("condition to update readme")
     val supportedJavaPlatform: SettingKey[Map[String, String]] =
@@ -63,7 +68,8 @@ object ZioSbtCiPlugin extends AutoPlugin {
       val workflow = websiteWorkflow(
         workflowName = ciWorkflowName.value,
         ciEnabledBranches = ciEnabledBranches.value,
-        parallelTest = parallelTestExecution.value,
+        groupSimilarTests = ciGroupSimilarTests.value,
+        matrixMaxParallel = ciMatrixMaxParallel.value,
         javaPlatforms = javaPlatforms.value,
         scalaVersionMatrix = supportedScalaVersions.value,
         javaPlatformMatrix = supportedJavaPlatform.value,
@@ -100,7 +106,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
       supportedJavaPlatform  := Map.empty,
       sbtBuildOptions        := List.empty[String],
       updateReadmeCondition  := None,
-      parallelTestExecution  := true,
+      ciGroupSimilarTests    := false,
       ciExtraTestSteps       := Seq.empty,
       ciSwapSizeGB           := 0,
       javaPlatforms          := Seq("8", "11", "17"),
@@ -111,7 +117,8 @@ object ZioSbtCiPlugin extends AutoPlugin {
             run = Some(s"sbt ${sbtBuildOptions.value.mkString(" ")} +publishLocal")
           )
         ),
-      ciBackgroundJobs := Seq.empty
+      ciBackgroundJobs    := Seq.empty,
+      ciMatrixMaxParallel := None
     )
   }
 
@@ -137,7 +144,8 @@ object ZioSbtCiPlugin extends AutoPlugin {
   def websiteWorkflow(
     workflowName: String,
     ciEnabledBranches: Seq[String] = Seq("main"),
-    parallelTest: Boolean = true,
+    groupSimilarTests: Boolean = false,
+    matrixMaxParallel: Option[Int] = None,
     javaPlatforms: Seq[String] = Seq.empty,
     scalaVersionMatrix: Map[String, Seq[String]] = Map.empty,
     javaPlatformMatrix: Map[String, String] = Map.empty,
@@ -249,7 +257,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
         )
     }
 
-    val ParallelTestJob =
+    val FlattenTests =
       Job(
         id = "test",
         name = "Test",
@@ -275,6 +283,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
                    }.toList
                  javaPlatforms.map(jp => generateScalaProjectJavaPlatform(jp))
                }),
+            maxParallel = matrixMaxParallel,
             failFast = false
           )
         ),
@@ -319,7 +328,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
           ) ++ extraTestSteps
       )
 
-    val SequentialTestJob = {
+    val GroupTests = {
       def makeTests(scalaVersion: String) =
         s" ${scalaVersionMatrix.filter { case (_, versions) =>
           versions.contains(scalaVersion)
@@ -334,6 +343,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
               "java"  -> javaPlatforms.toList,
               "scala" -> scalaVersionMatrix.values.flatten.toSet.toList
             ),
+            maxParallel = matrixMaxParallel,
             failFast = false
           )
         ),
@@ -452,7 +462,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
                   Lint
                 )
             ),
-            if (parallelTest) ParallelTestJob else SequentialTestJob,
+            if (groupSimilarTests) GroupTests else FlattenTests,
             Job(
               id = "ci",
               name = "ci",
