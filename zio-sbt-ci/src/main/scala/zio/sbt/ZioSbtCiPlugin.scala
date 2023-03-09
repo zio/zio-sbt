@@ -53,10 +53,10 @@ object ZioSbtCiPlugin extends AutoPlugin {
     val javaPlatforms: SettingKey[Seq[String]] =
       settingKey[Seq[String]]("list of supported java platforms, default is 8, 11, 17")
     val checkGithubWorkflow: TaskKey[Unit] = taskKey[Unit]("Make sure if the site.yml file is up-to-date")
-    val checkArtifactBuildProcessWorkflowStep: SettingKey[Option[Step]] =
-      settingKey[Option[Step]]("Workflow step for checking artifact build process")
-    val ciCheckAllCodeCompiles: SettingKey[Option[Step]] =
-      settingKey[Option[Step]]("Workflow step for checking compilation of all codes")
+    val checkArtifactBuildProcessWorkflowStep: SettingKey[Seq[Step]] =
+      settingKey[Seq[Step]]("Workflow steps for checking artifact build process")
+    val ciCheckAllCodeCompiles: SettingKey[Seq[Step]] =
+      settingKey[Seq[Step]]("Workflow steps for checking compilation of all codes")
     val documentationProject: SettingKey[Option[Project]] = settingKey[Option[Project]]("Documentation project")
     val ciWorkflowName: SettingKey[String]                = settingKey[String]("CI Workflow Name")
     val ciExtraTestSteps: SettingKey[Seq[Step]]           = settingKey[Seq[Step]]("Extra test steps")
@@ -117,13 +117,13 @@ object ZioSbtCiPlugin extends AutoPlugin {
       ciSwapSizeGB           := 0,
       javaPlatforms          := Seq("8", "11", "17"),
       checkArtifactBuildProcessWorkflowStep :=
-        Some(
+        Seq(
           Step.SingleStep(
             name = "Check artifacts build process",
             run = Some(s"sbt ${sbtBuildOptions.value.mkString(" ")} +publishLocal")
           )
         ),
-      ciCheckAllCodeCompiles := Some(
+      ciCheckAllCodeCompiles := Seq(
         Step.SingleStep(
           name = "Check all code compiles",
           run =
@@ -154,7 +154,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
       }
     }
 
-  def makePrefixJobs(backgroundJobs: Seq[String]) =
+  def makePrefixJobs(backgroundJobs: Seq[String]): String =
     if (backgroundJobs.nonEmpty)
       backgroundJobs.mkString(" & ") + " & "
     else ""
@@ -172,8 +172,8 @@ object ZioSbtCiPlugin extends AutoPlugin {
     docsProjectId: Option[String] = None,
     docsVersioning: DocsVersioning = SemanticVersioning,
     updateReadmeCondition: Option[Condition] = None,
-    checkArtifactBuildProcess: Option[Step] = None,
-    checkAllCodeCompiles: Option[Step] = None,
+    checkArtifactBuildProcess: Seq[Step] = Seq.empty,
+    checkAllCodeCompiles: Seq[Step] = Seq.empty,
     extraTestSteps: Seq[Step] = Seq.empty,
     swapSizeGB: Int = 0,
     backgroundJobs: Seq[String] = Seq.empty,
@@ -452,7 +452,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
                       SetupLibuv,
                       SetupJava(javaVersion),
                       CheckGithubWorkflow
-                    ) ++ checkAllCodeCompiles.toSeq ++ checkArtifactBuildProcess.toSeq ++
+                    ) ++ checkAllCodeCompiles ++ checkArtifactBuildProcess ++
                       Seq(CheckWebsiteBuildProcess)
                   )
                 )
