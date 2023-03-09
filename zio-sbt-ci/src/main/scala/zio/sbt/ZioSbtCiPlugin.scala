@@ -60,6 +60,8 @@ object ZioSbtCiPlugin extends AutoPlugin {
     val ciExtraTestSteps: SettingKey[Seq[Step]]           = settingKey[Seq[Step]]("Extra test steps")
     val ciSwapSizeGB: SettingKey[Int]                     = settingKey[Int]("Swap size, default is 0")
     val ciBackgroundJobs: SettingKey[Seq[String]]         = settingKey[Seq[String]]("Background jobs")
+    val ciJavaVersion: SettingKey[String] =
+      settingKey[String]("The Java version which is used in CI, especially for releasing artifacts, defaults to 17")
   }
   import autoImport.*
 
@@ -80,7 +82,8 @@ object ZioSbtCiPlugin extends AutoPlugin {
         checkArtifactBuildProcess = checkArtifactBuildProcessWorkflowStep.value,
         extraTestSteps = ciExtraTestSteps.value,
         swapSizeGB = ciSwapSizeGB.value,
-        backgroundJobs = ciBackgroundJobs.value
+        backgroundJobs = ciBackgroundJobs.value,
+        javaVersion = ciJavaVersion.value
       )
 
       val template =
@@ -118,7 +121,8 @@ object ZioSbtCiPlugin extends AutoPlugin {
           )
         ),
       ciBackgroundJobs    := Seq.empty,
-      ciMatrixMaxParallel := None
+      ciMatrixMaxParallel := None,
+      ciJavaVersion       := "17"
     )
   }
 
@@ -156,7 +160,8 @@ object ZioSbtCiPlugin extends AutoPlugin {
     checkArtifactBuildProcess: Option[Step] = None,
     extraTestSteps: Seq[Step] = Seq.empty,
     swapSizeGB: Int = 0,
-    backgroundJobs: Seq[String] = Seq.empty
+    backgroundJobs: Seq[String] = Seq.empty,
+    javaVersion: String = "17"
   ): String = {
     val prefixJobs =
       if (backgroundJobs.nonEmpty)
@@ -434,7 +439,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
                         Seq(
                           Checkout,
                           SetupLibuv,
-                          SetupJava(),
+                          SetupJava(javaVersion),
                           CheckGithubWorkflow,
                           artifactBuildProcess,
                           CheckWebsiteBuildProcess
@@ -443,7 +448,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
                         Seq(
                           Checkout,
                           SetupLibuv,
-                          SetupJava(),
+                          SetupJava(javaVersion),
                           CheckGithubWorkflow,
                           CheckWebsiteBuildProcess
                         )
@@ -458,7 +463,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
                 Seq(
                   Checkout,
                   SetupLibuv,
-                  SetupJava(),
+                  SetupJava(javaVersion),
                   Lint
                 )
             ),
@@ -483,7 +488,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
                 Seq(
                   Checkout,
                   SetupLibuv,
-                  SetupJava(),
+                  SetupJava(javaVersion),
                   Release
                 )
             ),
@@ -503,7 +508,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
                     Seq(
                       Checkout,
                       SetupLibuv,
-                      SetupJava(),
+                      SetupJava(javaVersion),
                       SetupNodeJs,
                       PublishToNpmRegistry
                     )
@@ -530,7 +535,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
                     )
                   ),
                   SetupLibuv,
-                  SetupJava(),
+                  SetupJava(javaVersion),
                   GenerateReadme,
                   Step.SingleStep(
                     name = "Commit Changes",
