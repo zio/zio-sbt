@@ -236,6 +236,11 @@ object ZioSbtCiPlugin extends AutoPlugin {
         run = Some(prefixJobs + s"sbt docs/clean; sbt ${sbtBuildOptions.mkString(" ")} docs/buildWebsite")
       )
 
+      val CheckAllCodeCompiles: Step.SingleStep = Step.SingleStep(
+        name = "Check all code compiles",
+        run = Some(prefixJobs + s"sbt ${sbtBuildOptions.mkString(" ")} +Test/compile")
+      )
+
       val CheckGithubWorkflow: Step.SingleStep = Step.SingleStep(
         name = "Check if the site workflow is up to date",
         run = Some(prefixJobs + s"sbt ${sbtBuildOptions.mkString(" ")} checkGithubWorkflow")
@@ -441,6 +446,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
                           SetupLibuv,
                           SetupJava(javaVersion),
                           CheckGithubWorkflow,
+                          CheckAllCodeCompiles,
                           artifactBuildProcess,
                           CheckWebsiteBuildProcess
                         )
@@ -450,6 +456,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
                           SetupLibuv,
                           SetupJava(javaVersion),
                           CheckGithubWorkflow,
+                          CheckAllCodeCompiles,
                           CheckWebsiteBuildProcess
                         )
                     }
