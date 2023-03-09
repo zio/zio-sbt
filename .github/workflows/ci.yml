@@ -31,7 +31,7 @@ jobs:
       uses: actions/setup-java@v3.10.0
       with:
         distribution: temurin
-        java-version: '17'
+        java-version: '8'
         check-latest: true
     - name: Check if the site workflow is up to date
       run: sbt  checkGithubWorkflow
@@ -56,7 +56,7 @@ jobs:
       uses: actions/setup-java@v3.10.0
       with:
         distribution: temurin
-        java-version: '17'
+        java-version: '8'
         check-latest: true
     - name: Lint
       run: sbt  lint
@@ -122,7 +122,7 @@ jobs:
       uses: actions/setup-java@v3.10.0
       with:
         distribution: temurin
-        java-version: '17'
+        java-version: '8'
         check-latest: true
     - name: Release
       run: sbt  ci-release
@@ -149,7 +149,7 @@ jobs:
       uses: actions/setup-java@v3.10.0
       with:
         distribution: temurin
-        java-version: '17'
+        java-version: '8'
         check-latest: true
     - name: Setup NodeJs
       uses: actions/setup-node@v3
@@ -179,7 +179,7 @@ jobs:
       uses: actions/setup-java@v3.10.0
       with:
         distribution: temurin
-        java-version: '17'
+        java-version: '8'
         check-latest: true
     - name: Generate Readme
       run: sbt  docs/generateReadme

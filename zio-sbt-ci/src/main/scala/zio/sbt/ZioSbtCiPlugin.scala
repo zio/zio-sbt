@@ -63,7 +63,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
     val ciSwapSizeGB: SettingKey[Int]                     = settingKey[Int]("Swap size, default is 0")
     val ciBackgroundJobs: SettingKey[Seq[String]]         = settingKey[Seq[String]]("Background jobs")
     val ciJavaVersion: SettingKey[String] =
-      settingKey[String]("The Java version which is used in CI, especially for releasing artifacts, defaults to 17")
+      settingKey[String]("The Java version which is used in CI, especially for releasing artifacts, defaults to 8")
   }
   import autoImport.*
 
@@ -132,7 +132,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
       ),
       ciBackgroundJobs    := Seq.empty,
       ciMatrixMaxParallel := None,
-      ciJavaVersion       := "17"
+      ciJavaVersion       := "8"
     )
   }
 
@@ -177,7 +177,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
     extraTestSteps: Seq[Step] = Seq.empty,
     swapSizeGB: Int = 0,
     backgroundJobs: Seq[String] = Seq.empty,
-    javaVersion: String = "17"
+    javaVersion: String = "8"
   ): String = {
     val prefixJobs = makePrefixJobs(backgroundJobs)
 
@@ -198,7 +198,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
         parameters = Map("fetch-depth" -> "0".asJson)
       )
 
-      def SetupJava(version: String = "17"): Step.SingleStep = Step.SingleStep(
+      def SetupJava(version: String = "8"): Step.SingleStep = Step.SingleStep(
         name = "Setup Scala",
         uses = Some(`setup-java`),
         parameters = Map(
