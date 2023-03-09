@@ -55,6 +55,8 @@ object ZioSbtCiPlugin extends AutoPlugin {
     val checkGithubWorkflow: TaskKey[Unit] = taskKey[Unit]("Make sure if the site.yml file is up-to-date")
     val checkArtifactBuildProcessWorkflowStep: SettingKey[Option[Step]] =
       settingKey[Option[Step]]("Workflow step for checking artifact build process")
+    val ciCheckAllCodeCompiles: SettingKey[Option[Step]] =
+      settingKey[Option[Step]]("Workflow step for checking compilation of all codes")
     val documentationProject: SettingKey[Option[Project]] = settingKey[Option[Project]]("Documentation project")
     val ciWorkflowName: SettingKey[String]                = settingKey[String]("CI Workflow Name")
     val ciExtraTestSteps: SettingKey[Seq[Step]]           = settingKey[Seq[Step]]("Extra test steps")
@@ -80,6 +82,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
         docsVersioning = docsVersioning.value,
         updateReadmeCondition = updateReadmeCondition.value,
         checkArtifactBuildProcess = checkArtifactBuildProcessWorkflowStep.value,
+        checkAllCodeCompiles = ciCheckAllCodeCompiles.value,
         extraTestSteps = ciExtraTestSteps.value,
         swapSizeGB = ciSwapSizeGB.value,
         backgroundJobs = ciBackgroundJobs.value,
@@ -120,6 +123,13 @@ object ZioSbtCiPlugin extends AutoPlugin {
             run = Some(s"sbt ${sbtBuildOptions.value.mkString(" ")} +publishLocal")
           )
         ),
+      ciCheckAllCodeCompiles := Some(
+        Step.SingleStep(
+          name = "Check all code compiles",
+          run =
+            Some(makePrefixJobs(ciBackgroundJobs.value) + s"sbt ${sbtBuildOptions.value.mkString(" ")} +Test/compile")
+        )
+      ),
       ciBackgroundJobs    := Seq.empty,
       ciMatrixMaxParallel := None,
       ciJavaVersion       := "17"
@@ -144,6 +154,11 @@ object ZioSbtCiPlugin extends AutoPlugin {
       }
     }
 
+  def makePrefixJobs(backgroundJobs: Seq[String]) =
+    if (backgroundJobs.nonEmpty)
+      backgroundJobs.mkString(" & ") + " & "
+    else ""
+
   @nowarn("msg=detected an interpolated expression")
   def websiteWorkflow(
     workflowName: String,
@@ -158,15 +173,13 @@ object ZioSbtCiPlugin extends AutoPlugin {
     docsVersioning: DocsVersioning = SemanticVersioning,
     updateReadmeCondition: Option[Condition] = None,
     checkArtifactBuildProcess: Option[Step] = None,
+    checkAllCodeCompiles: Option[Step] = None,
     extraTestSteps: Seq[Step] = Seq.empty,
     swapSizeGB: Int = 0,
     backgroundJobs: Seq[String] = Seq.empty,
     javaVersion: String = "17"
   ): String = {
-    val prefixJobs =
-      if (backgroundJobs.nonEmpty)
-        backgroundJobs.mkString(" & ") + " & "
-      else ""
+    val prefixJobs = makePrefixJobs(backgroundJobs)
 
     val _ = docsProjectId
     object Actions {
@@ -234,11 +247,6 @@ object ZioSbtCiPlugin extends AutoPlugin {
       val CheckWebsiteBuildProcess: Step.SingleStep = Step.SingleStep(
         name = "Check website build process",
         run = Some(prefixJobs + s"sbt docs/clean; sbt ${sbtBuildOptions.mkString(" ")} docs/buildWebsite")
-      )
-
-      val CheckAllCodeCompiles: Step.SingleStep = Step.SingleStep(
-        name = "Check all code compiles",
-        run = Some(prefixJobs + s"sbt ${sbtBuildOptions.mkString(" ")} +Test/compile")
       )
 
       val CheckGithubWorkflow: Step.SingleStep = Step.SingleStep(
@@ -439,27 +447,13 @@ object ZioSbtCiPlugin extends AutoPlugin {
               steps = (if (swapSizeGB > 0) Seq(Steps.SetSwapSpace) else Seq.empty) ++
                 Seq(
                   Step.StepSequence(
-                    checkArtifactBuildProcess match {
-                      case Some(artifactBuildProcess) =>
-                        Seq(
-                          Checkout,
-                          SetupLibuv,
-                          SetupJava(javaVersion),
-                          CheckGithubWorkflow,
-                          CheckAllCodeCompiles,
-                          artifactBuildProcess,
-                          CheckWebsiteBuildProcess
-                        )
-                      case None =>
-                        Seq(
-                          Checkout,
-                          SetupLibuv,
-                          SetupJava(javaVersion),
-                          CheckGithubWorkflow,
-                          CheckAllCodeCompiles,
-                          CheckWebsiteBuildProcess
-                        )
-                    }
+                    Seq(
+                      Checkout,
+                      SetupLibuv,
+                      SetupJava(javaVersion),
+                      CheckGithubWorkflow
+                    ) ++ checkAllCodeCompiles.toSeq ++ checkArtifactBuildProcess.toSeq ++
+                      Seq(CheckWebsiteBuildProcess)
                   )
                 )
             ),
