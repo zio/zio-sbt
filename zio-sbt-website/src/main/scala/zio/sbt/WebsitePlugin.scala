@@ -249,7 +249,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
     }
 
   private def prefixUrlsWith(markdown: String, prefix: String): String = {
-    val regex = """\((.+?.(md|scala|png|jpg))\)""".r
+    val regex = """\(((?!http)\S*\.(png|jpg|md|scala|java)\b)\)""".r
 
     regex.replaceAllIn(markdown, '(' + prefix + _.group(1) + ')')
   }
