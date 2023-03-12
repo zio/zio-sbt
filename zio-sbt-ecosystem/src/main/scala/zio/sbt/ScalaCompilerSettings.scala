@@ -17,13 +17,12 @@
 package zio.sbt
 
 import explicitdeps.ExplicitDepsPlugin.autoImport.*
-import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
+import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport.*
 import sbt.Keys.*
-import sbt.*
+import sbt.{Def, *}
 import sbtbuildinfo.BuildInfoPlugin.autoImport.{BuildInfoKey, buildInfoKeys, buildInfoPackage}
 import sbtcrossproject.CrossPlugin.autoImport.{JVMPlatform, crossProjectPlatform}
 import scalafix.sbt.ScalafixPlugin.autoImport.{scalafixDependencies, scalafixScalaBinaryVersion, scalafixSemanticdb}
-
 import zio.sbt.Versions.*
 
 trait ScalaCompilerSettings {
@@ -332,4 +331,24 @@ trait ScalaCompilerSettings {
         } else Seq.empty
       }
     )
+
+  def addDependenciesFor(scalaBinaryVersions: String*)(dependencies: ModuleID*): Def.Setting[Seq[ModuleID]] =
+    libraryDependencies ++= {
+      if (scalaBinaryVersions.contains(scalaBinaryVersion.value)) dependencies else Seq.empty
+    }
+
+  def addDependenciesExceptFor(scalaBinaryVersions: String*)(dependencies: ModuleID*): Def.Setting[Seq[ModuleID]] =
+    libraryDependencies ++= {
+      if (scalaBinaryVersions.contains(scalaBinaryVersion.value)) Seq.empty else dependencies
+    }
+
+  def addScalacOptionsFor(scalaBinaryVersions: String*)(options: String*): Def.Setting[Task[Seq[String]]] =
+    scalacOptions ++= {
+      if (scalaBinaryVersions.contains(scalaBinaryVersion.value)) options else Seq.empty
+    }
+
+  def addScalacOptionsExceptFor(scalaBinaryVersions: String*)(options: String*): Def.Setting[Task[Seq[String]]] =
+    scalacOptions ++= {
+      if (scalaBinaryVersions.contains(scalaBinaryVersion.value)) Seq.empty else options
+    }
 }
