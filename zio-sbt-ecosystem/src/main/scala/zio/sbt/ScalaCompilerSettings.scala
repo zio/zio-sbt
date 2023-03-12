@@ -244,6 +244,7 @@ trait ScalaCompilerSettings {
         case None       => Seq.empty
       }) ++ scala3Settings
 
+  // TODO: Review if this works properly
   def scalaReflectTestSettings: List[Setting[_]] = List(
     libraryDependencies ++= {
       if (scalaBinaryVersion.value == "3")
@@ -279,19 +280,10 @@ trait ScalaCompilerSettings {
     )
 
   def macroExpansionSettings: Seq[Setting[_]] = Seq(
-    scalacOptions ++= {
-      CrossVersion.partialVersion(scalaVersion.value) match {
-        case Some((2, 13)) => Seq("-Ymacro-annotations")
-        case _             => Seq.empty
-      }
-    },
-    libraryDependencies ++= {
-      CrossVersion.partialVersion(scalaVersion.value) match {
-        case Some((2, x)) if x <= 12 =>
-          Seq(compilerPlugin(("org.scalamacros" % "paradise" % "2.1.1").cross(CrossVersion.full)))
-        case _ => Seq.empty
-      }
-    }
+    addOptionsOn("2.13")("-Ymacro-annotations"),
+    addDependenciesOn("2.11", "2.12")(
+      compilerPlugin(("org.scalamacros" % "paradise" % "2.1.1").cross(CrossVersion.full))
+    )
   )
 
   def macroDefinitionSettings: Seq[Setting[_]] =
@@ -324,31 +316,56 @@ trait ScalaCompilerSettings {
   )
 
   lazy val scalajs: Seq[Setting[_]] =
-    Seq(
-      scalacOptions ++= {
-        if (scalaBinaryVersion.value == "3") {
-          Seq("-scalajs")
-        } else Seq.empty
-      }
+    addOptionsOn("3")("-scalajs")
+
+  def optionsOn(scalaBinaryVersions: String*)(options: String*): Def.Initialize[Seq[String]] =
+    optionsOnOrElse(scalaBinaryVersions *)(options *)(Seq.empty *)
+
+  def optionsOnExcept(scalaBinaryVersions: String*)(options: String*): Def.Initialize[Seq[String]] =
+    optionsOn(Seq("2.11", "2.12", "2.13", "3").diff(scalaBinaryVersions) *)(options *)
+
+  def optionsOnOrElse(scalaBinaryVersions: String*)(defaults: String*)(
+    orElse: String*
+  ): Def.Initialize[Seq[String]] =
+    Def.setting(
+      if (scalaBinaryVersions.contains(scalaBinaryVersion.value)) defaults else orElse
     )
 
-  def addDependenciesFor(scalaBinaryVersions: String*)(dependencies: ModuleID*): Def.Setting[Seq[ModuleID]] =
-    libraryDependencies ++= {
-      if (scalaBinaryVersions.contains(scalaBinaryVersion.value)) dependencies else Seq.empty
-    }
+  def dependenciesOn(scalaBinaryVersions: String*)(modules: ModuleID*): Def.Initialize[Seq[ModuleID]] =
+    dependenciesOnOrElse(scalaBinaryVersions *)(modules *)(Seq.empty *)
 
-  def addDependenciesExceptFor(scalaBinaryVersions: String*)(dependencies: ModuleID*): Def.Setting[Seq[ModuleID]] =
-    libraryDependencies ++= {
-      if (scalaBinaryVersions.contains(scalaBinaryVersion.value)) Seq.empty else dependencies
-    }
+  def dependenciesOnExcept(scalaBinaryVersions: String*)(modules: ModuleID*): Def.Initialize[Seq[ModuleID]] =
+    dependenciesOn(Seq("2.11", "2.12", "2.13", "3").diff(scalaBinaryVersions) *)(modules *)
 
-  def addScalacOptionsFor(scalaBinaryVersions: String*)(options: String*): Def.Setting[Task[Seq[String]]] =
-    scalacOptions ++= {
-      if (scalaBinaryVersions.contains(scalaBinaryVersion.value)) options else Seq.empty
-    }
+  def dependenciesOnOrElse(scalaBinaryVersions: String*)(defaultModules: ModuleID*)(
+    orElse: ModuleID*
+  ): Def.Initialize[Seq[ModuleID]] =
+    Def.setting(
+      if (scalaBinaryVersions.contains(scalaBinaryVersion.value)) defaultModules else orElse
+    )
 
-  def addScalacOptionsExceptFor(scalaBinaryVersions: String*)(options: String*): Def.Setting[Task[Seq[String]]] =
-    scalacOptions ++= {
-      if (scalaBinaryVersions.contains(scalaBinaryVersion.value)) Seq.empty else options
-    }
+  def addDependenciesOn(scalaBinaryVersions: String*)(dependencies: ModuleID*): Def.Setting[Seq[ModuleID]] =
+    addDependenciesOnOrElse(scalaBinaryVersions *)(dependencies *)(Seq.empty *)
+
+  def addDependenciesOnExcept(scalaBinaryVersions: String*)(dependencies: ModuleID*): Def.Setting[Seq[ModuleID]] =
+    libraryDependencies ++= dependenciesOn(Seq("2.11", "2.12", "2.13", "3").diff(scalaBinaryVersions) *)(
+      dependencies *
+    ).value
+
+  def addDependenciesOnOrElse(
+    scalaBinaryVersions: String*
+  )(default: ModuleID*)(orElse: ModuleID*): Def.Setting[Seq[ModuleID]] =
+    libraryDependencies ++= dependenciesOnOrElse(scalaBinaryVersions *)(default *)(orElse *).value
+
+  def addOptionsOn(scalaBinaryVersions: String*)(options: String*): Def.Setting[Task[Seq[String]]] =
+    scalacOptions ++= optionsOn(scalaBinaryVersions *)(options *).value
+
+  def addOptionsOnOrElse(
+    scalaBinaryVersions: String*
+  )(options: String*)(orElse: String*): Def.Setting[Task[Seq[String]]] =
+    scalacOptions ++= optionsOnOrElse(scalaBinaryVersions *)(options *)(orElse *).value
+
+  def addOptionsOnExcept(scalaBinaryVersions: String*)(options: String*): Def.Setting[Task[Seq[String]]] =
+    addOptionsOn(Seq("2.11", "2.12", "2.13", "3").diff(scalaBinaryVersions) *)(options *)
+
 }
