@@ -52,11 +52,13 @@ object ZioSbtCiPlugin extends AutoPlugin {
       settingKey[Map[String, Seq[String]]]("list of supported scala versions")
     val javaPlatforms: SettingKey[Seq[String]] =
       settingKey[Seq[String]]("list of supported java platforms, default is 8, 11, 17")
-    val checkGithubWorkflow: TaskKey[Unit] = taskKey[Unit]("Make sure if the site.yml file is up-to-date")
+    val checkGithubWorkflow: TaskKey[Unit] = taskKey[Unit]("Make sure if the ci.yml file is up-to-date")
     val checkArtifactBuildProcessWorkflowStep: SettingKey[Seq[Step]] =
       settingKey[Seq[Step]]("Workflow steps for checking artifact build process")
     val ciCheckAllCodeCompiles: SettingKey[Seq[Step]] =
       settingKey[Seq[Step]]("Workflow steps for checking compilation of all codes")
+    val ciCheckGithubWorkflow: SettingKey[Seq[Step]] =
+      settingKey[Seq[Step]]("Workflow steps for checking if the workflow is up to date")
     val documentationProject: SettingKey[Option[Project]] = settingKey[Option[Project]]("Documentation project")
     val ciWorkflowName: SettingKey[String]                = settingKey[String]("CI Workflow Name")
     val ciExtraTestSteps: SettingKey[Seq[Step]]           = settingKey[Seq[Step]]("Extra test steps")
@@ -83,6 +85,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
         updateReadmeCondition = updateReadmeCondition.value,
         checkArtifactBuildProcess = checkArtifactBuildProcessWorkflowStep.value,
         checkAllCodeCompiles = ciCheckAllCodeCompiles.value,
+        checkGithubWorkflow = ciCheckGithubWorkflow.value,
         extraTestSteps = ciExtraTestSteps.value,
         swapSizeGB = ciSwapSizeGB.value,
         backgroundJobs = ciBackgroundJobs.value,
@@ -130,6 +133,14 @@ object ZioSbtCiPlugin extends AutoPlugin {
             Some(makePrefixJobs(ciBackgroundJobs.value) + s"sbt ${sbtBuildOptions.value.mkString(" ")} +Test/compile")
         )
       ),
+      ciCheckGithubWorkflow := Seq(
+        Step.SingleStep(
+          name = "Check if the site workflow is up to date",
+          run = Some(
+            makePrefixJobs(ciBackgroundJobs.value) + s"sbt ${sbtBuildOptions.value.mkString(" ")} checkGithubWorkflow"
+          )
+        )
+      ),
       ciBackgroundJobs    := Seq.empty,
       ciMatrixMaxParallel := None,
       ciJavaVersion       := "8"
@@ -174,6 +185,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
     updateReadmeCondition: Option[Condition] = None,
     checkArtifactBuildProcess: Seq[Step] = Seq.empty,
     checkAllCodeCompiles: Seq[Step] = Seq.empty,
+    checkGithubWorkflow: Seq[Step] = Seq.empty,
     extraTestSteps: Seq[Step] = Seq.empty,
     swapSizeGB: Int = 0,
     backgroundJobs: Seq[String] = Seq.empty,
@@ -247,11 +259,6 @@ object ZioSbtCiPlugin extends AutoPlugin {
       val CheckWebsiteBuildProcess: Step.SingleStep = Step.SingleStep(
         name = "Check website build process",
         run = Some(prefixJobs + s"sbt docs/clean; sbt ${sbtBuildOptions.mkString(" ")} docs/buildWebsite")
-      )
-
-      val CheckGithubWorkflow: Step.SingleStep = Step.SingleStep(
-        name = "Check if the site workflow is up to date",
-        run = Some(prefixJobs + s"sbt ${sbtBuildOptions.mkString(" ")} checkGithubWorkflow")
       )
 
       val CheckReadme: Step.SingleStep = Step.SingleStep(
@@ -450,9 +457,8 @@ object ZioSbtCiPlugin extends AutoPlugin {
                     Seq(
                       Checkout,
                       SetupLibuv,
-                      SetupJava(javaVersion),
-                      CheckGithubWorkflow
-                    ) ++ checkAllCodeCompiles ++ checkArtifactBuildProcess ++
+                      SetupJava(javaVersion)
+                    ) ++ checkGithubWorkflow ++ checkAllCodeCompiles ++ checkArtifactBuildProcess ++
                       Seq(CheckWebsiteBuildProcess)
                   )
                 )
