@@ -33,6 +33,8 @@ jobs:
         distribution: temurin
         java-version: '8'
         check-latest: true
+    - name: Cache Dependencies
+      uses: coursier/cache-action@v6
     - name: Check all code compiles
       run: sbt  +Test/compile
     - name: Check artifacts build process
@@ -56,6 +58,8 @@ jobs:
         distribution: temurin
         java-version: '8'
         check-latest: true
+    - name: Cache Dependencies
+      uses: coursier/cache-action@v6
     - name: Check if the site workflow is up to date
       run: sbt  checkGithubWorkflow
     - name: Lint
@@ -85,6 +89,8 @@ jobs:
         distribution: temurin
         java-version: ${{ matrix.java }}
         check-latest: true
+    - name: Cache Dependencies
+      uses: coursier/cache-action@v6
     - name: Git Checkout
       uses: actions/checkout@v3.3.0
       with:
@@ -124,6 +130,8 @@ jobs:
         distribution: temurin
         java-version: '8'
         check-latest: true
+    - name: Cache Dependencies
+      uses: coursier/cache-action@v6
     - name: Release
       run: sbt  ci-release
       env:
@@ -151,6 +159,8 @@ jobs:
         distribution: temurin
         java-version: '8'
         check-latest: true
+    - name: Cache Dependencies
+      uses: coursier/cache-action@v6
     - name: Setup NodeJs
       uses: actions/setup-node@v3
       with:
@@ -181,6 +191,8 @@ jobs:
         distribution: temurin
         java-version: '8'
         check-latest: true
+    - name: Cache Dependencies
+      uses: coursier/cache-action@v6
     - name: Generate Readme
       run: sbt  docs/generateReadme
     - name: Commit Changes

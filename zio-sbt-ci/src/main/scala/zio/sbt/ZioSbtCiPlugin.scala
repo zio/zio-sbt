@@ -195,10 +195,11 @@ object ZioSbtCiPlugin extends AutoPlugin {
 
     val _ = docsProjectId
     object Actions {
-      val checkout: ActionRef         = ActionRef("actions/checkout@v3.3.0")
-      val `setup-java`: ActionRef     = ActionRef("actions/setup-java@v3.10.0")
-      val `setup-node`: ActionRef     = ActionRef("actions/setup-node@v3")
-      val `set-swap-space`: ActionRef = ActionRef("pierotofy/set-swap-space@master")
+      val checkout: ActionRef                = ActionRef("actions/checkout@v3.3.0")
+      val `setup-java`: ActionRef            = ActionRef("actions/setup-java@v3.10.0")
+      val `setup-node`: ActionRef            = ActionRef("actions/setup-node@v3")
+      val `set-swap-space`: ActionRef        = ActionRef("pierotofy/set-swap-space@master")
+      val `coursier/cache-action`: ActionRef = ActionRef("coursier/cache-action@v6")
     }
 
     import Actions.*
@@ -266,6 +267,11 @@ object ZioSbtCiPlugin extends AutoPlugin {
         run = Some(prefixJobs + s"sbt ${sbtBuildOptions.mkString(" ")} docs/checkReadme")
       )
 
+      val CacheDependencies: Step.SingleStep = Step.SingleStep(
+        name = "Cache Dependencies",
+        uses = Some(`coursier/cache-action`)
+      )
+
       val SetSwapSpace: Step.SingleStep = Step.SingleStep(
         name = "Set Swap Space",
         uses = Some(`set-swap-space`),
@@ -316,6 +322,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
           Seq(
             Steps.SetupLibuv,
             Steps.SetupJava("${{ matrix.java }}"),
+            Steps.CacheDependencies,
             Steps.Checkout,
             if (javaPlatformMatrix.values.toSet.isEmpty) {
               Step.SingleStep(
@@ -376,6 +383,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
           Seq(
             Steps.SetupLibuv,
             Steps.SetupJava("${{ matrix.java }}"),
+            Steps.CacheDependencies,
             Steps.Checkout
           ) ++ (if (javaPlatformMatrix.values.toSet.isEmpty) {
                   scalaVersionMatrix.values.toSeq.flatten.distinct.map { scalaVersion: String =>
@@ -457,7 +465,8 @@ object ZioSbtCiPlugin extends AutoPlugin {
                     Seq(
                       Checkout,
                       SetupLibuv,
-                      SetupJava(javaVersion)
+                      SetupJava(javaVersion),
+                      CacheDependencies
                     ) ++ checkAllCodeCompiles ++ checkArtifactBuildProcess ++ Seq(CheckWebsiteBuildProcess)
                   )
                 )
@@ -466,7 +475,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
               id = "lint",
               name = "Lint",
               steps = (if (swapSizeGB > 0) Seq(Steps.SetSwapSpace) else Seq.empty) ++
-                Seq(Checkout, SetupLibuv, SetupJava(javaVersion)) ++ checkGithubWorkflow ++ Seq(Lint)
+                Seq(Checkout, SetupLibuv, SetupJava(javaVersion), CacheDependencies) ++ checkGithubWorkflow ++ Seq(Lint)
             ),
             if (groupSimilarTests) GroupTests else FlattenTests,
             Job(
@@ -490,6 +499,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
                   Checkout,
                   SetupLibuv,
                   SetupJava(javaVersion),
+                  CacheDependencies,
                   Release
                 )
             ),
@@ -510,6 +520,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
                       Checkout,
                       SetupLibuv,
                       SetupJava(javaVersion),
+                      CacheDependencies,
                       SetupNodeJs,
                       PublishToNpmRegistry
                     )
@@ -537,6 +548,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
                   ),
                   SetupLibuv,
                   SetupJava(javaVersion),
+                  CacheDependencies,
                   GenerateReadme,
                   Step.SingleStep(
                     name = "Commit Changes",
