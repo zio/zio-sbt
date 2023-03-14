@@ -188,6 +188,7 @@ trait ScalaCompilerSettings {
     enableSilencer: Boolean = true,
     enableKindProjector: Boolean = true,
     enableCrossProject: Boolean = false,
+    enableScalafix: Boolean = true,
     turnCompilerWarningIntoErrors: Boolean = true
   ): Seq[Setting[_]] =
     Seq(
@@ -227,6 +228,21 @@ trait ScalaCompilerSettings {
           )
         } else Seq.empty
       },
+      Test / parallelExecution := scalaBinaryVersion.value != "3",
+      incOptions ~= (_.withLogRecompileOnMacro(false)),
+      autoAPIMappings := true,
+      unusedCompileDependenciesFilter -= moduleFilter("org.scala-js", "scalajs-library")
+    ) ++ (if (enableCrossProject) crossProjectSettings else Seq.empty) ++ {
+      packageName match {
+        case Some(name) => buildInfoSettings(name)
+        case None       => Seq.empty
+      }
+    } ++ scala3Settings ++ {
+      if (enableScalafix) scalafixSettings else Seq.empty
+    }
+
+  lazy val scalafixSettings: Seq[Def.Setting[_]] =
+    Seq(
       semanticdbEnabled := Keys.scalaBinaryVersion.value != "3",
       semanticdbOptions += "-P:semanticdb:synthetics:on",
       semanticdbVersion                      := scalafixSemanticdb.revision, // use Scalafix compatible version
@@ -234,16 +250,8 @@ trait ScalaCompilerSettings {
       ThisBuild / scalafixDependencies ++= List(
         "com.github.liancheng" %% "organize-imports" % OrganizeImportsVersion,
         "com.github.vovapolu"  %% "scaluzzi"         % ScaluzziVersion
-      ),
-      Test / parallelExecution := scalaBinaryVersion.value != "3",
-      incOptions ~= (_.withLogRecompileOnMacro(false)),
-      autoAPIMappings := true,
-      unusedCompileDependenciesFilter -= moduleFilter("org.scala-js", "scalajs-library")
-    ) ++ (if (enableCrossProject) crossProjectSettings else Seq.empty) ++
-      (packageName match {
-        case Some(name) => buildInfoSettings(name)
-        case None       => Seq.empty
-      }) ++ scala3Settings
+      )
+    )
 
   // TODO: Review if this works properly
   def scalaReflectTestSettings: List[Setting[_]] = List(
