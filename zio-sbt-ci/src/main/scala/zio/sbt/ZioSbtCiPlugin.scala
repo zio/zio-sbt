@@ -458,8 +458,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
                       Checkout,
                       SetupLibuv,
                       SetupJava(javaVersion)
-                    ) ++ checkGithubWorkflow ++ checkAllCodeCompiles ++ checkArtifactBuildProcess ++
-                      Seq(CheckWebsiteBuildProcess)
+                    ) ++ checkAllCodeCompiles ++ checkArtifactBuildProcess ++ Seq(CheckWebsiteBuildProcess)
                   )
                 )
             ),
@@ -467,12 +466,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
               id = "lint",
               name = "Lint",
               steps = (if (swapSizeGB > 0) Seq(Steps.SetSwapSpace) else Seq.empty) ++
-                Seq(
-                  Checkout,
-                  SetupLibuv,
-                  SetupJava(javaVersion),
-                  Lint
-                )
+                Seq(Checkout, SetupLibuv, SetupJava(javaVersion)) ++ checkGithubWorkflow ++ Seq(Lint)
             ),
             if (groupSimilarTests) GroupTests else FlattenTests,
             Job(
