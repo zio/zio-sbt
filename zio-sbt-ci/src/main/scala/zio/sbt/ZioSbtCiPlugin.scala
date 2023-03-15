@@ -32,8 +32,8 @@ object ZioSbtCiPlugin extends AutoPlugin {
     super.requires && ZioSbtEcosystemPlugin
 
   object autoImport {
-    val ciDocsVersioning: SettingKey[DocsVersioning] = settingKey[DocsVersioning]("Docs versioning style")
-    val ciEnabledBranches: SettingKey[Seq[String]]   = settingKey[Seq[String]]("Publish branch for documentation")
+    val ciDocsVersioningScheme: SettingKey[DocsVersioning] = settingKey[DocsVersioning]("Docs versioning style")
+    val ciEnabledBranches: SettingKey[Seq[String]]         = settingKey[Seq[String]]("Publish branch for documentation")
     val ciGroupSimilarTests: SettingKey[Boolean] =
       settingKey[Boolean]("Group similar test by their Java and Scala versions, default is false")
     val ciMatrixMaxParallel: SettingKey[Option[Int]] =
@@ -443,7 +443,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
       ciWorkflowName              := "CI",
       ciEnabledBranches           := Seq.empty,
       ciGenerateGithubWorkflow    := generateGithubWorkflowTask.value,
-      ciDocsVersioning            := DocsVersioning.SemanticVersioning,
+      ciDocsVersioningScheme      := DocsVersioning.SemanticVersioning,
       ciCheckGithubWorkflow       := checkGithubWorkflowTask.value,
       ciTargetScalaVersions       := Map.empty,
       ciTargetJavaVersions        := Map.empty,
@@ -602,7 +602,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
   val PublishToNpmRegistry: Def.Initialize[SingleStep] = Def.setting {
     val backgroundJobs = ciBackgroundJobs.value
     val buildOptions   = ciJvmOptions.value
-    val docsVersioning = autoImport.ciDocsVersioning.value
+    val docsVersioning = autoImport.ciDocsVersioningScheme.value
 
     val prefixJobs = makePrefixJobs(backgroundJobs)
 
