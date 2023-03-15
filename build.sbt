@@ -16,8 +16,7 @@ inThisBuild(
     developers := List(
       Developer("khajavi", "Milad Khajavi", "khajavi@gmail.com", url("https://github.com/khajavi"))
     ),
-    ciEnabledBranches    := Seq("main"),
-    documentationProject := Some(docs),
+    ciEnabledBranches := Seq("main"),
     supportedScalaVersions := Map(
       (zioSbtWebsite / thisProject).value.id   -> (zioSbtWebsite / crossScalaVersions).value,
       (zioSbtEcosystem / thisProject).value.id -> (zioSbtEcosystem / crossScalaVersions).value,
