@@ -417,12 +417,12 @@ object ZioSbtCiPlugin extends AutoPlugin {
   lazy val generateGithubWorkflowTask: Def.Initialize[Task[Unit]] =
     Def.task {
       val workflow = websiteWorkflow(
-        buildJobs = buildJobs.value,
-        lintJobs = lintJobs.value,
-        testJobs = testJobs.value,
+        buildJobs = ciBuildJobs.value,
+        lintJobs = ciLintJobs.value,
+        testJobs = ciTestJobs.value,
         reportSuccessfulJobs = reportSuccessfulJobs.value,
-        releaseJobs = releaseJobs.value,
-        postReleaseJobs = postReleaseJobs.value,
+        releaseJobs = ciReleaseJobs.value,
+        postReleaseJobs = ciPostReleaseJobs.value,
         workflowName = ciWorkflowName.value,
         ciEnabledBranches = ciEnabledBranches.value
       )
