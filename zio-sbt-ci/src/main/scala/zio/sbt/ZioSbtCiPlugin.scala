@@ -15,7 +15,6 @@
  */
 
 package zio.sbt
-import scala.annotation.nowarn
 import scala.sys.process._
 
 import io.circe._
@@ -67,6 +66,8 @@ object ZioSbtCiPlugin extends AutoPlugin {
       settingKey[Seq[Step]]("Workflow steps for checking if the workflow is up to date")
     val ciPullRequestApprovalJobs: SettingKey[Seq[String]] =
       settingKey[Seq[String]]("Job IDs that need to pass before a pull request (PR) can be approved")
+    val ciReleaseApprovalJobs: SettingKey[Seq[String]] =
+      settingKey[Seq[String]]("Job IDs that need to pass before a new release.")
     val ciWorkflowName: SettingKey[String]        = settingKey[String]("CI Workflow Name")
     val ciExtraTestSteps: SettingKey[Seq[Step]]   = settingKey[Seq[Step]]("Extra test steps")
     val ciSwapSizeGB: SettingKey[Int]             = settingKey[Int]("Swap size, default is 0")
@@ -309,12 +310,13 @@ object ZioSbtCiPlugin extends AutoPlugin {
     val checkout     = Checkout.value
     val javaVersion  = ciDefaultTargetJavaVersion.value
     val release      = Release.value
+    val jobs         = ciReleaseApprovalJobs.value
 
     Seq(
       Job(
         id = "release",
         name = "Release",
-        need = Seq("build", "lint", "test"),
+        need = jobs,
         condition = Some(Condition.Expression("github.event_name != 'pull_request'")),
         steps = (if (swapSizeGB > 0) Seq(setSwapSpace) else Seq.empty) ++
           Seq(
@@ -507,7 +509,8 @@ object ZioSbtCiPlugin extends AutoPlugin {
       ciTestJobs                 := testJobs.value,
       ciReleaseJobs              := releaseJobs.value,
       ciPostReleaseJobs          := postReleaseJobs.value,
-      ciPullRequestApprovalJobs  := Seq("lint", "test", "build")
+      ciPullRequestApprovalJobs  := Seq("lint", "test", "build"),
+      ciReleaseApprovalJobs      := Seq("build", "lint", "test")
     )
   }
 
