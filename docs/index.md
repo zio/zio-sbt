@@ -31,3 +31,35 @@ ZIO SBT Website is an SBT plugin that has the following tasks:
 - `sbt publishToNpm`— publishes documentation inside the `docs` directory to the npm registry.
 - `sbt generateGithubWorkflow`— generates GitHub workflow which publishes documentation for each library release.
 - `sbt generateReadme`— generate README.md file from `docs/index.md` and sbt setting keys.
+
+## ZIO SBT CI Plugin
+
+ZIO SBT CI is an sbt plugin which generates a GitHub workflow for a project, making it easier to set up continuous integration (CI) pipelines for Scala projects. With this plugin, developers can streamline their development workflow by automating the testing and deployment process, reducing manual effort and errors. The plugin is designed to work seamlessly with sbt, the popular build tool for Scala projects, and integrates smoothly with GitHub Actions, the CI/CD platform provided by GitHub.
+
+ZIO SBT CI provides a simple and efficient way to configure, manage, and run CI pipelines, helping teams to deliver high-quality software faster and with greater confidence.
+
+ZIO SBT CI plugin generates a default GitHub workflow that includes common CI tasks such as building, testing, and publishing artifacts. However, users can also manually customize the workflow. This plugin is designed to be flexible and extensible, making it easy for users to tailor the workflow to their specific needs. Additionally, the plugin also provides tons of optional sbt settings that users can modify to change various aspects of the generated workflow. Overall, ZIO SBT CI plugin strikes a balance between automation and flexibility, allowing users to automate their CI process while still giving them control over how the workflow is generated.
+
+### Getting Started
+
+To use ZIO SBT CI plugin, add the following lines to your `plugins.sbt` file:
+
+```scala
+addSbtPlugin("dev.zio" % "zio-sbt-ci" % "@VERSION@")
+
+resolvers ++= Resolver.sonatypeOssRepos("public")
+```
+
+Then in your `build.sbt` file, enable the plugin by adding the following line:
+
+```scala
+enablePlugins(ZioSbtCiPlugin)
+```
+
+Now you can generate a Github workflow by running the following command:
+
+```bash
+sbt ciGenerateGithubWorkflow
+```
+
+## ZIO SBT CLL
