@@ -3,9 +3,8 @@
 
 name: CI
 env:
-  JDK_JAVA_OPTIONS: -XX:+PrintCommandLineFlags -Xmx6G -Xss4M -XX:+UseG1GC
-  JVM_OPTS: -XX:+PrintCommandLineFlags -Xmx6G -Xss4M -XX:+UseG1GC
-  NODE_OPTIONS: --max_old_space_size=6144
+  JDK_JAVA_OPTIONS: -XX:+PrintCommandLineFlags
+  JVM_OPTS: -XX:+PrintCommandLineFlags
 'on':
   workflow_dispatch: {}
   release:
@@ -36,11 +35,11 @@ jobs:
     - name: Cache Dependencies
       uses: coursier/cache-action@v6
     - name: Check all code compiles
-      run: sbt  +Test/compile
+      run: sbt +Test/compile
     - name: Check artifacts build process
-      run: sbt  +publishLocal
+      run: sbt +publishLocal
     - name: Check website build process
-      run: sbt docs/clean; sbt  docs/buildWebsite
+      run: sbt docs/clean; sbt docs/buildWebsite
   lint:
     name: Lint
     runs-on: ubuntu-latest
@@ -61,9 +60,9 @@ jobs:
     - name: Cache Dependencies
       uses: coursier/cache-action@v6
     - name: Check if the site workflow is up to date
-      run: sbt  ciCheckGithubWorkflow
+      run: sbt ciCheckGithubWorkflow
     - name: Lint
-      run: sbt  lint
+      run: sbt lint
   test:
     name: Test
     runs-on: ubuntu-latest
@@ -96,7 +95,7 @@ jobs:
       with:
         fetch-depth: '0'
     - name: Test
-      run: sbt  ${{ matrix.scala-project }}/test
+      run: sbt ${{ matrix.scala-project }}/test
   ci:
     name: ci
     runs-on: ubuntu-latest
@@ -131,7 +130,7 @@ jobs:
     - name: Cache Dependencies
       uses: coursier/cache-action@v6
     - name: Release
-      run: sbt  ci-release
+      run: sbt ci-release
       env:
         PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
         PGP_SECRET: ${{ secrets.PGP_SECRET }}
@@ -165,7 +164,7 @@ jobs:
         node-version: 16.x
         registry-url: https://registry.npmjs.org
     - name: Publish Docs to NPM Registry
-      run: sbt  docs/publishToNpm
+      run: sbt docs/publishToNpm
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
   generate-readme:
@@ -192,7 +191,7 @@ jobs:
     - name: Cache Dependencies
       uses: coursier/cache-action@v6
     - name: Generate Readme
-      run: sbt  docs/generateReadme
+      run: sbt docs/generateReadme
     - name: Commit Changes
       run: |
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
