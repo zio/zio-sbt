@@ -62,4 +62,26 @@ Now you can generate a Github workflow by running the following command:
 sbt ciGenerateGithubWorkflow
 ```
 
-## ZIO SBT CLL
+The `ciTargetScalaVersions` setting key is used to define a mapping of project names to the Scala versions that should be used for testing phase of continuous integration (CI).
+
+In the example provided, `ciTargetScalaVersions` is defined at the `ThisBuild` level, meaning that the setting will apply to all projects within the build. The setting defines a Map where the key is the name of the current project, obtained by calling the `id` method on the `thisProject` setting, and the value is a sequence of Scala versions obtained from the `crossScalaVersions` of each submodule setting.
+
+By default, sbt will run the test task for each project in the build using the default `ThisBuild / crossScalaVersion` (not implemented yet). However, this may not be sufficient for projects that need to be tested against multiple Scala versions, such as libraries or frameworks that support different versions of Scala. In such cases, the `ciTargetScalaVersions` setting can be used to define the Scala versions supported by each submodule.
+
+For example, suppose we have a project with the name "submoduleA" and we want to test it against Scala `2.11.12` and `2.12.17`, and for the "submoduleB" we want to test it against Scala `2.12.17` and `2.13.10` and `3.2.2`, We can define the `ciTargetScalaVersions` setting as follows:
+
+```scala
+ThisBuild / ciTargetScalaVersions := Map(
+    "submoduleA" -> Seq("2.11.12", "2.12.17"),
+    "submoduleB" -> Seq("2.12.17", "2.13.10", "3.2.2")
+  )
+```
+
+To simplify this process, we can populate the versions using each submodule's crossScalaVersions setting as follows:
+
+```scala
+ThisBuild / ciTargetScalaVersions := Map(
+  (submoduleA / thisProject).value.id -> (submoduleA / crossScalaVersions).value,
+  (submoduleB / thisProject).value.id -> (submoduleB / crossScalaVersions).value
+)
+```
