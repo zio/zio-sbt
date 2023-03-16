@@ -510,7 +510,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
       ciReleaseJobs              := releaseJobs.value,
       ciPostReleaseJobs          := postReleaseJobs.value,
       ciPullRequestApprovalJobs  := Seq("lint", "test", "build"),
-      ciReleaseApprovalJobs      := Seq("build", "lint", "test")
+      ciReleaseApprovalJobs      := Seq("ci")
     )
   }
 
