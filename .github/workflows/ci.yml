@@ -113,9 +113,7 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: false
     needs:
-    - build
-    - lint
-    - test
+    - ci
     if: ${{ github.event_name != 'pull_request' }}
     steps:
     - name: Git Checkout
