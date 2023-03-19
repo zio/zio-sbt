@@ -163,7 +163,10 @@ object WebsiteUtils {
   }
 
   def releaseVersion(logger: String => Unit): Option[String] =
-    try "git tag --sort=committerdate".!!.split("\n").filter(_.startsWith("v")).lastOption.map(_.tail)
+    try "git tag --sort=committerdate".!!.split("\n")
+      .filter(_.startsWith("v"))
+      .lastOption
+      .map(_.tail) // without the leading v char
     catch {
       case _: Exception =>
         logger(

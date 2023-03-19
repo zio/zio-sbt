@@ -56,9 +56,18 @@ object WebsitePlugin extends sbt.AutoPlugin {
     val readmeAcknowledgement: SettingKey[String]   = settingKey[String]("Acknowledgement section")
     val readmeCredits: SettingKey[String]           = settingKey[String]("Credits section")
     val readmeMaintainers: SettingKey[String]       = settingKey[String]("Maintainers section")
+    val docsVersioningScheme: SettingKey[VersioningScheme] =
+      settingKey[VersioningScheme]("Versioning scheme used for docs package")
+    val docsVersion: SettingKey[String] = settingKey[String]("Docs package version")
 
     val ProjectStage = zio.sbt.WebsiteUtils.ProjectStage
     type ProjectStage = zio.sbt.WebsiteUtils.ProjectStage
+  }
+
+  sealed trait VersioningScheme
+  object VersioningScheme {
+    final case object HashVersioning     extends VersioningScheme
+    final case object SemanticVersioning extends VersioningScheme
   }
 
   import autoImport.*
@@ -73,7 +82,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
       installWebsite       := installWebsiteTask.value,
       buildWebsite         := buildWebsiteTask.value,
       previewWebsite       := previewWebsiteTask.value,
-      publishToNpm         := publishWebsiteTask.value,
+      publishToNpm         := publishToNpmTask.value,
       publishSnapshotToNpm := publishSnapshotToNpmTask.value,
       publishHashverToNpm  := publishHashverToNpmTask.value,
       checkReadme          := checkReadmeTask.value,
@@ -112,7 +121,9 @@ object WebsitePlugin extends sbt.AutoPlugin {
       readmeCredits         := "",
       readmeBanner          := "",
       readmeMaintainers     := "",
-      ciWorkflowName        := "CI"
+      ciWorkflowName        := "CI",
+      docsVersioningScheme  := VersioningScheme.SemanticVersioning,
+      docsVersion           := docsVersionTask.value
     )
 
   private def exit(exitCode: Int, errorMessage: String = "") = if (exitCode != 0) sys.error(errorMessage: String)
@@ -187,7 +198,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
       exit(p, "Failed to build the website!")
     }
 
-  lazy val publishWebsiteTask: Def.Initialize[Task[Unit]] =
+  lazy val publishWebsiteSemanticVersioningTask: Def.Initialize[Task[Unit]] =
     Def.task {
       val _ = compileDocs.toTask("").value
 
@@ -199,6 +210,34 @@ object WebsitePlugin extends sbt.AutoPlugin {
       exit(
         Process(
           s"npm version --new-version $refinedNpmVersion --no-git-tag-version",
+          new File(s"${websiteDir.value.toString}/docs/")
+        ).!
+      )
+
+      exit("npm config set access public".!)
+
+      exit(Process("npm publish", new File(s"${websiteDir.value.toString}/docs/")).!)
+    }
+
+  private val docsVersionTask: Def.Initialize[String] =
+    Def.setting {
+      val versioningScheme = docsVersioningScheme.value
+      versioningScheme match {
+        case VersioningScheme.HashVersioning =>
+          hashVersion
+        case VersioningScheme.SemanticVersioning =>
+          WebsiteUtils.releaseVersion(sLog.value.warn(_)).getOrElse(hashVersion)
+      }
+    }
+
+  lazy val publishToNpmTask: Def.Initialize[Task[Unit]] =
+    Def.task {
+      val _       = compileDocs.toTask("").value
+      val version = docsVersionTask.value
+
+      exit(
+        Process(
+          s"npm version --new-version $version --no-git-tag-version",
           new File(s"${websiteDir.value.toString}/docs/")
         ).!
       )
