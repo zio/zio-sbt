@@ -85,5 +85,3 @@ ThisBuild / ciTargetScalaVersions := Map(
   (submoduleB / thisProject).value.id -> (submoduleB / crossScalaVersions).value
 )
 ```
-
-## ZIO SBT Ecosystem Plugin
