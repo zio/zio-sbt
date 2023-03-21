@@ -567,7 +567,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
     name = "Cache Dependencies",
     uses = Some(ActionRef("coursier/cache-action@v6"))
   )
-  
+
   lazy val CreatePullRequest: SingleStep =
     Step.SingleStep(
       name = "Create Pull Request",
