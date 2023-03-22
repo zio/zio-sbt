@@ -340,8 +340,8 @@ object ZioSbtCiPlugin extends AutoPlugin {
 
     Seq(
       Job(
-        id = "publish-docs",
-        name = "Publish Docs",
+        id = "release-docs",
+        name = "Release Docs",
         need = Seq("release"),
         condition = Some(
           Condition.Expression("github.event_name == 'release'") &&
@@ -411,6 +411,38 @@ object ZioSbtCiPlugin extends AutoPlugin {
               )
             )
           )
+      ),
+      Job(
+        id = "docs-release-notification",
+        name = "Docs Release Notification",
+        need = Seq("release-docs"),
+        condition = Some(
+          Condition.Expression("github.event_name == 'release'") &&
+            Condition.Expression("github.event.action == 'published'")
+        ),
+        steps = Seq(
+          checkout,
+          SingleStep(
+            name = "Notify Main Repo of The New Docs Package",
+            run = Some("""|PACKAGE_NAME=$(cat docs/package.json | grep '"name"' | awk -F'"' '{print $4}')
+                          |echo $PACKAGE_NAME
+                          |VERSION=$(npm view $PACKAGE_NAME version)
+                          |echo $VERSION
+                          |curl -L \
+                          |  -X POST \
+                          |  -H "Accept: application/vnd.github+json" \
+                          |  -H "Authorization: token ${{ secrets.PAT_TOKEN }}"\
+                          |    https://api.github.com/repos/zio/zio/dispatches \
+                          |    -d '{
+                          |       "event_type":"update-docs",
+                          |       "client_payload":{
+                          |         "package_name":"'"${PACKAGE_NAME}"'", 
+                          |         "version": "'"${VERSION}"'"
+                          |       }
+                          |    }'
+                          |""".stripMargin)
+          )
+        )
       )
     )
   }

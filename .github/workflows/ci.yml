@@ -136,8 +136,8 @@ jobs:
         PGP_SECRET: ${{ secrets.PGP_SECRET }}
         SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
         SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
-  publish-docs:
-    name: Publish Docs
+  release-docs:
+    name: Release Docs
     runs-on: ubuntu-latest
     continue-on-error: false
     needs:
@@ -211,3 +211,17 @@ jobs:
         commit-message: Update README.md
         delete-branch: true
         title: Update README.md
+  docs-release-notification:
+    name: Docs Release Notification
+    runs-on: ubuntu-latest
+    continue-on-error: false
+    needs:
+    - release-docs
+    if: ${{ (github.event_name == 'release') && (github.event.action == 'published') }}
+    steps:
+    - name: Git Checkout
+      uses: actions/checkout@v3.3.0
+      with:
+        fetch-depth: '0'
+    - name: Notify Main Repo of The New Docs Package
+      run: "PACKAGE_NAME=$(cat docs/package.json | grep '\"name\"' | awk -F'\"' '{print $4}')\necho $PACKAGE_NAME\nVERSION=$(npm view $PACKAGE_NAME version)\necho $VERSION\ncurl -L \\\n  -X POST \\\n  -H \"Accept: application/vnd.github+json\" \\\n  -H \"Authorization: token ${{ secrets.PAT_TOKEN }}\"\\\n    https://api.github.com/repos/zio/zio/dispatches \\\n    -d '{\n       \"event_type\":\"update-docs\",\n       \"client_payload\":{\n         \"package_name\":\"'\"${PACKAGE_NAME}\"'\", \n         \"version\": \"'\"${VERSION}\"'\"\n       }\n    }'\n"
