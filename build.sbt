@@ -17,12 +17,13 @@ inThisBuild(
       Developer("khajavi", "Milad Khajavi", "khajavi@gmail.com", url("https://github.com/khajavi"))
     ),
     ciEnabledBranches := Seq("main"),
-    ciTargetScalaVersions := Map(
-      (zioSbtWebsite / thisProject).value.id   -> (zioSbtWebsite / crossScalaVersions).value,
-      (zioSbtEcosystem / thisProject).value.id -> (zioSbtEcosystem / crossScalaVersions).value,
-      (zioSbtCi / thisProject).value.id        -> (zioSbtCi / crossScalaVersions).value,
-      (zioSbtTests / thisProject).value.id     -> (zioSbtTests / crossScalaVersions).value
-    )
+    ciTargetScalaVersions :=
+      makeTargetScalaMap(
+        zioSbtWebsite,
+        zioSbtEcosystem,
+        zioSbtCi,
+        zioSbtTests
+      ).value
   )
 )
 

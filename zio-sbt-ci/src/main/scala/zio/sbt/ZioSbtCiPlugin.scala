@@ -15,6 +15,7 @@
  */
 
 package zio.sbt
+import scala.language.experimental.macros
 import scala.sys.process._
 
 import io.circe._
@@ -78,6 +79,9 @@ object ZioSbtCiPlugin extends AutoPlugin {
     val ciTestJobs: SettingKey[Seq[Job]]          = settingKey[Seq[Job]]("CI Test Jobs")
     val ciReleaseJobs: SettingKey[Seq[Job]]       = settingKey[Seq[Job]]("CI Release Jobs")
     val ciPostReleaseJobs: SettingKey[Seq[Job]]   = settingKey[Seq[Job]]("CI Post Release Jobs")
+
+    def makeTargetScalaMap(projects: Project*): sbt.Def.Initialize[Map[String, Seq[String]]] =
+      macro CiTargetScalaMap.macroImpl
   }
 
   import autoImport.*
