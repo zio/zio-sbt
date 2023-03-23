@@ -224,4 +224,4 @@ jobs:
       with:
         fetch-depth: '0'
     - name: Notify Main Repo of The New Docs Package
-      run: "PACKAGE_NAME=$(cat docs/package.json | grep '\"name\"' | awk -F'\"' '{print $4}')\necho $PACKAGE_NAME\nVERSION=$(npm view $PACKAGE_NAME version)\necho $VERSION\ncurl -L \\\n  -X POST \\\n  -H \"Accept: application/vnd.github+json\" \\\n  -H \"Authorization: token ${{ secrets.PAT_TOKEN }}\"\\\n    https://api.github.com/repos/zio/zio/dispatches \\\n    -d '{\n       \"event_type\":\"update-docs\",\n       \"client_payload\":{\n         \"package_name\":\"'\"${PACKAGE_NAME}\"'\", \n         \"version\": \"'\"${VERSION}\"'\"\n       }\n    }'\n"
+      run: "NAME=$(cat docs/package.json | grep '\"name\"' | awk -F'\"' '{print $4}')\nVERSION=$(npm view $PACKAGE_NAME version)\ncurl -L \\\n  -X POST \\\n  -H \"Accept: application/vnd.github+json\" \\\n  -H \"Authorization: token ${{ secrets.PAT_TOKEN }}\"\\\n    https://api.github.com/repos/zio/zio/dispatches \\\n    -d '{\n       \"event_type\":\"update-docs\",\n       \"client_payload\":{\n         \"package_name\":\"'\"${NAME}\"'\", \n         \"package_version\": \"'\"${VERSION}\"'\"\n       }\n    }'\n"

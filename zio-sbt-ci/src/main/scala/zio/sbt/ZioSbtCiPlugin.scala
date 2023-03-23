@@ -424,10 +424,8 @@ object ZioSbtCiPlugin extends AutoPlugin {
           checkout,
           SingleStep(
             name = "Notify Main Repo of The New Docs Package",
-            run = Some("""|PACKAGE_NAME=$(cat docs/package.json | grep '"name"' | awk -F'"' '{print $4}')
-                          |echo $PACKAGE_NAME
+            run = Some("""|NAME=$(cat docs/package.json | grep '"name"' | awk -F'"' '{print $4}')
                           |VERSION=$(npm view $PACKAGE_NAME version)
-                          |echo $VERSION
                           |curl -L \
                           |  -X POST \
                           |  -H "Accept: application/vnd.github+json" \
@@ -436,8 +434,8 @@ object ZioSbtCiPlugin extends AutoPlugin {
                           |    -d '{
                           |       "event_type":"update-docs",
                           |       "client_payload":{
-                          |         "package_name":"'"${PACKAGE_NAME}"'", 
-                          |         "version": "'"${VERSION}"'"
+                          |         "package_name":"'"${NAME}"'", 
+                          |         "package_version": "'"${VERSION}"'"
                           |       }
                           |    }'
                           |""".stripMargin)
