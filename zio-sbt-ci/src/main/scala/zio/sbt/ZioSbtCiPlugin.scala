@@ -318,13 +318,9 @@ object ZioSbtCiPlugin extends AutoPlugin {
 
     Seq(
       Job(
-        id = "generate-readme",
-        name = "Generate README",
-        condition = updateReadmeCondition orElse Some(
-          Condition.Expression("github.event_name == 'push'") ||
-            Condition.Expression("github.event_name == 'release'") &&
-            Condition.Expression("github.event.action == 'published'")
-        ),
+        id = "update-readme",
+        name = "Update README",
+        condition = updateReadmeCondition orElse Some(Condition.Expression("github.event_name == 'push'")),
         steps = (if (swapSizeGB > 0) Seq(setSwapSpace) else Seq.empty) ++
           Seq(
             checkout,
