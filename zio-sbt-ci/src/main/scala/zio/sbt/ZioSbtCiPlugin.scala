@@ -400,7 +400,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
             ),
             Step.SingleStep(
               name = "Create Pull Request",
-              uses = Some(ActionRef("peter-evans/create-pull-request@v4.2.4")),
+              uses = Some(ActionRef("peter-evans/create-pull-request@v5-beta")),
               parameters = Map(
                 "title"          -> "Update README.md".asJson,
                 "commit-message" -> "Update README.md".asJson,
