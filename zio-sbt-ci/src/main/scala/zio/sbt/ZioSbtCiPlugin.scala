@@ -388,13 +388,11 @@ object ZioSbtCiPlugin extends AutoPlugin {
   }
 
   lazy val postReleaseJobs: Def.Initialize[Seq[Job]] = Def.setting {
-    val swapSizeGB            = ciSwapSizeGB.value
-    val setSwapSpace          = SetSwapSpace.value
-    val checkout              = Checkout.value
-    val javaVersion           = ciDefaultTargetJavaVersion.value
-    val publishToNpmRegistry  = PublishToNpmRegistry.value
-    val updateReadmeCondition = autoImport.ciUpdateReadmeCondition.value
-    val generateReadme        = GenerateReadme.value
+    val swapSizeGB           = ciSwapSizeGB.value
+    val setSwapSpace         = SetSwapSpace.value
+    val checkout             = Checkout.value
+    val javaVersion          = ciDefaultTargetJavaVersion.value
+    val publishToNpmRegistry = PublishToNpmRegistry.value
 
     Seq(
       Job(
