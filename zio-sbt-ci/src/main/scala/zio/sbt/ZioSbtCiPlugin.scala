@@ -416,8 +416,8 @@ object ZioSbtCiPlugin extends AutoPlugin {
           )
       ),
       Job(
-        id = "docs-release-notification",
-        name = "Docs Release Notification",
+        id = "notify-docs-release",
+        name = "Notify Docs Release",
         need = Seq("release-docs"),
         condition = Some(
           Condition.Expression("github.event_name == 'release'") &&
@@ -426,21 +426,21 @@ object ZioSbtCiPlugin extends AutoPlugin {
         steps = Seq(
           checkout,
           SingleStep(
-            name = "Notify Main Repo of The New Docs Package",
-            run = Some("""|NAME=$(cat docs/package.json | grep '"name"' | awk -F'"' '{print $4}')
-                          |VERSION=$(npm view $PACKAGE_NAME version)
+            name = "notify the main repo about the new release of docs package",
+            run = Some("""|PACKAGE_NAME=$(cat docs/package.json | grep '"name"' | awk -F'"' '{print $4}')
+                          |PACKAGE_VERSION=$(npm view $PACKAGE_NAME version)
                           |curl -L \
                           |  -X POST \
                           |  -H "Accept: application/vnd.github+json" \
                           |  -H "Authorization: token ${{ secrets.PAT_TOKEN }}"\
                           |    https://api.github.com/repos/zio/zio/dispatches \
                           |    -d '{
-                          |       "event_type":"update-docs",
-                          |       "client_payload":{
-                          |         "package_name":"'"${NAME}"'", 
-                          |         "package_version": "'"${VERSION}"'"
-                          |       }
-                          |    }'
+                          |          "event_type":"update-docs",
+                          |          "client_payload":{
+                          |            "package_name":"'"${PACKAGE_NAME}"'",
+                          |            "package_version": "'"${PACKAGE_VERSION}"'"
+                          |          }
+                          |        }'
                           |""".stripMargin)
           )
         )
