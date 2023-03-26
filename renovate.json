@@ -1,7 +1,8 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:base"
+    "config:base",
+    "github>zio/zio-renovate:renovate"
   ],
-  "ignorePaths": [".github/workflows/ci.yml"]
+  "baseBranches": ["main"]
 }
