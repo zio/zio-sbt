@@ -61,6 +61,8 @@ object ZioSbtCiPlugin extends AutoPlugin {
     val ciCheckGithubWorkflow: TaskKey[Unit] = taskKey[Unit]("Make sure if the ci.yml file is up-to-date")
     val ciCheckArtifactsBuildSteps: SettingKey[Seq[Step]] =
       settingKey[Seq[Step]]("Workflow steps for checking artifact build process")
+    val ciCheckWebsiteBuildProcess: SettingKey[Seq[Step]] =
+      settingKey[Seq[Step]]("Workflow steps for checking website build process")
     val ciCheckArtifactsCompilationSteps: SettingKey[Seq[Step]] =
       settingKey[Seq[Step]]("Workflow steps for checking compilation of all codes")
     val ciCheckGithubWorkflowSteps: SettingKey[Seq[Step]] =
@@ -93,7 +95,8 @@ object ZioSbtCiPlugin extends AutoPlugin {
     val javaVersion               = ciDefaultTargetJavaVersion.value
     val checkAllCodeCompiles      = ciCheckArtifactsCompilationSteps.value
     val checkArtifactBuildProcess = ciCheckArtifactsBuildSteps.value
-    val checkWebsiteBuildProcess  = CheckWebsiteBuildProcess.value
+    val checkWebsiteBuildProcess  = ciCheckWebsiteBuildProcess.value
+//    CheckWebsiteBuildProcess.value
 
     Seq(
       Job(
@@ -107,7 +110,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
               SetupLibuv,
               SetupJava(javaVersion),
               CacheDependencies
-            ) ++ checkAllCodeCompiles ++ checkArtifactBuildProcess ++ Seq(checkWebsiteBuildProcess)
+            ) ++ checkAllCodeCompiles ++ checkArtifactBuildProcess ++ checkWebsiteBuildProcess
         }
       )
     )
@@ -525,6 +528,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
             run = Some("sbt +publishLocal")
           )
         ),
+      ciCheckWebsiteBuildProcess := CheckWebsiteBuildProcess.value,
       ciCheckArtifactsCompilationSteps := Seq(
         Step.SingleStep(
           name = "Check all code compiles",
@@ -616,14 +620,16 @@ object ZioSbtCiPlugin extends AutoPlugin {
     uses = Some(ActionRef("coursier/cache-action@v6"))
   )
 
-  lazy val CheckWebsiteBuildProcess: Def.Initialize[Step.SingleStep] =
+  lazy val CheckWebsiteBuildProcess: Def.Initialize[Seq[Step.SingleStep]] =
     Def.setting {
       val backgroundJobs = ciBackgroundJobs.value
       val prefixJobs     = makePrefixJobs(backgroundJobs)
 
-      Step.SingleStep(
-        name = "Check website build process",
-        run = Some(prefixJobs + "sbt docs/clean; sbt docs/buildWebsite")
+      Seq(
+        Step.SingleStep(
+          name = "Check website build process",
+          run = Some(prefixJobs + "sbt docs/clean; sbt docs/buildWebsite")
+        )
       )
     }
 
