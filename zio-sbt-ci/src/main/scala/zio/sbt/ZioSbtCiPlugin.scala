@@ -27,9 +27,8 @@ import zio.sbt.githubactions.Step.SingleStep
 import zio.sbt.githubactions.{Job, Step, _}
 
 object ZioSbtCiPlugin extends AutoPlugin {
-
-  override def requires: Plugins =
-    super.requires && ZioSbtEcosystemPlugin
+  override def requires = plugins.CorePlugin
+  override def trigger  = allRequirements
 
   object autoImport {
     val ciDocsVersioningScheme: SettingKey[DocsVersioning] = settingKey[DocsVersioning]("Docs versioning style")
@@ -502,8 +501,6 @@ object ZioSbtCiPlugin extends AutoPlugin {
 
       IO.write(new File(s".github/workflows/${ciWorkflowName.value.toLowerCase}.yml"), template)
     }
-
-  override def trigger = noTrigger
 
   override lazy val buildSettings: Seq[Setting[_]] = {
     Seq(
