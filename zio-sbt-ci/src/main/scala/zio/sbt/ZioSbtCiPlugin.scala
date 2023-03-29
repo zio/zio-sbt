@@ -96,7 +96,6 @@ object ZioSbtCiPlugin extends AutoPlugin {
     val checkAllCodeCompiles      = ciCheckArtifactsCompilationSteps.value
     val checkArtifactBuildProcess = ciCheckArtifactsBuildSteps.value
     val checkWebsiteBuildProcess  = ciCheckWebsiteBuildProcess.value
-//    CheckWebsiteBuildProcess.value
 
     Seq(
       Job(
@@ -489,7 +488,8 @@ object ZioSbtCiPlugin extends AutoPlugin {
               Trigger.WorkflowDispatch(),
               Trigger.Release(Seq("published")),
               Trigger.Push(branches = enabledBranches.map(Branch.Named)),
-              Trigger.PullRequest()
+              Trigger.PullRequest(),
+              Trigger.Create()
             ),
             jobs =
               buildJobs ++ lintJobs ++ testJobs ++ updateReadmeJobs ++ reportSuccessful ++ releaseJobs ++ postReleaseJobs

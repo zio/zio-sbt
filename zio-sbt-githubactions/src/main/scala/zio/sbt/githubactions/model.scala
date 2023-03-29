@@ -92,6 +92,19 @@ object Trigger {
         ).filter { case (_, data) => data.asArray.exists(_.nonEmpty) }: _*
       )
   }
+
+  case class Create(
+    branches: Seq[Branch] = Seq.empty,
+    ignoredBranches: Seq[Branch] = Seq.empty
+  ) extends Trigger {
+    override def toKeyValuePair: (String, Json) =
+      "create" := Json.obj(
+        Seq(
+          "branches"        := branches,
+          "branches-ignore" := ignoredBranches
+        ).filter { case (_, data) => data.asArray.exists(_.nonEmpty) }: _*
+      )
+  }
 }
 
 case class Strategy(matrix: Map[String, List[String]], maxParallel: Option[Int] = None, failFast: Boolean = true)

@@ -2,7 +2,7 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:base",
-    "github>zio/zio-renovate:renovate"
+    "github>zio/zio-renovate-config:renovate"
   ],
   "baseBranches": ["main"]
 }
