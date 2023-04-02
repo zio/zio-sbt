@@ -552,8 +552,11 @@ object ZioSbtCiPlugin extends AutoPlugin {
       ciUpdateReadmeJobs         := updateReadmeJobs.value,
       ciReleaseJobs              := releaseJobs.value,
       ciPostReleaseJobs          := postReleaseJobs.value,
-      ciPullRequestApprovalJobs  := Seq("lint", "test", "build"),
-      ciReleaseApprovalJobs      := Seq("ci")
+      ciPullRequestApprovalJobs := Def.setting {
+        val test = ciTestJobs.value.map(_ => "test")
+        Seq("lint") ++ test ++ Seq("build")
+      }.value,
+      ciReleaseApprovalJobs := Seq("ci")
     )
   }
 
