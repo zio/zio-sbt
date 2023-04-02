@@ -182,7 +182,7 @@ trait ScalaCompilerSettings {
     )
 
   def stdSettings(
-    name: String,
+    name: Option[String] = None,
     packageName: Option[String] = None,
     javaPlatform: String = "8",
     enableSilencer: Boolean = true,
@@ -191,55 +191,58 @@ trait ScalaCompilerSettings {
     enableScalafix: Boolean = true,
     turnCompilerWarningIntoErrors: Boolean = true
   ): Seq[Setting[_]] =
-    Seq(
-      Keys.name                                     := name,
-      ZioSbtEcosystemPlugin.autoImport.javaPlatform := javaPlatform,
-      scalacOptions ++= stdOptions ++ extraOptions(
-        Keys.scalaVersion.value,
-        javaPlatform,
-        optimize = !isSnapshot.value
-      ) ++ {
-        if (turnCompilerWarningIntoErrors && sys.env.contains("CI"))
-          Seq("-Xfatal-warnings")
-        else
-          Nil // to enable Scalafix locally
-      },
-      javacOptions := Seq("-source", javaPlatform, "-target", javaPlatform),
+    (name.map(n => Keys.name := n) match {
+      case Some(value) => Seq(value)
+      case None        => Seq.empty
+    }) ++
+      Seq(
+        ZioSbtEcosystemPlugin.autoImport.javaPlatform := javaPlatform,
+        scalacOptions ++= stdOptions ++ extraOptions(
+          Keys.scalaVersion.value,
+          javaPlatform,
+          optimize = !isSnapshot.value
+        ) ++ {
+          if (turnCompilerWarningIntoErrors && sys.env.contains("CI"))
+            Seq("-Xfatal-warnings")
+          else
+            Nil // to enable Scalafix locally
+        },
+        javacOptions := Seq("-source", javaPlatform, "-target", javaPlatform),
 //      Compile / console / scalacOptions ~= {
 //        _.filterNot(Set("-Xfatal-warnings"))
 //      },
-      libraryDependencies ++= {
-        if (enableSilencer) {
-          if (scalaBinaryVersion.value == "3")
+        libraryDependencies ++= {
+          if (enableSilencer) {
+            if (scalaBinaryVersion.value == "3")
+              Seq(
+                "com.github.ghik" % s"silencer-lib_${ZioSbtEcosystemPlugin.autoImport.scala213.value}" % SilencerVersion % Provided
+              )
+            else
+              Seq(
+                "com.github.ghik" % "silencer-lib" % SilencerVersion % Provided cross CrossVersion.full,
+                compilerPlugin("com.github.ghik" % "silencer-plugin" % SilencerVersion cross CrossVersion.full)
+              )
+          } else Seq.empty
+        },
+        libraryDependencies ++= {
+          if (enableKindProjector && scalaBinaryVersion.value != "3") {
             Seq(
-              "com.github.ghik" % s"silencer-lib_${ZioSbtEcosystemPlugin.autoImport.scala213.value}" % SilencerVersion % Provided
+              compilerPlugin("org.typelevel" %% "kind-projector" % KindProjectorVersion cross CrossVersion.full)
             )
-          else
-            Seq(
-              "com.github.ghik" % "silencer-lib" % SilencerVersion % Provided cross CrossVersion.full,
-              compilerPlugin("com.github.ghik" % "silencer-plugin" % SilencerVersion cross CrossVersion.full)
-            )
-        } else Seq.empty
-      },
-      libraryDependencies ++= {
-        if (enableKindProjector && scalaBinaryVersion.value != "3") {
-          Seq(
-            compilerPlugin("org.typelevel" %% "kind-projector" % KindProjectorVersion cross CrossVersion.full)
-          )
-        } else Seq.empty
-      },
-      Test / parallelExecution := scalaBinaryVersion.value != "3",
-      incOptions ~= (_.withLogRecompileOnMacro(false)),
-      autoAPIMappings := true,
-      unusedCompileDependenciesFilter -= moduleFilter("org.scala-js", "scalajs-library")
-    ) ++ (if (enableCrossProject) crossProjectSettings else Seq.empty) ++ {
-      packageName match {
-        case Some(name) => buildInfoSettings(name)
-        case None       => Seq.empty
+          } else Seq.empty
+        },
+        Test / parallelExecution := scalaBinaryVersion.value != "3",
+        incOptions ~= (_.withLogRecompileOnMacro(false)),
+        autoAPIMappings := true,
+        unusedCompileDependenciesFilter -= moduleFilter("org.scala-js", "scalajs-library")
+      ) ++ (if (enableCrossProject) crossProjectSettings else Seq.empty) ++ {
+        packageName match {
+          case Some(name) => buildInfoSettings(name)
+          case None       => Seq.empty
+        }
+      } ++ scala3Settings ++ {
+        if (enableScalafix) scalafixSettings else Seq.empty
       }
-    } ++ scala3Settings ++ {
-      if (enableScalafix) scalafixSettings else Seq.empty
-    }
 
   lazy val scalafixSettings: Seq[Def.Setting[_]] =
     Seq(

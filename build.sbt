@@ -19,10 +19,10 @@ inThisBuild(
     ciEnabledBranches := Seq("main"),
     ciTargetScalaVersions :=
       makeTargetScalaMap(
-        zioSbtWebsite,
-        zioSbtEcosystem,
-        zioSbtCi,
-        zioSbtTests
+        `zio-sbt-website`,
+        `zio-sbt-ecosystem`,
+        `zio-sbt-ci`,
+        `zio-sbt-tests`
       ).value
   )
 )
@@ -34,27 +34,25 @@ lazy val root = project
     publish / skip := true
   )
   .aggregate(
-    zioSbtGithubActions,
-    zioSbtWebsite,
-    zioSbtEcosystem,
-    zioSbtCi,
-    zioSbtTests
+    `zio-sbt-githubactions`,
+    `zio-sbt-website`,
+    `zio-sbt-ecosystem`,
+    `zio-sbt-ci`,
+    `zio-sbt-tests`
   )
   .enablePlugins(ZioSbtCiPlugin)
 
-lazy val zioSbtTests =
+lazy val `zio-sbt-tests` =
   project
-    .in(file("zio-sbt-tests"))
     .settings(
-      stdSettings(name = "zio-sbt-tests"),
+      stdSettings(),
       publish / skip := true,
       headerEndYear  := Some(2023)
     )
 
-lazy val zioSbtWebsite =
+lazy val `zio-sbt-website` =
   project
-    .in(file("zio-sbt-website"))
-    .settings(stdSettings(name = "zio-sbt-website"))
+    .settings(stdSettings())
     .settings(
       headerEndYear := Some(2023),
       scriptedLaunchOpts := {
@@ -65,10 +63,9 @@ lazy val zioSbtWebsite =
     )
     .enablePlugins(SbtPlugin)
 
-lazy val zioSbtEcosystem =
+lazy val `zio-sbt-ecosystem` =
   project
-    .in(file("zio-sbt-ecosystem"))
-    .settings(stdSettings(name = "zio-sbt-ecosystem"))
+    .settings(stdSettings())
     .settings(
       headerEndYear := Some(2023),
       scriptedLaunchOpts := {
@@ -79,10 +76,9 @@ lazy val zioSbtEcosystem =
     )
     .enablePlugins(SbtPlugin)
 
-lazy val zioSbtCi =
+lazy val `zio-sbt-ci` =
   project
-    .in(file("zio-sbt-ci"))
-    .settings(stdSettings(name = "zio-sbt-ci"))
+    .settings(stdSettings())
     .settings(
       headerEndYear := Some(2023),
       scriptedLaunchOpts := {
@@ -92,13 +88,12 @@ lazy val zioSbtCi =
       scriptedBufferLog := false
     )
     .enablePlugins(SbtPlugin)
-    .dependsOn(zioSbtGithubActions, zioSbtEcosystem)
+    .dependsOn(`zio-sbt-githubactions`, `zio-sbt-ecosystem`)
 
-lazy val zioSbtGithubActions =
+lazy val `zio-sbt-githubactions` =
   project
-    .in(file("zio-sbt-githubactions"))
     .settings(
-      stdSettings(name = "zio-sbt-githubactions"),
+      stdSettings(),
       headerEndYear := Some(2023)
     )
 
@@ -109,9 +104,9 @@ lazy val docs = project
     scalacOptions -= "-Yno-imports",
     scalacOptions -= "-Xfatal-warnings",
     projectName                                := (ThisBuild / name).value,
-    mainModuleName                             := (zioSbtWebsite / moduleName).value,
+    mainModuleName                             := (`zio-sbt-website` / moduleName).value,
     projectStage                               := ProjectStage.ProductionReady,
-    ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(zioSbtWebsite),
+    ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(`zio-sbt-website`),
     headerLicense                              := None,
     readmeContribution := readmeContribution.value +
       """|
@@ -126,5 +121,5 @@ lazy val docs = project
          |```
          |""".stripMargin
   )
-  .dependsOn(zioSbtWebsite)
+  .dependsOn(`zio-sbt-website`)
   .enablePlugins(WebsitePlugin)
