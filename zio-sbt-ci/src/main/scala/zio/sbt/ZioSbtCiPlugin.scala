@@ -52,12 +52,12 @@ object ZioSbtCiPlugin extends AutoPlugin {
       settingKey[Map[String, Seq[String]]](
         "Defines a map of projects to the targeted Scala versions for those projects in the CI jobs."
       )
-    val ciDefaultTargetJavaVersion: SettingKey[String] =
+    val ciJavaVersion: SettingKey[String] =
       settingKey[String](
         "The default Java version which is used in CI, especially for releasing artifacts, defaults to 8"
       )
-    val ciDefaultTargetJavaVersions: SettingKey[Seq[String]] =
-      settingKey[Seq[String]]("The default target java versions for all sub projects, default is 8, 11, 17")
+    val ciTestJavaVersions: SettingKey[Seq[String]] =
+      settingKey[Seq[String]]("The default target java versions for testing projects, default is 8, 11, 17")
     val ciCheckGithubWorkflow: TaskKey[Unit] = taskKey[Unit]("Make sure if the ci.yml file is up-to-date")
     val ciCheckArtifactsBuildSteps: SettingKey[Seq[Step]] =
       settingKey[Seq[Step]]("Workflow steps for checking artifact build process")
@@ -92,7 +92,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
     val swapSizeGB                = ciSwapSizeGB.value
     val setSwapSpace              = SetSwapSpace.value
     val checkout                  = Checkout.value
-    val javaVersion               = ciDefaultTargetJavaVersion.value
+    val javaVersion               = ciJavaVersion.value
     val checkAllCodeCompiles      = ciCheckArtifactsCompilationSteps.value
     val checkArtifactBuildProcess = ciCheckArtifactsBuildSteps.value
     val checkWebsiteBuildProcess  = ciCheckWebsiteBuildProcess.value
@@ -119,7 +119,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
     val checkout            = Checkout.value
     val swapSizeGB          = ciSwapSizeGB.value
     val setSwapSpace        = SetSwapSpace.value
-    val javaVersion         = ciDefaultTargetJavaVersion.value
+    val javaVersion         = ciJavaVersion.value
     val checkGithubWorkflow = ciCheckGithubWorkflowSteps.value
     val lint                = Lint.value
 
@@ -136,7 +136,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
   lazy val testJobs: Def.Initialize[Seq[Job]] = Def.setting {
     val groupSimilarTests  = ciGroupSimilarTests.value
     val scalaVersionMatrix = ciTargetScalaVersions.value
-    val javaPlatforms      = autoImport.ciDefaultTargetJavaVersions.value
+    val javaPlatforms      = autoImport.ciTestJavaVersions.value
     val javaPlatformMatrix = ciTargetJavaVersions.value
     val matrixMaxParallel  = ciMatrixMaxParallel.value
     val swapSizeGB         = ciSwapSizeGB.value
@@ -313,7 +313,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
     val swapSizeGB            = ciSwapSizeGB.value
     val setSwapSpace          = SetSwapSpace.value
     val checkout              = Checkout.value
-    val javaVersion           = ciDefaultTargetJavaVersion.value
+    val javaVersion           = ciJavaVersion.value
     val updateReadmeCondition = autoImport.ciUpdateReadmeCondition.value
     val generateReadme        = GenerateReadme.value
 
@@ -362,7 +362,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
     val swapSizeGB   = ciSwapSizeGB.value
     val setSwapSpace = SetSwapSpace.value
     val checkout     = Checkout.value
-    val javaVersion  = ciDefaultTargetJavaVersion.value
+    val javaVersion  = ciJavaVersion.value
     val release      = Release.value
     val jobs         = ciReleaseApprovalJobs.value
 
@@ -388,7 +388,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
     val swapSizeGB           = ciSwapSizeGB.value
     val setSwapSpace         = SetSwapSpace.value
     val checkout             = Checkout.value
-    val javaVersion          = ciDefaultTargetJavaVersion.value
+    val javaVersion          = ciJavaVersion.value
     val publishToNpmRegistry = PublishToNpmRegistry.value
 
     Seq(
@@ -507,20 +507,20 @@ object ZioSbtCiPlugin extends AutoPlugin {
 
   override lazy val buildSettings: Seq[Setting[_]] = {
     Seq(
-      ciWorkflowName              := "CI",
-      ciEnabledBranches           := Seq.empty,
-      ciGenerateGithubWorkflow    := generateGithubWorkflowTask.value,
-      ciDocsVersioningScheme      := DocsVersioning.SemanticVersioning,
-      ciCheckGithubWorkflow       := checkGithubWorkflowTask.value,
-      ciTargetScalaVersions       := Map.empty,
-      ciTargetJavaVersions        := Map.empty,
-      ciJvmOptions                := Seq.empty,
-      ciNodeOptions               := Seq.empty,
-      ciUpdateReadmeCondition     := None,
-      ciGroupSimilarTests         := false,
-      ciExtraTestSteps            := Seq.empty,
-      ciSwapSizeGB                := 0,
-      ciDefaultTargetJavaVersions := Seq("8", "11", "17"),
+      ciWorkflowName           := "CI",
+      ciEnabledBranches        := Seq.empty,
+      ciGenerateGithubWorkflow := generateGithubWorkflowTask.value,
+      ciDocsVersioningScheme   := DocsVersioning.SemanticVersioning,
+      ciCheckGithubWorkflow    := checkGithubWorkflowTask.value,
+      ciTargetScalaVersions    := Map.empty,
+      ciTargetJavaVersions     := Map.empty,
+      ciJvmOptions             := Seq.empty,
+      ciNodeOptions            := Seq.empty,
+      ciUpdateReadmeCondition  := None,
+      ciGroupSimilarTests      := false,
+      ciExtraTestSteps         := Seq.empty,
+      ciSwapSizeGB             := 0,
+      ciTestJavaVersions       := Seq("8", "11", "17"),
       ciCheckArtifactsBuildSteps :=
         Seq(
           Step.SingleStep(
@@ -543,15 +543,15 @@ object ZioSbtCiPlugin extends AutoPlugin {
           )
         )
       ),
-      ciBackgroundJobs           := Seq.empty,
-      ciMatrixMaxParallel        := None,
-      ciDefaultTargetJavaVersion := "8",
-      ciBuildJobs                := buildJobs.value,
-      ciLintJobs                 := lintJobs.value,
-      ciTestJobs                 := testJobs.value,
-      ciUpdateReadmeJobs         := updateReadmeJobs.value,
-      ciReleaseJobs              := releaseJobs.value,
-      ciPostReleaseJobs          := postReleaseJobs.value,
+      ciBackgroundJobs    := Seq.empty,
+      ciMatrixMaxParallel := None,
+      ciJavaVersion       := "8",
+      ciBuildJobs         := buildJobs.value,
+      ciLintJobs          := lintJobs.value,
+      ciTestJobs          := testJobs.value,
+      ciUpdateReadmeJobs  := updateReadmeJobs.value,
+      ciReleaseJobs       := releaseJobs.value,
+      ciPostReleaseJobs   := postReleaseJobs.value,
       ciPullRequestApprovalJobs := Def.setting {
         val test = ciTestJobs.value.map(_ => "test")
         Seq("lint") ++ test ++ Seq("build")
