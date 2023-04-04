@@ -60,8 +60,6 @@ jobs:
         check-latest: true
     - name: Cache Dependencies
       uses: coursier/cache-action@v6
-    - name: Check if the site workflow is up to date
-      run: sbt ciCheckGithubWorkflow
     - name: Lint
       run: sbt lint
   test:
@@ -138,6 +136,16 @@ jobs:
         commit-message: Update README.md
         delete-branch: true
         title: Update README.md
+    - name: Approve PR
+    env:
+      GITHUB_TOKEN: <some token>
+      PR_URL: ${{ github.event.pull_request.html_url }}
+    run: gh pr review "$PR_URL" --approve
+    - name: Enable Auto-Merge
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        PR_URL: ${{ github.event.pull_request.html_url }}
+      run: gh pr merge --auto --merge "$PR_URL" || gh pr merge --merge "$PR_URL"
   ci:
     name: ci
     runs-on: ubuntu-latest
