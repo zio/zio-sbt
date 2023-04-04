@@ -18,7 +18,7 @@ inThisBuild(
     ),
     ciEnabledBranches := Seq("main"),
     ciTargetScalaVersions :=
-      makeTargetScalaMap(
+      targetScalaVersionsFor(
         `zio-sbt-website`,
         `zio-sbt-ecosystem`,
         `zio-sbt-ci`,

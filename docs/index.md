@@ -85,3 +85,9 @@ ThisBuild / ciTargetScalaVersions := Map(
   (submoduleB / thisProject).value.id -> (submoduleB / crossScalaVersions).value
 )
 ```
+
+The above code can be simplified further by using `targetScalaVersionsFor` helper method, it takes a list of submodules and returns a Map of project names to their `crossScalaVersions`:
+
+```scala
+ThisBuild / ciTargetScalaVersions := targetScalaVersionsFor(submoduleA, submoduleB).value
+```
