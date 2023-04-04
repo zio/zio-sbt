@@ -137,10 +137,10 @@ jobs:
         delete-branch: true
         title: Update README.md
     - name: Approve PR
-    env:
-      GITHUB_TOKEN: <some token>
-      PR_URL: ${{ github.event.pull_request.html_url }}
-    run: gh pr review "$PR_URL" --approve
+      env:
+        GITHUB_TOKEN: <some token>
+        PR_URL: ${{ github.event.pull_request.html_url }}
+      run: gh pr review "$PR_URL" --approve
     - name: Enable Auto-Merge
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
