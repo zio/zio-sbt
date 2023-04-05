@@ -42,15 +42,13 @@ jobs:
       run: |
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
         git config --local user.name "github-actions[bot]"
-        git checkout -b zio-sbt-website/update-readme
         git add README.md
         git commit -m "Update README.md" || echo "No changes to commit"
     - name: Create Pull Request
       run: |
         gh pr create \
            --title "Update README.md" \
-           --body 'Readme updated!' \
-           --base main --head 'zio-sbt-website/update-readme'
+           --body 'Readme updated!'
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     - name: Enable Auto-Merge
