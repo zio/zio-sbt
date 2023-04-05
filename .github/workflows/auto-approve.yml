@@ -2,7 +2,7 @@ name: Auto approve
 
 on: 
   pull_request:
-    [opened, edited, reopened, review_requested, auto_merge_enabled]
+    types: [opened, edited, reopened, review_requested, auto_merge_enabled]
 
 jobs:
   auto-approve:
