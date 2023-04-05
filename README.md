@@ -87,6 +87,12 @@ ThisBuild / ciTargetScalaVersions := Map(
 )
 ```
 
+The above code can be simplified further by using `targetScalaVersionsFor` helper method, it takes a list of submodules and returns a Map of project names to their `crossScalaVersions`:
+
+```scala
+ThisBuild / ciTargetScalaVersions := targetScalaVersionsFor(submoduleA, submoduleB).value
+```
+
 ## Documentation
 
 Learn more on the [ZIO SBT homepage](https://zio.dev/zio-sbt)!
