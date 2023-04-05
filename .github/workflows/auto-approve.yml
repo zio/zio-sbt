@@ -9,8 +9,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
-    if: github.actor == 'github-actions[bot]'
     steps:
+      - echo "${{ toJson(github) }}"
       - uses: hmarr/auto-approve-action@v3.2.1
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
