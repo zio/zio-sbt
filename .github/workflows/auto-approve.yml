@@ -5,9 +5,13 @@ on:
 
 jobs:
   auto-approve:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
-      - echo "${{ toJson(github) }}" | jq .
+      - name: Dump GitHub context
+        env:
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+        run: |
+          echo "$GITHUB_CONTEXT" | jq .
       - uses: hmarr/auto-approve-action@v3.2.1
         if: github.actor == 'scala-actions[bot]'
         with:
