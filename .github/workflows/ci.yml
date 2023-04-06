@@ -123,6 +123,11 @@ jobs:
         git config --local user.name "github-actions[bot]"
         git add README.md
         git commit -m "Update README.md" || echo "No changes to commit"
+    - uses: tibdex/github-app-token@v1
+      id: generate-token
+      with:
+        app_id: ${{ secrets.APP_ID }}
+        private_key: ${{ secrets.APP_PRIVATE_KEY }}
     - name: Create Pull Request
       id: cpr
       uses: peter-evans/create-pull-request@v5.0.0
@@ -137,11 +142,11 @@ jobs:
         commit-message: Update README.md
         delete-branch: true
         title: Update README.md
-        token: ${{ secrets.PAT_TOKEN }}
+        token: ${{ steps.generate-token.outputs.token }}
     - name: Enable Auto-Merge
       if: ${{ steps.cpr.outputs.pull-request-number }}
       env:
-        GITHUB_TOKEN: <some token>
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         PR_URL: ${{ steps.cpr.outputs.pull-request-url }}
       run: gh pr merge --auto --merge "$PR_URL" || gh pr merge --merge "$PR_URL"
   ci:
