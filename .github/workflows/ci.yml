@@ -148,7 +148,7 @@ jobs:
       uses: hmarr/auto-approve-action@v3
       with:
         pull-request-number: ${{ steps.cpr.outputs.pull-request-number }}   
-        token: ${{ steps.generate-token.outputs.token }}
+        github-token: ${{ steps.generate-token.outputs.token }}
     - name: Enable Auto-Merge
       if: ${{ steps.cpr.outputs.pull-request-number }}
       env:
