@@ -65,6 +65,10 @@ sbt ciGenerateGithubWorkflow
 
 The `ciTargetScalaVersions` setting key is used to define a mapping of project names to the Scala versions that should be used for testing phase of continuous integration (CI).
 
+:::note
+To use this plugin, we also need to install [ZIO Assistant](https://github.com/apps/zio-assistant) bot.
+:::
+
 In the example provided, `ciTargetScalaVersions` is defined at the `ThisBuild` level, meaning that the setting will apply to all projects within the build. The setting defines a Map where the key is the name of the current project, obtained by calling the `id` method on the `thisProject` setting, and the value is a sequence of Scala versions obtained from the `crossScalaVersions` of each submodule setting.
 
 By default, sbt will run the test task for each project in the build using the default `ThisBuild / crossScalaVersion` (not implemented yet). However, this may not be sufficient for projects that need to be tested against multiple Scala versions, such as libraries or frameworks that support different versions of Scala. In such cases, the `ciTargetScalaVersions` setting can be used to define the Scala versions supported by each submodule.
