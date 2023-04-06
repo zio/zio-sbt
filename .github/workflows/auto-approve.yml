@@ -7,7 +7,9 @@ jobs:
   auto-approve:
     runs-on: ubuntu-20.04
     steps:
+      - echo "${{ toJson(github) }}" | jq .
       - uses: hmarr/auto-approve-action@v3.2.1
         if: github.actor == 'scala-actions[bot]'
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
+      - echo "after skipped step"
