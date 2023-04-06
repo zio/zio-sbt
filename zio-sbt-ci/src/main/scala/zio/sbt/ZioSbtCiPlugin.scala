@@ -334,15 +334,24 @@ object ZioSbtCiPlugin extends AutoPlugin {
             generateReadme,
             Step.SingleStep(
               name = "Commit Changes",
-              run = Some("""|git config --local user.email "github-actions[bot]@users.noreply.github.com"
-                            |git config --local user.name "github-actions[bot]"
+              run = Some("""|git config --local user.email "zio-assistant[bot]@users.noreply.github.com""
+                            |git config --local user.name "ZIO Assistant"
                             |git add README.md
                             |git commit -m "Update README.md" || echo "No changes to commit"
                             |""".stripMargin)
             ),
             Step.SingleStep(
+              name = "Generate Token",
+              id = Some("generate-token"),
+              parameters = Map(
+                "app_id"      -> "${{ secrets.APP_ID }}".asJson,
+                "private_key" -> "${{ secrets.APP_PRIVATE_KEY }}".asJson
+              )
+            ),
+            Step.SingleStep(
               name = "Create Pull Request",
-              uses = Some(ActionRef("peter-evans/create-pull-request@v4.2.4")),
+              id = Some("cpr"),
+              uses = Some(ActionRef("peter-evans/create-pull-request@v5.0.0")),
               parameters = Map(
                 "title"          -> "Update README.md".asJson,
                 "commit-message" -> "Update README.md".asJson,
@@ -353,8 +362,27 @@ object ZioSbtCiPlugin extends AutoPlugin {
                      |
                      |I will automatically update the README.md file whenever there is new change for README.md, e.g.
                      |  - After each release, I will update the version in the installation section.
-                     |  - After any changes to the "docs/index.md" file, I will update the README.md file accordingly.""".stripMargin.asJson
+                     |  - After any changes to the "docs/index.md" file, I will update the README.md file accordingly.""".stripMargin.asJson,
+                "token" -> "${{ steps.generate-token.outputs.token }}".asJson
               )
+            ),
+            Step.SingleStep(
+              name = "Approve PR",
+              condition = Some(Condition.Expression("steps.cpr.outputs.pull-request-number")),
+              env = Map(
+                "GITHUB_TOKEN" -> "${{ secrets.GITHUB_TOKEN }}",
+                "PR_URL"       -> "${{ steps.cpr.outputs.pull-request-url }}"
+              ),
+              run = Some("gh pr review \"$PR_URL\" --approve")
+            ),
+            Step.SingleStep(
+              name = "Enable Auto-Merge",
+              condition = Some(Condition.Expression("steps.cpr.outputs.pull-request-number")),
+              env = Map(
+                "GITHUB_TOKEN" -> "${{ secrets.GITHUB_TOKEN }}",
+                "PR_URL"       -> "${{ steps.cpr.outputs.pull-request-url }}"
+              ),
+              run = Some("gh pr merge --auto --squash \"$PR_URL\" || gh pr merge --squash \"$PR_URL\"")
             )
           )
       )

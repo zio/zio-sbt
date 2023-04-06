@@ -173,6 +173,7 @@ sealed trait Step {
 object Step {
   case class SingleStep(
     name: String,
+    id: Option[String] = None,
     uses: Option[ActionRef] = None,
     condition: Option[Condition] = None,
     parameters: Map[String, Json] = Map.empty,
@@ -198,6 +199,7 @@ object Step {
       Json
         .obj(
           "name" := s.name,
+          "id"   := s.id,
           "uses" := s.uses,
           "if"   := s.condition,
           "with" := (if (s.parameters.nonEmpty) s.parameters.asJson

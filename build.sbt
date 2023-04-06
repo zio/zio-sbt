@@ -23,8 +23,7 @@ inThisBuild(
         `zio-sbt-ecosystem`,
         `zio-sbt-ci`,
         `zio-sbt-tests`
-      ).value,
-    ciCheckGithubWorkflowSteps := Seq.empty
+      ).value
   )
 )
 
