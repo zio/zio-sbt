@@ -343,6 +343,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
             Step.SingleStep(
               name = "Generate Token",
               id = Some("generate-token"),
+              uses = Some(ActionRef("tibdex/github-app-token@v1")),
               parameters = Map(
                 "app_id"      -> "${{ secrets.APP_ID }}".asJson,
                 "private_key" -> "${{ secrets.APP_PRIVATE_KEY }}".asJson

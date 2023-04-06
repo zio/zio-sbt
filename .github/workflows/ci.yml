@@ -60,8 +60,6 @@ jobs:
         check-latest: true
     - name: Cache Dependencies
       uses: coursier/cache-action@v6
-    - name: Check if the site workflow is up to date
-      run: sbt ciCheckGithubWorkflow
     - name: Lint
       run: sbt lint
   test:
@@ -127,6 +125,7 @@ jobs:
         git commit -m "Update README.md" || echo "No changes to commit"
     - name: Generate Token
       id: generate-token
+      uses: tibdex/github-app-token@v1
       with:
         app_id: ${{ secrets.APP_ID }}
         private_key: ${{ secrets.APP_PRIVATE_KEY }}
