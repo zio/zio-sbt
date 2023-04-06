@@ -331,10 +331,10 @@ trait ScalaCompilerSettings {
     addOptionsOn("3")("-scalajs")
 
   def optionsOn(scalaBinaryVersions: String*)(options: String*): Def.Initialize[Seq[String]] =
-    optionsOnOrElse(scalaBinaryVersions *)(options *)(Seq.empty *)
+    optionsOnOrElse(scalaBinaryVersions*)(options*)(Seq.empty*)
 
   def optionsOnExcept(scalaBinaryVersions: String*)(options: String*): Def.Initialize[Seq[String]] =
-    optionsOn(Seq("2.11", "2.12", "2.13", "3").diff(scalaBinaryVersions) *)(options *)
+    optionsOn(Seq("2.11", "2.12", "2.13", "3").diff(scalaBinaryVersions)*)(options*)
 
   def optionsOnOrElse(scalaBinaryVersions: String*)(defaults: String*)(
     orElse: String*
@@ -344,10 +344,10 @@ trait ScalaCompilerSettings {
     )
 
   def dependenciesOn(scalaBinaryVersions: String*)(modules: ModuleID*): Def.Initialize[Seq[ModuleID]] =
-    dependenciesOnOrElse(scalaBinaryVersions *)(modules *)(Seq.empty *)
+    dependenciesOnOrElse(scalaBinaryVersions*)(modules*)(Seq.empty*)
 
   def dependenciesOnExcept(scalaBinaryVersions: String*)(modules: ModuleID*): Def.Initialize[Seq[ModuleID]] =
-    dependenciesOn(Seq("2.11", "2.12", "2.13", "3").diff(scalaBinaryVersions) *)(modules *)
+    dependenciesOn(Seq("2.11", "2.12", "2.13", "3").diff(scalaBinaryVersions)*)(modules*)
 
   def dependenciesOnOrElse(scalaBinaryVersions: String*)(defaultModules: ModuleID*)(
     orElse: ModuleID*
@@ -357,27 +357,27 @@ trait ScalaCompilerSettings {
     )
 
   def addDependenciesOn(scalaBinaryVersions: String*)(dependencies: ModuleID*): Def.Setting[Seq[ModuleID]] =
-    addDependenciesOnOrElse(scalaBinaryVersions *)(dependencies *)(Seq.empty *)
+    addDependenciesOnOrElse(scalaBinaryVersions*)(dependencies*)(Seq.empty*)
 
   def addDependenciesOnExcept(scalaBinaryVersions: String*)(dependencies: ModuleID*): Def.Setting[Seq[ModuleID]] =
-    libraryDependencies ++= dependenciesOn(Seq("2.11", "2.12", "2.13", "3").diff(scalaBinaryVersions) *)(
-      dependencies *
+    libraryDependencies ++= dependenciesOn(Seq("2.11", "2.12", "2.13", "3").diff(scalaBinaryVersions)*)(
+      dependencies*
     ).value
 
   def addDependenciesOnOrElse(
     scalaBinaryVersions: String*
   )(default: ModuleID*)(orElse: ModuleID*): Def.Setting[Seq[ModuleID]] =
-    libraryDependencies ++= dependenciesOnOrElse(scalaBinaryVersions *)(default *)(orElse *).value
+    libraryDependencies ++= dependenciesOnOrElse(scalaBinaryVersions*)(default*)(orElse*).value
 
   def addOptionsOn(scalaBinaryVersions: String*)(options: String*): Def.Setting[Task[Seq[String]]] =
-    scalacOptions ++= optionsOn(scalaBinaryVersions *)(options *).value
+    scalacOptions ++= optionsOn(scalaBinaryVersions*)(options*).value
 
   def addOptionsOnOrElse(
     scalaBinaryVersions: String*
   )(options: String*)(orElse: String*): Def.Setting[Task[Seq[String]]] =
-    scalacOptions ++= optionsOnOrElse(scalaBinaryVersions *)(options *)(orElse *).value
+    scalacOptions ++= optionsOnOrElse(scalaBinaryVersions*)(options*)(orElse*).value
 
   def addOptionsOnExcept(scalaBinaryVersions: String*)(options: String*): Def.Setting[Task[Seq[String]]] =
-    addOptionsOn(Seq("2.11", "2.12", "2.13", "3").diff(scalaBinaryVersions) *)(options *)
+    addOptionsOn(Seq("2.11", "2.12", "2.13", "3").diff(scalaBinaryVersions)*)(options*)
 
 }
