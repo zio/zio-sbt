@@ -123,12 +123,12 @@ jobs:
         git config --local user.name "ZIO Assistant"
         git add README.md
         git commit -m "Update README.md" || echo "No changes to commit"
-    - name: Generate Token
+    - name: Generate Github App Token
       id: generate-token
-      uses: tibdex/github-app-token@v1
+      uses: khajavi/generate-github-app-token@v0.0.7
       with:
         app_id: ${{ secrets.APP_ID }}
-        private_key: ${{ secrets.APP_PRIVATE_KEY }}
+        app_private_key: ${{ secrets.APP_PRIVATE_KEY }}       
     - name: Create Pull Request
       id: cpr
       uses: peter-evans/create-pull-request@v5.0.0
