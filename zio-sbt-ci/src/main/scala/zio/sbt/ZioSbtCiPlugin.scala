@@ -334,7 +334,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
             generateReadme,
             Step.SingleStep(
               name = "Commit Changes",
-              run = Some("""|git config --local user.email "zio-assistant[bot]@users.noreply.github.com""
+              run = Some("""|git config --local user.email "zio-assistant[bot]@users.noreply.github.com"
                             |git config --local user.name "ZIO Assistant"
                             |git add README.md
                             |git commit -m "Update README.md" || echo "No changes to commit"
@@ -343,10 +343,10 @@ object ZioSbtCiPlugin extends AutoPlugin {
             Step.SingleStep(
               name = "Generate Token",
               id = Some("generate-token"),
-              uses = Some(ActionRef("tibdex/github-app-token@v1")),
+              uses = Some(ActionRef("zio/generate-github-app-token@v1.0.0")),
               parameters = Map(
-                "app_id"      -> "${{ secrets.APP_ID }}".asJson,
-                "private_key" -> "${{ secrets.APP_PRIVATE_KEY }}".asJson
+                "app_id"          -> "${{ secrets.APP_ID }}".asJson,
+                "app_private_key" -> "${{ secrets.APP_PRIVATE_KEY }}".asJson
               )
             ),
             Step.SingleStep(
