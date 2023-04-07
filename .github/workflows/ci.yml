@@ -125,7 +125,7 @@ jobs:
         git commit -m "Update README.md" || echo "No changes to commit"
     - name: Generate Github App Token
       id: generate-token
-      uses: khajavi/generate-github-app-token@v0.0.8
+      uses: khajavi/generate-github-app-token@v0.0.9
       with:
         app_id: ${{ secrets.APP_ID }}
         app_private_key: ${{ secrets.APP_PRIVATE_KEY }}       
