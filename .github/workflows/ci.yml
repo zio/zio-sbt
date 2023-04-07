@@ -119,7 +119,7 @@ jobs:
       run: sbt docs/generateReadme
     - name: Commit Changes
       run: |
-        git config --local user.email "zio-assistant[bot]@users.noreply.github.com""
+        git config --local user.email "zio-assistant[bot]@users.noreply.github.com"
         git config --local user.name "ZIO Assistant"
         git add README.md
         git commit -m "Update README.md" || echo "No changes to commit"
