@@ -343,7 +343,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
             Step.SingleStep(
               name = "Generate Token",
               id = Some("generate-token"),
-              uses = Some(ActionRef("zio/generate-github-app-token@v1.0.0")),
+              uses = Some(ActionRef(V("zio/generate-github-app-token"))),
               parameters = Map(
                 "app_id"          -> "${{ secrets.APP_ID }}".asJson,
                 "app_private_key" -> "${{ secrets.APP_PRIVATE_KEY }}".asJson
@@ -352,7 +352,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
             Step.SingleStep(
               name = "Create Pull Request",
               id = Some("cpr"),
-              uses = Some(ActionRef("peter-evans/create-pull-request@v5.0.0")),
+              uses = Some(ActionRef(V("peter-evans/create-pull-request"))),
               parameters = Map(
                 "title"          -> "Update README.md".asJson,
                 "commit-message" -> "Update README.md".asJson,
@@ -621,7 +621,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
 
       Step.SingleStep(
         name = "Set Swap Space",
-        uses = Some(ActionRef("pierotofy/set-swap-space@master")),
+        uses = Some(ActionRef(V("pierotofy/set-swap-space"))),
         parameters = Map("swap-size-gb" -> swapSizeGB.asJson)
       )
     }
@@ -630,7 +630,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
     Def.setting {
       Step.SingleStep(
         name = "Git Checkout",
-        uses = Some(ActionRef("actions/checkout@v3.3.0")),
+        uses = Some(ActionRef(V("actions/checkout"))),
         parameters = Map("fetch-depth" -> "0".asJson)
       )
     }
@@ -642,7 +642,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
 
   def SetupJava(version: String = "8"): Step.SingleStep = Step.SingleStep(
     name = "Setup Scala",
-    uses = Some(ActionRef("actions/setup-java@v3.10.0")),
+    uses = Some(ActionRef(V("actions/setup-java"))),
     parameters = Map(
       "distribution" -> "temurin".asJson,
       "java-version" -> version.asJson,
@@ -652,7 +652,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
 
   lazy val CacheDependencies: Step.SingleStep = Step.SingleStep(
     name = "Cache Dependencies",
-    uses = Some(ActionRef("coursier/cache-action@v6"))
+    uses = Some(ActionRef(V("coursier/cache-action")))
   )
 
   lazy val CheckWebsiteBuildProcess: Def.Initialize[Seq[Step.SingleStep]] =
@@ -697,7 +697,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
 
   val SetupNodeJs: Step.SingleStep = Step.SingleStep(
     name = "Setup NodeJs",
-    uses = Some(ActionRef("actions/setup-node@v3")),
+    uses = Some(ActionRef(V("actions/setup-node"))),
     parameters = Map(
       "node-version" -> "16.x".asJson,
       "registry-url" -> "https://registry.npmjs.org".asJson

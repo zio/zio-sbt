@@ -4,5 +4,15 @@
     "config:base",
     "github>zio/zio-renovate-config:renovate"
   ],
-  "baseBranches": ["main"]
+  "baseBranches": ["main"],
+  "regexManagers": [
+    {
+      "description": "Update Github Actions Inside ZIO SBT CI Plugin",
+       "fileMatch": ["zio-sbt-ci/src/main/scala/zio/sbt/V.scala"],
+       "matchStrings": [
+          "\"(?<depName>.*?)\" *-> *\"(?<currentValue>.*?)\"" 
+       ],
+      "datasourceTemplate": "github-releases"
+    } 
+  ]
 }
