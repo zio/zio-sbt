@@ -73,11 +73,6 @@ jobs:
         - '8'
         - '11'
         - '17'
-        scala-project:
-        - ++2.12.17 zio-sbt-website
-        - ++2.12.17 zio-sbt-ecosystem
-        - ++2.12.17 zio-sbt-ci
-        - ++2.12.17 zio-sbt-tests
     steps:
     - name: Install libuv
       run: sudo apt-get update && sudo apt-get install -y libuv1-dev
@@ -94,7 +89,7 @@ jobs:
       with:
         fetch-depth: '0'
     - name: Test
-      run: sbt ${{ matrix.scala-project }}/test
+      run: sbt ++test
   update-readme:
     name: Update README
     runs-on: ubuntu-latest

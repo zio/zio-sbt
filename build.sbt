@@ -16,14 +16,7 @@ inThisBuild(
     developers := List(
       Developer("khajavi", "Milad Khajavi", "khajavi@gmail.com", url("https://github.com/khajavi"))
     ),
-    ciEnabledBranches := Seq("main"),
-//    ciTargetScalaVersions :=
-//      targetScalaVersionsFor(
-//        `zio-sbt-website`,
-//        `zio-sbt-ecosystem`,
-//        `zio-sbt-ci`,
-//        `zio-sbt-tests`
-//      ).value,
+    ciEnabledBranches          := Seq("main"),
     ciCheckGithubWorkflowSteps := Seq.empty
   )
 )

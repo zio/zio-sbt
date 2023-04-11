@@ -291,7 +291,34 @@ object ZioSbtCiPlugin extends AutoPlugin {
           ) ++ extraTestSteps
       )
 
-    Seq(if (groupSimilarTests) GroupTests else FlattenTests)
+    val DefaultTestStrategy =
+      Job(
+        id = "test",
+        name = "Test",
+        strategy = Some(
+          Strategy(
+            matrix = Map("java" -> javaPlatforms.toList),
+            maxParallel = matrixMaxParallel,
+            failFast = false
+          )
+        ),
+        steps = (if (swapSizeGB > 0) Seq(setSwapSpace) else Seq.empty) ++
+          Seq(
+            SetupLibuv,
+            SetupJava("${{ matrix.java }}"),
+            CacheDependencies,
+            checkout,
+            Step.SingleStep(
+              name = "Test",
+              run = Some(prefixJobs + "sbt ++test")
+            )
+          ) ++ extraTestSteps
+      )
+
+    if (javaPlatformMatrix.isEmpty && scalaVersionMatrix.isEmpty)
+      Seq(DefaultTestStrategy)
+    else
+      Seq(if (groupSimilarTests) GroupTests else FlattenTests)
   }
 
   lazy val reportSuccessfulJobs: Def.Initialize[Seq[Job]] = Def.setting {
