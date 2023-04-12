@@ -62,15 +62,61 @@ Now you can generate a Github workflow by running the following command:
 sbt ciGenerateGithubWorkflow
 ```
 
-The `ciTargetScalaVersions` setting key is used to define a mapping of project names to the Scala versions that should be used for testing phase of continuous integration (CI).
+This will generate a GitHub workflow file inside the `.github/workflows` directory, named `ci.yml`. The workflow file contains following default Jobs:
+
+- Build
+- Lint
+- Test
+- Update Readme
 
 > **Note:**
 > 
 > To use this plugin, we also need to install [ZIO Assistant](https://github.com/apps/zio-assistant) bot.
 
-In the example provided, `ciTargetScalaVersions` is defined at the `ThisBuild` level, meaning that the setting will apply to all projects within the build. The setting defines a Map where the key is the name of the current project, obtained by calling the `id` method on the `thisProject` setting, and the value is a sequence of Scala versions obtained from the `crossScalaVersions` of each submodule setting.
+## Testing Strategies
 
-By default, sbt will run the test task for each project in the build using the default `ThisBuild / crossScalaVersion` (not implemented yet). However, this may not be sufficient for projects that need to be tested against multiple Scala versions, such as libraries or frameworks that support different versions of Scala. In such cases, the `ciTargetScalaVersions` setting can be used to define the Scala versions supported by each submodule.
+### Default Testing Strategy
+
+The default testing strategy for ZIO SBT CI plugin is to run `sbt ++test` on java 8, 11 and 17. So this will generate the following job:
+
+```yaml
+test:
+  name: Test
+  runs-on: ubuntu-latest
+  continue-on-error: false
+  strategy:
+    fail-fast: false
+    matrix:
+      java:
+      - '8'
+      - '11'
+      - '17'
+  steps:
+  - name: Install libuv
+    run: sudo apt-get update && sudo apt-get install -y libuv1-dev
+  - name: Setup Scala
+    uses: actions/setup-java@v3.10.0
+    with:
+      distribution: temurin
+      java-version: ${{ matrix.java }}
+      check-latest: true
+  - name: Cache Dependencies
+    uses: coursier/cache-action@v6
+  - name: Git Checkout
+    uses: actions/checkout@v3.3.0
+    with:
+      fetch-depth: '0'
+  - name: Test
+    run: sbt ++test
+```
+
+The `sbt ++test` command will run the `test` task for all submodules in the project against all Scala versions defined in the `crossScalaVersions` setting.
+
+### Concurrent Testing Strategy
+
+In some cases, we may have multiple submodules in our project and we want to test them concurrently using GitHub Actions matrix strategy.
+
+The `ciTargetScalaVersions` setting key is used to define a mapping of project names to the Scala versions that should be used for testing phase of continuous integration (CI).
 
 For example, suppose we have a project with the name "submoduleA" and we want to test it against Scala `2.11.12` and `2.12.17`, and for the "submoduleB" we want to test it against Scala `2.12.17` and `2.13.10` and `3.2.2`, We can define the `ciTargetScalaVersions` setting as follows:
 
@@ -80,6 +126,8 @@ ThisBuild / ciTargetScalaVersions := Map(
     "submoduleB" -> Seq("2.12.17", "2.13.10", "3.2.2")
   )
 ```
+
+In the example provided, `ciTargetScalaVersions` is defined at the `ThisBuild` level, meaning that the setting will apply to all projects within the build. The setting defines a Map where the key is the name of the current project, obtained by calling the `id` method on the `thisProject` setting, and the value is a sequence of Scala versions obtained from the `crossScalaVersions` of each submodule setting.
 
 To simplify this process, we can populate the versions using each submodule's crossScalaVersions setting as follows:
 
@@ -94,4 +142,43 @@ The above code can be simplified further by using `targetScalaVersionsFor` helpe
 
 ```scala
 ThisBuild / ciTargetScalaVersions := targetScalaVersionsFor(submoduleA, submoduleB).value
+```
+
+This will generate the following job:
+
+```yaml
+test:
+  name: Test
+  runs-on: ubuntu-latest
+  continue-on-error: false
+  strategy:
+    fail-fast: false
+    matrix:
+      java:
+      - '8'
+      - '11'
+      - '17'
+      scala-project:
+      - ++2.11.12 submoduleA
+      - ++2.12.17 submoduleA
+      - ++2.12.17 submoduleB
+      - ++2.13.10 submoduleB
+      - ++3.2.2 submoduleB
+  steps:
+  - name: Install libuv
+    run: sudo apt-get update && sudo apt-get install -y libuv1-dev
+  - name: Setup Scala
+    uses: actions/setup-java@v3.10.0
+    with:
+      distribution: temurin
+      java-version: ${{ matrix.java }}
+      check-latest: true
+  - name: Cache Dependencies
+    uses: coursier/cache-action@v6
+  - name: Git Checkout
+    uses: actions/checkout@v3.3.0
+    with:
+      fetch-depth: '0'
+  - name: Test
+    run: sbt ${{ matrix.scala-project }}/test
 ```
