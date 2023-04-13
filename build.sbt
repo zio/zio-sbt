@@ -16,8 +16,7 @@ inThisBuild(
     developers := List(
       Developer("khajavi", "Milad Khajavi", "khajavi@gmail.com", url("https://github.com/khajavi"))
     ),
-    ciEnabledBranches          := Seq("main"),
-    ciCheckGithubWorkflowSteps := Seq.empty
+    ciEnabledBranches := Seq("main")
   )
 )
 
