@@ -4,7 +4,7 @@
 
 # ZIO SBT
 
-_ZIO SBT_ is an sbt plugin for ZIO projects. It provides high-level SBT utilities that simplify the development of ZIO applications.
+_ZIO SBT_ contains multiple sbt plugins that are useful for ZIO projects. It provides high-level SBT utilities that simplify the development of ZIO applications.
 
 [![Production Ready](https://img.shields.io/badge/Project%20Stage-Production%20Ready-brightgreen.svg)](https://github.com/zio/zio/wiki/Project-Stages) ![CI Badge](https://github.com/zio/zio-sbt/workflows/CI/badge.svg) [![Sonatype Releases](https://img.shields.io/nexus/r/https/oss.sonatype.org/dev.zio/zio-sbt-website_2.12.svg?label=Sonatype%20Release)](https://oss.sonatype.org/content/repositories/releases/dev/zio/zio-sbt-website_2.12/) [![Sonatype Snapshots](https://img.shields.io/nexus/s/https/oss.sonatype.org/dev.zio/zio-sbt-website_2.12.svg?label=Sonatype%20Snapshot)](https://oss.sonatype.org/content/repositories/snapshots/dev/zio/zio-sbt-website_2.12/) [![javadoc](https://javadoc.io/badge2/dev.zio/zio-sbt-docs_2.12/javadoc.svg)](https://javadoc.io/doc/dev.zio/zio-sbt-docs_2.12) [![ZIO SBT](https://img.shields.io/github/stars/zio/zio-sbt?style=social)](https://github.com/zio/zio-sbt)
 
@@ -13,14 +13,68 @@ _ZIO SBT_ is an sbt plugin for ZIO projects. It provides high-level SBT utilitie
 Add the following lines to your `plugin.sbt` file:
 
 ```scala
-addSbtPlugin("dev.zio" % "zio-sbt-website" % "0.4.0-alpha.8")
+addSbtPlugin("dev.zio" % "zio-sbt-ecosystem" % "0.4.0-alpha.8")
+addSbtPlugin("dev.zio" % "zio-sbt-ci"        % "0.4.0-alpha.8")
+addSbtPlugin("dev.zio" % "zio-sbt-website"   % "0.4.0-alpha.8")
 ```
 
-Then you can enable it by using the following code in your `build.sbt` file:
+Then you can enable them by using the following code in your `build.sbt` file:
 
 ```scala
-enablePlugins(WebsitePlugin)
+enablePlugins(
+  ZioSbtWebsitePlugin,
+  ZioSbtEcosystemPlugin,
+  ZioSbtCiPlugin
+)
 ```
+
+## ZIO SBT Ecosystem
+
+ZIO SBT Ecosystem plugin is an sbt plugin that provides a set of sbt settings and tasks that are very common and useful for configuring and managing ZIO projects. It is designed help developers to quickly set up a new ZIO project with a minimal amount of effort.
+
+This pluging provides the following settings with default values:
+
+- scala211
+- scala212
+- scala213
+- scala3
+
+The default values are the latest stable versions of Scala 2.11, 2.12, 2.13, and Scala 3. All of these settings are of type `String` and can be overridden by the user.
+
+By having these settings, then we can use them in other sbt settings. For example, we can use them to define the `crossScalaVersions` setting:
+
+```scala
+crossScalaVersions := Seq(scala211.value, scala212.value, scala213.value, scala3.value)
+```
+
+There are also some other settings that are useful for configuring the projects:
+
+- `stdSettings`— a set of standard settings which are common for every ZIO project, which includes configuring:
+  - silencer plugin
+  - kind projector plugin
+  - cross project plugin
+  - scalafix plugin
+  - java target platform
+- `enableZIO`- a set of ZIO related settings such as enabling zio streams and ZIO test framework.
+- `jsSettings`, `nativeSettings`- common platform specific settings for Scala.js and Scala Native.
+
+It also provides some helper methods that are useful for configuring a compiler option for a specific Scala version:
+
+- `optionsOn`
+- `optionsOnExcept`
+- `optionsOnOrElse`
+- `addOptionsOn`
+- `addOptionsOnOrElse`
+- `addOptionsOnExcept`
+
+And the same for adding a dependency for a specific Scala version:
+
+- `dependenciesOn`
+- `dependenciesOnExcept`
+- `dependenciesOnOrElse`
+- `addDependenciesOn`
+- `addDependenciesOnExcept`
+- `addDependenciesOnOrElse`
 
 ## ZIO SBT Website
 
@@ -30,7 +84,6 @@ ZIO SBT Website is an SBT plugin that has the following tasks:
 - `sbt installWebsite`— creates a website for the project inside the `website` directory.
 - `sbt previewWebsite`— runs a local webserver that serves documentation locally on http://localhost:3000. By changing the documentation inside the `docs` directory, the website will be reloaded with new content.
 - `sbt publishToNpm`— publishes documentation inside the `docs` directory to the npm registry.
-- `sbt generateGithubWorkflow`— generates GitHub workflow which publishes documentation for each library release.
 - `sbt generateReadme`— generate README.md file from `docs/index.md` and sbt setting keys.
 
 ## ZIO SBT CI Plugin
