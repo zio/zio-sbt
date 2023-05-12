@@ -6,16 +6,16 @@
 
 _ZIO SBT_ contains multiple sbt plugins that are useful for ZIO projects. It provides high-level SBT utilities that simplify the development of ZIO applications.
 
-[![Production Ready](https://img.shields.io/badge/Project%20Stage-Production%20Ready-brightgreen.svg)](https://github.com/zio/zio/wiki/Project-Stages) ![CI Badge](https://github.com/zio/zio-sbt/workflows/CI/badge.svg) [![Sonatype Releases](https://img.shields.io/nexus/r/https/oss.sonatype.org/dev.zio/zio-sbt-website_2.12.svg?label=Sonatype%20Release)](https://oss.sonatype.org/content/repositories/releases/dev/zio/zio-sbt-website_2.12/) [![Sonatype Snapshots](https://img.shields.io/nexus/s/https/oss.sonatype.org/dev.zio/zio-sbt-website_2.12.svg?label=Sonatype%20Snapshot)](https://oss.sonatype.org/content/repositories/snapshots/dev/zio/zio-sbt-website_2.12/) [![javadoc](https://javadoc.io/badge2/dev.zio/zio-sbt-docs_2.12/javadoc.svg)](https://javadoc.io/doc/dev.zio/zio-sbt-docs_2.12) [![ZIO SBT](https://img.shields.io/github/stars/zio/zio-sbt?style=social)](https://github.com/zio/zio-sbt)
+[![Production Ready](https://img.shields.io/badge/Project%20Stage-Production%20Ready-brightgreen.svg)](https://github.com/zio/zio/wiki/Project-Stages) ![CI Badge](https://github.com/zio/zio-sbt/workflows/CI/badge.svg) [![Sonatype Snapshots](https://img.shields.io/nexus/s/https/oss.sonatype.org/dev.zio/zio-sbt-website_2.12.svg?label=Sonatype%20Snapshot)](https://oss.sonatype.org/content/repositories/snapshots/dev/zio/zio-sbt-website_2.12/) [![ZIO SBT](https://img.shields.io/github/stars/zio/zio-sbt?style=social)](https://github.com/zio/zio-sbt)
 
 ## Installation
 
 Add the following lines to your `plugin.sbt` file:
 
 ```scala
-addSbtPlugin("dev.zio" % "zio-sbt-ecosystem" % "0.4.0-alpha.8")
-addSbtPlugin("dev.zio" % "zio-sbt-ci"        % "0.4.0-alpha.8")
-addSbtPlugin("dev.zio" % "zio-sbt-website"   % "0.4.0-alpha.8")
+addSbtPlugin("dev.zio" % "zio-sbt-ecosystem" % "<version>")
+addSbtPlugin("dev.zio" % "zio-sbt-ci"        % "<version>")
+addSbtPlugin("dev.zio" % "zio-sbt-website"   % "<version>")
 ```
 
 Then you can enable them by using the following code in your `build.sbt` file:
@@ -99,7 +99,7 @@ ZIO SBT CI plugin generates a default GitHub workflow that includes common CI ta
 To use ZIO SBT CI plugin, add the following lines to your `plugins.sbt` file:
 
 ```scala
-addSbtPlugin("dev.zio" % "zio-sbt-ci" % "0.4.0-alpha.8")
+addSbtPlugin("dev.zio" % "zio-sbt-ci" % "<version>")
 
 resolvers ++= Resolver.sonatypeOssRepos("public")
 ```
@@ -243,7 +243,7 @@ Learn more on the [ZIO SBT homepage](https://zio.dev/zio-sbt)!
 
 ## Contributing
 
-For the general guidelines, see ZIO [contributor's guide](https://zio.dev/about/contributing).
+For the general guidelines, see ZIO [contributor's guide](https://zio.dev/contributor-guidelines).
 #### TL;DR
 
 Before you submit a PR, make sure your tests are passing, and that the code is properly formatted
@@ -256,7 +256,7 @@ sbt testPlugin
 
 ## Code of Conduct
 
-See the [Code of Conduct](https://zio.dev/about/code-of-conduct)
+See the [Code of Conduct](https://zio.dev/code-of-conduct)
 
 ## Support
 
