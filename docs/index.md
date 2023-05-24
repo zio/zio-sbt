@@ -130,7 +130,7 @@ This will generate a GitHub workflow file inside the `.github/workflows` directo
 
 ### Default Testing Strategy
 
-The default testing strategy for ZIO SBT CI plugin is to run `sbt ++test` on java 8, 11 and 17. So this will generate the following job:
+The default testing strategy for ZIO SBT CI plugin is to run `sbt +test` on java 8, 11 and 17. So this will generate the following job:
 
 ```yaml
 test:
@@ -160,10 +160,10 @@ test:
     with:
       fetch-depth: '0'
   - name: Test
-    run: sbt ++test
+    run: sbt +test
 ```
 
-The `sbt ++test` command will run the `test` task for all submodules in the project against all Scala versions defined in the `crossScalaVersions` setting.
+The `sbt +test` command will run the `test` task for all submodules in the project against all Scala versions defined in the `crossScalaVersions` setting.
 
 ### Concurrent Testing Strategy
 

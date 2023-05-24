@@ -91,7 +91,7 @@ jobs:
       with:
         fetch-depth: '0'
     - name: Test
-      run: sbt ++test
+      run: sbt +test
   update-readme:
     name: Update README
     runs-on: ubuntu-latest
