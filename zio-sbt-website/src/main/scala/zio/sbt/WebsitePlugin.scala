@@ -392,10 +392,10 @@ object WebsitePlugin extends sbt.AutoPlugin {
     s"""Learn more on the [$projectName homepage]($projectHomepageUrl)!""".stripMargin
 
   def readmeContributionSection: String =
-    """For the general guidelines, see ZIO [contributor's guide](https://zio.dev/about/contributing).""".stripMargin
+    """For the general guidelines, see ZIO [contributor's guide](https://zio.dev/contributor-guidelines).""".stripMargin
 
   def readmeCodeOfConductSection: String =
-    """See the [Code of Conduct](https://zio.dev/about/code-of-conduct)""".stripMargin
+    """See the [Code of Conduct](https://zio.dev/code-of-conduct)""".stripMargin
 
   def readmeSupportSection: String =
     """|Come chat with us on [![Badge-Discord]][Link-Discord].
