@@ -310,7 +310,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
             checkout,
             Step.SingleStep(
               name = "Test",
-              run = Some(prefixJobs + "sbt ++test")
+              run = Some(prefixJobs + "sbt +test")
             )
           ) ++ extraTestSteps
       )
