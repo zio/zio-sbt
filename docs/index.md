@@ -171,12 +171,12 @@ In some cases, we may have multiple submodules in our project and we want to tes
 
 The `ciTargetScalaVersions` setting key is used to define a mapping of project names to the Scala versions that should be used for testing phase of continuous integration (CI).
 
-For example, suppose we have a project with the name "submoduleA" and we want to test it against Scala `2.11.12` and `2.12.17`, and for the "submoduleB" we want to test it against Scala `2.12.17` and `2.13.10` and `3.2.2`, We can define the `ciTargetScalaVersions` setting as follows:
+For example, suppose we have a project with the name "submoduleA" and we want to test it against Scala `2.11.12` and `2.12.18`, and for the "submoduleB" we want to test it against Scala `2.12.18` and `2.13.11` and `3.3.0`, We can define the `ciTargetScalaVersions` setting as follows:
 
 ```scala
 ThisBuild / ciTargetScalaVersions := Map(
-    "submoduleA" -> Seq("2.11.12", "2.12.17"),
-    "submoduleB" -> Seq("2.12.17", "2.13.10", "3.2.2")
+    "submoduleA" -> Seq("2.11.12", "2.12.18"),
+    "submoduleB" -> Seq("2.12.18", "2.13.11", "3.3.0")
   )
 ```
 
@@ -213,10 +213,10 @@ test:
       - '17'
       scala-project:
       - ++2.11.12 submoduleA
-      - ++2.12.17 submoduleA
-      - ++2.12.17 submoduleB
-      - ++2.13.10 submoduleB
-      - ++3.2.2 submoduleB
+      - ++2.12.18 submoduleA
+      - ++2.12.18 submoduleB
+      - ++2.13.11 submoduleB
+      - ++3.3.0 submoduleB
   steps:
   - name: Install libuv
     run: sudo apt-get update && sudo apt-get install -y libuv1-dev
