@@ -3,7 +3,7 @@ addSbtPlugin("ch.epfl.scala" % "sbt-bloop" % "1.5.6")
 
 // Linting Plugins
 addSbtPlugin("org.scalameta"    % "sbt-scalafmt"              % "2.5.0")
-addSbtPlugin("ch.epfl.scala"    % "sbt-scalafix"              % "0.10.4")
+addSbtPlugin("ch.epfl.scala"    % "sbt-scalafix"              % "0.11.0")
 addSbtPlugin("com.github.cb372" % "sbt-explicit-dependencies" % "0.2.16")
 
 // Versioning and Release Plugins
@@ -26,12 +26,12 @@ addSbtPlugin("org.portable-scala" % "sbt-scala-native-crossproject" % "1.3.0")
 addSbtPlugin("org.portable-scala" % "sbt-platform-deps"             % "1.0.1")
 
 // Benchmarking Plugins
-addSbtPlugin("pl.project13.scala" % "sbt-jmh"      % "0.4.4")
+addSbtPlugin("pl.project13.scala" % "sbt-jmh"      % "0.4.5")
 addSbtPlugin("pl.project13.scala" % "sbt-jcstress" % "0.2.0")
 
 // Binary Compatibility Plugin
 addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "1.1.2")
 
 libraryDependencies += "org.snakeyaml" % "snakeyaml-engine" % "2.6"
-libraryDependencies += "dev.zio"      %% "zio"              % "2.0.12"
+libraryDependencies += "dev.zio"      %% "zio"              % "2.0.15"
 libraryDependencies += "io.circe"     %% "circe-yaml"       % "0.14.2"
