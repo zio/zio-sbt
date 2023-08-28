@@ -197,16 +197,15 @@ trait ScalaCompilerSettings {
     }) ++
       Seq(
         ZioSbtEcosystemPlugin.autoImport.javaPlatform := javaPlatform,
-        scalacOptions ++= stdOptions ++ extraOptions(
-          Keys.scalaVersion.value,
-          javaPlatform,
-          optimize = !isSnapshot.value
-        ) ++ {
-          if (turnCompilerWarningIntoErrors && sys.env.contains("CI"))
-            Seq("-Xfatal-warnings")
-          else
-            Nil // to enable Scalafix locally
-        },
+        scalacOptions := (
+          scalacOptions.value ++
+            stdOptions ++
+            extraOptions(Keys.scalaVersion.value, javaPlatform, optimize = !isSnapshot.value) ++
+            (
+              if (turnCompilerWarningIntoErrors && sys.env.contains("CI")) Seq("-Xfatal-warnings")
+              else Nil // to enable Scalafix locally
+            )
+        ).distinct,
         javacOptions := Seq("-source", javaPlatform, "-target", javaPlatform),
 //      Compile / console / scalacOptions ~= {
 //        _.filterNot(Set("-Xfatal-warnings"))
