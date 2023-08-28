@@ -31,7 +31,7 @@ trait ScalaCompilerSettings {
   private val stdOptions = Seq(
     "-deprecation",
     "-encoding",
-    "UTF-8",
+    "utf8",
     "-feature",
     "-unchecked"
   )
