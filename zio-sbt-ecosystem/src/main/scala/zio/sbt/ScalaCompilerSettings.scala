@@ -205,7 +205,7 @@ trait ScalaCompilerSettings {
               if (turnCompilerWarningIntoErrors && sys.env.contains("CI")) Seq("-Xfatal-warnings")
               else Nil // to enable Scalafix locally
             )
-          ).distinct,
+        ).distinct,
         javacOptions := Seq("-source", javaPlatform, "-target", javaPlatform),
 //      Compile / console / scalacOptions ~= {
 //        _.filterNot(Set("-Xfatal-warnings"))
