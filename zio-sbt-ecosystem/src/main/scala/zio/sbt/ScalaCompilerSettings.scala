@@ -197,7 +197,7 @@ trait ScalaCompilerSettings {
     }) ++
       Seq(
         ZioSbtEcosystemPlugin.autoImport.javaPlatform := javaPlatform,
-        scalacOptions ++= (
+        scalacOptions := (
           scalacOptions.value ++
             stdOptions ++
             extraOptions(Keys.scalaVersion.value, javaPlatform, optimize = !isSnapshot.value) ++
