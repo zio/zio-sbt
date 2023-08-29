@@ -32,6 +32,6 @@ addSbtPlugin("pl.project13.scala" % "sbt-jcstress" % "0.2.0")
 // Binary Compatibility Plugin
 addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "1.1.2")
 
-libraryDependencies += "org.snakeyaml" % "snakeyaml-engine" % "2.6"
+libraryDependencies += "org.snakeyaml" % "snakeyaml-engine" % "2.7"
 libraryDependencies += "dev.zio"      %% "zio"              % "2.0.15"
 libraryDependencies += "io.circe"     %% "circe-yaml"       % "0.14.2"
