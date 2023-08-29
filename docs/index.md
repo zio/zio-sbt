@@ -33,17 +33,16 @@ ZIO SBT Ecosystem plugin is an sbt plugin that provides a set of sbt settings an
 
 This pluging provides the following settings with default values:
 
-- scala211
 - scala212
 - scala213
 - scala3
 
-The default values are the latest stable versions of Scala 2.11, 2.12, 2.13, and Scala 3. All of these settings are of type `String` and can be overridden by the user.
+The default values are the latest stable versions of Scala 2.12, 2.13, and Scala 3. All of these settings are of type `String` and can be overridden by the user.
 
 By having these settings, then we can use them in other sbt settings. For example, we can use them to define the `crossScalaVersions` setting:
 
 ```scala
-crossScalaVersions := Seq(scala211.value, scala212.value, scala213.value, scala3.value)
+crossScalaVersions := Seq(scala212.value, scala213.value, scala3.value)
 ```
 
 There are also some other settings that are useful for configuring the projects:
@@ -148,7 +147,7 @@ test:
   - name: Install libuv
     run: sudo apt-get update && sudo apt-get install -y libuv1-dev
   - name: Setup Scala
-    uses: actions/setup-java@v3.10.0
+    uses: actions/setup-java@v3.12.0
     with:
       distribution: temurin
       java-version: ${{ matrix.java }}
@@ -156,7 +155,7 @@ test:
   - name: Cache Dependencies
     uses: coursier/cache-action@v6
   - name: Git Checkout
-    uses: actions/checkout@v3.3.0
+    uses: actions/checkout@v3.6.0
     with:
       fetch-depth: '0'
   - name: Test
@@ -171,11 +170,11 @@ In some cases, we may have multiple submodules in our project and we want to tes
 
 The `ciTargetScalaVersions` setting key is used to define a mapping of project names to the Scala versions that should be used for testing phase of continuous integration (CI).
 
-For example, suppose we have a project with the name "submoduleA" and we want to test it against Scala `2.11.12` and `2.12.18`, and for the "submoduleB" we want to test it against Scala `2.12.18` and `2.13.11` and `3.3.0`, We can define the `ciTargetScalaVersions` setting as follows:
+For example, suppose we have a project with the name "submoduleA" and we want to test it against Scala `2.12.18`, and for the "submoduleB" we want to test it against Scala `2.12.18` and `2.13.11` and `3.3.0`, We can define the `ciTargetScalaVersions` setting as follows:
 
 ```scala
 ThisBuild / ciTargetScalaVersions := Map(
-    "submoduleA" -> Seq("2.11.12", "2.12.18"),
+    "submoduleA" -> Seq("2.12.18"),
     "submoduleB" -> Seq("2.12.18", "2.13.11", "3.3.0")
   )
 ```
@@ -212,7 +211,6 @@ test:
       - '11'
       - '17'
       scala-project:
-      - ++2.11.12 submoduleA
       - ++2.12.18 submoduleA
       - ++2.12.18 submoduleB
       - ++2.13.11 submoduleB
@@ -229,7 +227,7 @@ test:
   - name: Cache Dependencies
     uses: coursier/cache-action@v6
   - name: Git Checkout
-    uses: actions/checkout@v3.3.0
+    uses: actions/checkout@v3.6.0
     with:
       fetch-depth: '0'
   - name: Test

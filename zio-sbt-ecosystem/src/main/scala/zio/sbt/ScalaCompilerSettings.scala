@@ -114,21 +114,6 @@ trait ScalaCompilerSettings {
           "-Xmax-classfile-name",
           "242"
         ) ++ std2xOptions ++ optimizerOptions(optimize)
-      case Some((2, 11)) =>
-        Seq(
-          "-Ypartial-unification",
-          "-Yno-adapted-args",
-          "-Ywarn-inaccessible",
-          "-Ywarn-infer-any",
-          "-Ywarn-nullary-override",
-          "-Ywarn-nullary-unit",
-          "-Xexperimental",
-          "-Ywarn-unused-import",
-          "-Xfuture",
-          "-Xsource:2.13",
-          "-Xmax-classfile-name",
-          "242"
-        ) ++ std2xOptions
       case _ => Seq.empty
     }
 
@@ -142,14 +127,12 @@ trait ScalaCompilerSettings {
 
   def crossPlatformSources(scalaVer: String, platform: String, conf: String, baseDir: File): List[File] = {
     val versions = CrossVersion.partialVersion(scalaVer) match {
-      case Some((2, 11)) =>
-        List("2.11", "2.11+", "2.11-2.12", "2.x")
       case Some((2, 12)) =>
-        List("2.12", "2.11+", "2.12+", "2.11-2.12", "2.12-2.13", "2.x")
+        List("2.12", "2.12+", "2.12-2.13", "2.x")
       case Some((2, 13)) =>
-        List("2.13", "2.11+", "2.12+", "2.13+", "2.12-2.13", "2.x")
+        List("2.13", "2.12+", "2.13+", "2.12-2.13", "2.x")
       case Some((3, _)) =>
-        List("dotty", "2.11+", "2.12+", "2.13+", "3.x")
+        List("dotty", "2.12+", "2.13+", "3.x")
       case _ =>
         List()
     }
@@ -175,17 +158,10 @@ trait ScalaCompilerSettings {
     }
   )
 
-  val silencerModules: Seq[ModuleID] =
-    Seq(
-      "com.github.ghik" % "silencer-lib" % SilencerVersion % Provided cross CrossVersion.full,
-      compilerPlugin("com.github.ghik" % "silencer-plugin" % SilencerVersion cross CrossVersion.full)
-    )
-
   def stdSettings(
     name: Option[String] = None,
     packageName: Option[String] = None,
     javaPlatform: String = "8",
-    enableSilencer: Boolean = true,
     enableKindProjector: Boolean = true,
     enableCrossProject: Boolean = false,
     enableScalafix: Boolean = true,
@@ -210,19 +186,6 @@ trait ScalaCompilerSettings {
 //      Compile / console / scalacOptions ~= {
 //        _.filterNot(Set("-Xfatal-warnings"))
 //      },
-        libraryDependencies ++= {
-          if (enableSilencer) {
-            if (scalaBinaryVersion.value == "3")
-              Seq(
-                "com.github.ghik" % s"silencer-lib_${ZioSbtEcosystemPlugin.autoImport.scala213.value}" % SilencerVersion % Provided
-              )
-            else
-              Seq(
-                "com.github.ghik" % "silencer-lib" % SilencerVersion % Provided cross CrossVersion.full,
-                compilerPlugin("com.github.ghik" % "silencer-plugin" % SilencerVersion cross CrossVersion.full)
-              )
-          } else Seq.empty
-        },
         libraryDependencies ++= {
           if (enableKindProjector && scalaBinaryVersion.value != "3") {
             Seq(
@@ -250,8 +213,7 @@ trait ScalaCompilerSettings {
       semanticdbVersion                      := scalafixSemanticdb.revision, // use Scalafix compatible version
       ThisBuild / scalafixScalaBinaryVersion := CrossVersion.binaryScalaVersion(Keys.scalaVersion.value),
       ThisBuild / scalafixDependencies ++= List(
-        "com.github.liancheng" %% "organize-imports" % OrganizeImportsVersion,
-        "com.github.vovapolu"  %% "scaluzzi"         % ScaluzziVersion
+        "com.github.vovapolu" %% "scaluzzi" % ScaluzziVersion
       )
     )
 
@@ -292,7 +254,7 @@ trait ScalaCompilerSettings {
 
   def macroExpansionSettings: Seq[Setting[_]] = Seq(
     addOptionsOn("2.13")("-Ymacro-annotations"),
-    addDependenciesOn("2.11", "2.12")(
+    addDependenciesOn("2.12")(
       compilerPlugin(("org.scalamacros" % "paradise" % "2.1.1").cross(CrossVersion.full))
     )
   )
@@ -333,7 +295,7 @@ trait ScalaCompilerSettings {
     optionsOnOrElse(scalaBinaryVersions*)(options*)(Seq.empty*)
 
   def optionsOnExcept(scalaBinaryVersions: String*)(options: String*): Def.Initialize[Seq[String]] =
-    optionsOn(Seq("2.11", "2.12", "2.13", "3").diff(scalaBinaryVersions)*)(options*)
+    optionsOn(Seq("2.12", "2.13", "3").diff(scalaBinaryVersions)*)(options*)
 
   def optionsOnOrElse(scalaBinaryVersions: String*)(defaults: String*)(
     orElse: String*
@@ -346,7 +308,7 @@ trait ScalaCompilerSettings {
     dependenciesOnOrElse(scalaBinaryVersions*)(modules*)(Seq.empty*)
 
   def dependenciesOnExcept(scalaBinaryVersions: String*)(modules: ModuleID*): Def.Initialize[Seq[ModuleID]] =
-    dependenciesOn(Seq("2.11", "2.12", "2.13", "3").diff(scalaBinaryVersions)*)(modules*)
+    dependenciesOn(Seq("2.12", "2.13", "3").diff(scalaBinaryVersions)*)(modules*)
 
   def dependenciesOnOrElse(scalaBinaryVersions: String*)(defaultModules: ModuleID*)(
     orElse: ModuleID*
@@ -359,7 +321,7 @@ trait ScalaCompilerSettings {
     addDependenciesOnOrElse(scalaBinaryVersions*)(dependencies*)(Seq.empty*)
 
   def addDependenciesOnExcept(scalaBinaryVersions: String*)(dependencies: ModuleID*): Def.Setting[Seq[ModuleID]] =
-    libraryDependencies ++= dependenciesOn(Seq("2.11", "2.12", "2.13", "3").diff(scalaBinaryVersions)*)(
+    libraryDependencies ++= dependenciesOn(Seq("2.12", "2.13", "3").diff(scalaBinaryVersions)*)(
       dependencies*
     ).value
 
@@ -377,6 +339,6 @@ trait ScalaCompilerSettings {
     scalacOptions ++= optionsOnOrElse(scalaBinaryVersions*)(options*)(orElse*).value
 
   def addOptionsOnExcept(scalaBinaryVersions: String*)(options: String*): Def.Setting[Task[Seq[String]]] =
-    addOptionsOn(Seq("2.11", "2.12", "2.13", "3").diff(scalaBinaryVersions)*)(options*)
+    addOptionsOn(Seq("2.12", "2.13", "3").diff(scalaBinaryVersions)*)(options*)
 
 }
