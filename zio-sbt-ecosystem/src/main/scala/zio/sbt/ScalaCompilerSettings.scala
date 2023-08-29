@@ -59,7 +59,7 @@ trait ScalaCompilerSettings {
       if (Keys.scalaBinaryVersion.value == "3")
         Seq("-Xfatal-warnings")
       else
-        Seq() //"-Xprint:typer" from zio-config
+        Seq() // "-Xprint:typer" from zio-config
     },
     Compile / doc / sources := {
       val old = (Compile / doc / sources).value
