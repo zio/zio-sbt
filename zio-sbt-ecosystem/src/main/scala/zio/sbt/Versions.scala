@@ -17,8 +17,8 @@
 package zio.sbt
 
 object Versions {
-  val KindProjectorVersion   = "0.13.2"
-  val ScaluzziVersion        = "0.1.23"
+  val KindProjectorVersion = "0.13.2"
+  val ScaluzziVersion      = "0.1.23"
 
   val scala3   = "3.3.0"
   val scala212 = "2.12.18"

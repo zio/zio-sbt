@@ -213,7 +213,7 @@ trait ScalaCompilerSettings {
       semanticdbVersion                      := scalafixSemanticdb.revision, // use Scalafix compatible version
       ThisBuild / scalafixScalaBinaryVersion := CrossVersion.binaryScalaVersion(Keys.scalaVersion.value),
       ThisBuild / scalafixDependencies ++= List(
-        "com.github.vovapolu"  %% "scaluzzi"         % ScaluzziVersion
+        "com.github.vovapolu" %% "scaluzzi" % ScaluzziVersion
       )
     )
 
