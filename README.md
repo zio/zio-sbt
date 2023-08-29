@@ -148,7 +148,7 @@ test:
   - name: Install libuv
     run: sudo apt-get update && sudo apt-get install -y libuv1-dev
   - name: Setup Scala
-    uses: actions/setup-java@v3.10.0
+    uses: actions/setup-java@v3.12.0
     with:
       distribution: temurin
       java-version: ${{ matrix.java }}
@@ -156,7 +156,7 @@ test:
   - name: Cache Dependencies
     uses: coursier/cache-action@v6
   - name: Git Checkout
-    uses: actions/checkout@v3.3.0
+    uses: actions/checkout@v3.6.0
     with:
       fetch-depth: '0'
   - name: Test
@@ -228,7 +228,7 @@ test:
   - name: Cache Dependencies
     uses: coursier/cache-action@v6
   - name: Git Checkout
-    uses: actions/checkout@v3.3.0
+    uses: actions/checkout@v3.6.0
     with:
       fetch-depth: '0'
   - name: Test
