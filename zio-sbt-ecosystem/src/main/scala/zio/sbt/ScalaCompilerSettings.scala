@@ -86,15 +86,12 @@ trait ScalaCompilerSettings {
           "-language:implicitConversions",
           "-Xignore-scala2-macros",
           "-noindent",
-          "-release",
-          javaPlatform
+          s"-release:$javaPlatform"
         )
       case Some((2, 13)) =>
         Seq(
           "-Ywarn-unused:params,-implicits",
-          "-release",
-          javaPlatform,
-          s"-target:$javaPlatform"
+          s"-release:$javaPlatform"
         ) ++ std2xOptions ++ optimizerOptions(optimize)
       case Some((2, 12)) =>
         Seq(
