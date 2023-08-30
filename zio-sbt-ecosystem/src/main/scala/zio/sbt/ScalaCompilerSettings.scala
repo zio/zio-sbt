@@ -337,13 +337,12 @@ trait ScalaCompilerSettings {
   def addOptionsOnExcept(scalaBinaryVersions: String*)(options: String*): Def.Setting[Task[Seq[String]]] =
     addOptionsOn(Seq("2.12", "2.13", "3").diff(scalaBinaryVersions)*)(options*)
 
-
   private def betterMonadicForSettings =
     Seq(
       libraryDependencies ++= {
         CrossVersion.partialVersion(scalaVersion.value) match {
           case Some((2, _)) => Seq(compilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1"))
-          case _ => List.empty
+          case _            => Seq.empty
         }
       }
     )
