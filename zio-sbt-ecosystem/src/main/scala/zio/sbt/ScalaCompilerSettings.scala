@@ -23,7 +23,6 @@ import sbt.{Def, *}
 import sbtbuildinfo.BuildInfoPlugin.autoImport.{BuildInfoKey, buildInfoKeys, buildInfoPackage}
 import sbtcrossproject.CrossPlugin.autoImport.{JVMPlatform, crossProjectPlatform}
 import scalafix.sbt.ScalafixPlugin.autoImport.{scalafixDependencies, scalafixScalaBinaryVersion, scalafixSemanticdb}
-
 import zio.sbt.Versions.*
 
 trait ScalaCompilerSettings {
@@ -201,7 +200,7 @@ trait ScalaCompilerSettings {
         }
       } ++ scala3Settings ++ {
         if (enableScalafix) scalafixSettings else Seq.empty
-      }
+      } ++ betterMonadicForSettings
 
   lazy val scalafixSettings: Seq[Def.Setting[_]] =
     Seq(
@@ -337,5 +336,16 @@ trait ScalaCompilerSettings {
 
   def addOptionsOnExcept(scalaBinaryVersions: String*)(options: String*): Def.Setting[Task[Seq[String]]] =
     addOptionsOn(Seq("2.12", "2.13", "3").diff(scalaBinaryVersions)*)(options*)
+
+
+  private def betterMonadicForSettings =
+    Seq(
+      libraryDependencies ++= {
+        CrossVersion.partialVersion(scalaVersion.value) match {
+          case Some((2, _)) => Seq(compilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1"))
+          case _ => List.empty
+        }
+      }
+    )
 
 }
