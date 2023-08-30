@@ -9,7 +9,7 @@ addSbtPlugin("com.github.cb372" % "sbt-explicit-dependencies" % "0.2.16")
 // Versioning and Release Plugins
 addSbtPlugin("com.eed3si9n"   % "sbt-buildinfo"  % "0.11.0")
 addSbtPlugin("com.jsuereth"   % "sbt-pgp"        % "2.1.1")
-addSbtPlugin("com.github.sbt" % "sbt-dynver"     % "5.0.1")
+addSbtPlugin("com.dwijnand"   % "sbt-dynver"     % "4.1.1")
 addSbtPlugin("org.xerial.sbt" % "sbt-sonatype"   % "3.9.18")
 addSbtPlugin("com.geirsson"   % "sbt-ci-release" % "1.5.7")
 
