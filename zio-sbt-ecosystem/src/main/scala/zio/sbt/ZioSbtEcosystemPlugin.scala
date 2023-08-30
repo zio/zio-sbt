@@ -48,7 +48,6 @@ object ZioSbtEcosystemPlugin extends AutoPlugin {
       )
 
     lazy val scala3: SettingKey[String]     = settingKey[String]("Scala 3 version")
-    lazy val scala211: SettingKey[String]   = settingKey[String]("Scala 2.11 version")
     lazy val scala212: SettingKey[String]   = settingKey[String]("Scala 2.12 version")
     lazy val scala213: SettingKey[String]   = settingKey[String]("Scala 2.13 version")
     lazy val zioVersion: SettingKey[String] = settingKey[String]("ZIO version")
@@ -105,11 +104,10 @@ object ZioSbtEcosystemPlugin extends AutoPlugin {
 
   override def buildSettings: Seq[Def.Setting[_]] = super.buildSettings ++ Seq(
     scala3             := Versions.scala3,
-    scala211           := Versions.scala211,
     scala212           := Versions.scala212,
     scala213           := Versions.scala213,
     scalaVersion       := scala213.value,
-    crossScalaVersions := Seq(scala211.value, scala212.value, scala213.value, scala3.value),
+    crossScalaVersions := Seq(scala212.value, scala213.value, scala3.value),
     zioVersion         := Versions.zioVersion,
     javaPlatform       := "8"
   )
