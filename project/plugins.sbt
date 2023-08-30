@@ -11,7 +11,7 @@ addSbtPlugin("com.eed3si9n"   % "sbt-buildinfo"  % "0.11.0")
 addSbtPlugin("com.jsuereth"   % "sbt-pgp"        % "2.1.1")
 addSbtPlugin("com.dwijnand"   % "sbt-dynver"     % "4.1.1")
 addSbtPlugin("org.xerial.sbt" % "sbt-sonatype"   % "3.9.18")
-addSbtPlugin("com.github.sbt" % "sbt-ci-release" % "1.5.12")
+addSbtPlugin("com.geirsson"   % "sbt-ci-release" % "1.5.7")
 
 // Docs Plugins
 addSbtPlugin("org.scalameta"     % "sbt-mdoc"   % "2.3.7")
