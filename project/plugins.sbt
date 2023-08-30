@@ -2,7 +2,7 @@
 addSbtPlugin("ch.epfl.scala" % "sbt-bloop" % "1.5.10")
 
 // Linting Plugins
-addSbtPlugin("org.scalameta"    % "sbt-scalafmt"              % "2.5.0")
+addSbtPlugin("org.scalameta"    % "sbt-scalafmt"              % "2.5.1")
 addSbtPlugin("ch.epfl.scala"    % "sbt-scalafix"              % "0.11.0")
 addSbtPlugin("com.github.cb372" % "sbt-explicit-dependencies" % "0.3.1")
 
