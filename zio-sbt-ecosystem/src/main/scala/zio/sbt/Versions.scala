@@ -17,15 +17,12 @@
 package zio.sbt
 
 object Versions {
-  val KindProjectorVersion   = "0.13.2"
-  val SilencerVersion        = "1.7.13"
-  val ScaluzziVersion        = "0.1.23"
-  val OrganizeImportsVersion = "0.6.0"
+  val KindProjectorVersion = "0.13.2"
+  val ScaluzziVersion      = "0.1.23"
 
   val scala3   = "3.3.0"
-  val scala211 = "2.11.12"
   val scala212 = "2.12.18"
   val scala213 = "2.13.11"
 
-  val zioVersion = "2.0.15"
+  val zioVersion = "2.0.16"
 }
