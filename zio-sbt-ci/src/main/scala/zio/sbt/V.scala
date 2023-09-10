@@ -8,7 +8,7 @@ object V {
       "pierotofy/set-swap-space"        -> "master",
       "actions/checkout"                -> "v4.0.0",
       "actions/setup-java"              -> "v3.12.0",
-      "coursier/cache-action"           -> "v6",
+      "coursier/cache-action"           -> "v6.4.3",
       "actions/setup-node"              -> "v3"
     ).map { case (k, v) => (k, s"$k@$v") }.apply(packageName)
 }
