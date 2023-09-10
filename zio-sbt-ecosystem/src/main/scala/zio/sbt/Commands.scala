@@ -102,7 +102,7 @@ object Commands {
       "Verifies that all source files are properly formatted and have had all scalafix rules applied."
     )
 
-    //TODO: adding missing license headers
+    // TODO: adding missing license headers
     val prepare: ComposableCommand = {
       quietOn >>
 //        "+headerCreateAll" >>
