@@ -110,7 +110,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
       },
       readmeDocumentation := readmeDocumentationSection(
         projectName.value,
-        homepage.value.getOrElse(new URL(s"https://zio.dev/ecosystem/"))
+        homepage.value.getOrElse(url(s"https://zio.dev/ecosystem/"))
       ),
       readmeContribution    := readmeContributionSection,
       readmeSupport         := readmeSupportSection,

@@ -86,15 +86,12 @@ trait ScalaCompilerSettings {
           "-language:implicitConversions",
           "-Xignore-scala2-macros",
           "-noindent",
-          "-release",
-          javaPlatform
+          s"-release:$javaPlatform"
         )
       case Some((2, 13)) =>
         Seq(
           "-Ywarn-unused:params,-implicits",
-          "-release",
-          javaPlatform,
-          s"-target:$javaPlatform"
+          s"-release:$javaPlatform"
         ) ++ std2xOptions ++ optimizerOptions(optimize)
       case Some((2, 12)) =>
         Seq(
@@ -204,7 +201,7 @@ trait ScalaCompilerSettings {
         }
       } ++ scala3Settings ++ {
         if (enableScalafix) scalafixSettings else Seq.empty
-      }
+      } ++ betterMonadicForSettings
 
   lazy val scalafixSettings: Seq[Def.Setting[_]] =
     Seq(
@@ -340,5 +337,15 @@ trait ScalaCompilerSettings {
 
   def addOptionsOnExcept(scalaBinaryVersions: String*)(options: String*): Def.Setting[Task[Seq[String]]] =
     addOptionsOn(Seq("2.12", "2.13", "3").diff(scalaBinaryVersions)*)(options*)
+
+  private def betterMonadicForSettings =
+    Seq(
+      libraryDependencies ++= {
+        CrossVersion.partialVersion(scalaVersion.value) match {
+          case Some((2, _)) => Seq(compilerPlugin(betterMonadFor))
+          case _            => Seq.empty
+        }
+      }
+    )
 
 }
