@@ -335,7 +335,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
     }
   }
 
-  lazy val generateReadmeTask: Def.Initialize[Task[Unit]] = {
+  lazy val generateReadmeTask: Def.Initialize[Task[Unit]] =
     Def.task {
       import zio.*
 
@@ -374,7 +374,6 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
       logger.info("The new README.md file generated")
     }
-  }
 
   lazy val checkReadmeTask: Def.Initialize[Task[Unit]] =
     Def.task {

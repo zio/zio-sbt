@@ -88,9 +88,9 @@ object ZioSbtEcosystemPlugin extends AutoPlugin {
         s"""|${Banner.trueColor(s"${name.value} v.${version.value}")}
             |Useful sbt tasks:
             |${usefulTasksAndSettings.value.map { case (task, description) =>
-          s"${item(task)} ${normalizedPadding(task)}${description}"
-        }
-          .mkString("\n")}
+             s"${item(task)} ${normalizedPadding(task)}${description}"
+           }
+             .mkString("\n")}
       """.stripMargin
 
       } else ""

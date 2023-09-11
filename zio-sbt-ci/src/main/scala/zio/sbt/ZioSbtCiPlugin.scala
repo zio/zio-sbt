@@ -153,8 +153,8 @@ object ZioSbtCiPlugin extends AutoPlugin {
     val GroupTests = {
       def makeTests(scalaVersion: String) =
         s" ${scalaVersionMatrix.filter { case (_, versions) =>
-          versions.contains(scalaVersion)
-        }.map(e => e._1 + "/test").mkString(" ")}"
+            versions.contains(scalaVersion)
+          }.map(e => e._1 + "/test").mkString(" ")}"
 
       Job(
         id = "test",
@@ -564,7 +564,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
       IO.write(new File(s".github/workflows/${ciWorkflowName.value.toLowerCase}.yml"), template)
     }
 
-  override lazy val buildSettings: Seq[Setting[_]] = {
+  override lazy val buildSettings: Seq[Setting[_]] =
     Seq(
       ciWorkflowName           := "CI",
       ciEnabledBranches        := Seq.empty,
@@ -617,7 +617,6 @@ object ZioSbtCiPlugin extends AutoPlugin {
       }.value,
       ciReleaseApprovalJobs := Seq("ci")
     )
-  }
 
   abstract class DocsVersioning(val npmCommand: String)
   object DocsVersioning {
