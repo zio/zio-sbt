@@ -72,7 +72,6 @@ object ZioSbtCiPlugin extends AutoPlugin {
     val ciReleaseApprovalJobs: SettingKey[Seq[String]] =
       settingKey[Seq[String]]("Job IDs that need to pass before a new release.")
     val ciWorkflowName: SettingKey[String]        = settingKey[String]("CI Workflow Name")
-    val ciExtraTestSteps: SettingKey[Seq[Step]]   = settingKey[Seq[Step]]("Extra test steps")
     val ciSwapSizeGB: SettingKey[Int]             = settingKey[Int]("Swap size, default is 0")
     val ciBackgroundJobs: SettingKey[Seq[String]] = settingKey[Seq[String]]("Background jobs")
     val ciBuildJobs: SettingKey[Seq[Job]]         = settingKey[Seq[Job]]("CI Build Jobs")
@@ -146,7 +145,6 @@ object ZioSbtCiPlugin extends AutoPlugin {
     val setSwapSpace       = SetSwapSpace.value
     val checkout           = Checkout.value
     val backgroundJobs     = ciBackgroundJobs.value
-    val extraTestSteps     = ciExtraTestSteps.value // TODO: do we need this sbt setting, I don't think so!
 
     val prefixJobs = makePrefixJobs(backgroundJobs)
 
@@ -214,7 +212,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
                       )
                     else Seq.empty).flatten.toSeq
                 })
-        } ++ extraTestSteps
+        }
       )
     }
 
@@ -288,7 +286,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
               )
 
             }
-          ) ++ extraTestSteps
+          )
       )
 
     val DefaultTestStrategy =
@@ -312,7 +310,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
               name = "Test",
               run = Some(prefixJobs + "sbt +test")
             )
-          ) ++ extraTestSteps
+          )
       )
 
     if (javaPlatformMatrix.isEmpty && scalaVersionMatrix.isEmpty)
@@ -577,7 +575,6 @@ object ZioSbtCiPlugin extends AutoPlugin {
       ciNodeOptions            := Seq.empty,
       ciUpdateReadmeCondition  := None,
       ciGroupSimilarTests      := false,
-      ciExtraTestSteps         := Seq.empty,
       ciSwapSizeGB             := 0,
       ciTargetJavaVersions     := Seq("8", "11", "17"),
       ciCheckArtifactsBuildSteps :=
