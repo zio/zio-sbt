@@ -547,8 +547,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
               Trigger.WorkflowDispatch(),
               Trigger.Release(Seq("published")),
               Trigger.Push(branches = enabledBranches.map(Branch.Named)),
-              Trigger.PullRequest(),
-              Trigger.Create()
+              Trigger.PullRequest()
             ),
             jobs =
               buildJobs ++ lintJobs ++ testJobs ++ updateReadmeJobs ++ reportSuccessful ++ releaseJobs ++ postReleaseJobs
