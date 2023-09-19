@@ -81,7 +81,7 @@ lazy val `zio-sbt-ci` =
       scriptedBufferLog := false
     )
     .enablePlugins(SbtPlugin)
-    .dependsOn(`zio-sbt-githubactions`, `zio-sbt-ecosystem`)
+    .dependsOn(`zio-sbt-githubactions`)
 
 lazy val `zio-sbt-githubactions` =
   project
