@@ -45,7 +45,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
     val ciUpdateReadmeCondition: SettingKey[Option[Condition]] =
       settingKey[Option[Condition]]("condition to update readme")
     val ciTargetJavaVersions: SettingKey[Seq[String]] =
-      settingKey[Seq[String]]("The default target Java versions for all modules, default is 8, 11, 17")
+      settingKey[Seq[String]]("The default target Java versions for all modules, default is 11, 17, 21")
     val ciTargetMinJavaVersions: SettingKey[Map[String, String]] =
       SettingKey[Map[String, String]](
         "minimum target Java version for each module, default is an empty map which makes CI to use `ciAllTargetJavaVersions` to determine the minimum target Java version for all modules"
@@ -56,7 +56,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
       )
     val ciDefaultJavaVersion: SettingKey[String] =
       settingKey[String](
-        "The default Java version which is used in CI, especially for releasing artifacts, defaults to 8"
+        "The default Java version which is used in CI, especially for releasing artifacts, defaults to 17"
       )
     val ciCheckGithubWorkflow: TaskKey[Unit] = taskKey[Unit]("Make sure if the ci.yml file is up-to-date")
     val ciCheckArtifactsBuildSteps: SettingKey[Seq[Step]] =
@@ -187,7 +187,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
                   }
                 } else {
                   (for {
-                    javaPlatform: String <- Set("8", "11", "17")
+                    javaPlatform: String <- Set("11", "17", "21")
                     scalaVersion: String <- scalaVersionMatrix.values.toSeq.flatten.toSet
                     projects =
                       scalaVersionMatrix.filterKeys { p =>
@@ -262,13 +262,6 @@ object ZioSbtCiPlugin extends AutoPlugin {
               Step.StepSequence(
                 Seq(
                   Step.SingleStep(
-                    name = "Java 8 Tests",
-                    condition = Some(Condition.Expression("matrix.java == '8'")),
-                    run = Some(
-                      prefixJobs + "sbt ${{ matrix.scala-project-java8 }}/test"
-                    )
-                  ),
-                  Step.SingleStep(
                     name = "Java 11 Tests",
                     condition = Some(Condition.Expression("matrix.java == '11'")),
                     run = Some(
@@ -280,6 +273,13 @@ object ZioSbtCiPlugin extends AutoPlugin {
                     condition = Some(Condition.Expression("matrix.java == '17'")),
                     run = Some(
                       prefixJobs + "sbt ${{ matrix.scala-project-java17 }}/test"
+                    )
+                  ),
+                  Step.SingleStep(
+                    name = "Java 21 Tests",
+                    condition = Some(Condition.Expression("matrix.java == '21'")),
+                    run = Some(
+                      prefixJobs + "sbt ${{ matrix.scala-project-java21 }}/test"
                     )
                   )
                 )
@@ -521,10 +521,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
       val nodeOptions      = ciNodeOptions.value
 
       val jvmMap = Map(
-        // JDK_JAVA_OPTIONS is _the_ env. variable to use for modern Java
         "JDK_JAVA_OPTIONS" -> jvmOptions.mkString(" "),
-        // For Java 8 only (sadly, it is not modern enough for JDK_JAVA_OPTIONS)
-        "JVM_OPTS" -> jvmOptions.mkString(" ")
       )
       val nodeMap: Map[String, String] =
         if (nodeOptions.nonEmpty) Map("NODE_OPTIONS" -> nodeOptions.mkString(" ")) else Map.empty
@@ -575,7 +572,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
       ciUpdateReadmeCondition  := None,
       ciGroupSimilarTests      := false,
       ciSwapSizeGB             := 0,
-      ciTargetJavaVersions     := Seq("8", "11", "17"),
+      ciTargetJavaVersions     := Seq("11", "17", "21"),
       ciCheckArtifactsBuildSteps :=
         Seq(
           Step.SingleStep(
@@ -600,7 +597,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
       ),
       ciBackgroundJobs     := Seq.empty,
       ciMatrixMaxParallel  := None,
-      ciDefaultJavaVersion := "8",
+      ciDefaultJavaVersion := "17",
       ciBuildJobs          := buildJobs.value,
       ciLintJobs           := lintJobs.value,
       ciTestJobs           := testJobs.value,
@@ -662,11 +659,11 @@ object ZioSbtCiPlugin extends AutoPlugin {
     run = Some("sudo apt-get update && sudo apt-get install -y libuv1-dev")
   )
 
-  def SetupJava(version: String = "8"): Step.SingleStep = Step.SingleStep(
+  def SetupJava(version: String = "17"): Step.SingleStep = Step.SingleStep(
     name = "Setup Scala",
     uses = Some(ActionRef(V("actions/setup-java"))),
     parameters = Map(
-      "distribution" -> "temurin".asJson,
+      "distribution" -> "corretto".asJson,
       "java-version" -> version.asJson,
       "check-latest" -> true.asJson
     )
