@@ -30,7 +30,7 @@ jobs:
       uses: actions/setup-java@v3.13.0
       with:
         distribution: temurin
-        java-version: '8'
+        java-version: '17'
         check-latest: true
     - name: Cache Dependencies
       uses: coursier/cache-action@v6
@@ -55,7 +55,7 @@ jobs:
       uses: actions/setup-java@v3.13.0
       with:
         distribution: temurin
-        java-version: '8'
+        java-version: '17'
         check-latest: true
     - name: Cache Dependencies
       uses: coursier/cache-action@v6
@@ -70,10 +70,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        java:
-        - '8'
-        - '11'
-        - '17'
+        java: ['11', '17', '21']
     steps:
     - name: Install libuv
       run: sudo apt-get update && sudo apt-get install -y libuv1-dev
@@ -107,7 +104,7 @@ jobs:
       uses: actions/setup-java@v3.13.0
       with:
         distribution: temurin
-        java-version: '8'
+        java-version: '17'
         check-latest: true
     - name: Cache Dependencies
       uses: coursier/cache-action@v6
@@ -181,7 +178,7 @@ jobs:
       uses: actions/setup-java@v3.13.0
       with:
         distribution: temurin
-        java-version: '8'
+        java-version: '17'
         check-latest: true
     - name: Cache Dependencies
       uses: coursier/cache-action@v6
@@ -210,7 +207,7 @@ jobs:
       uses: actions/setup-java@v3.13.0
       with:
         distribution: temurin
-        java-version: '8'
+        java-version: '17'
         check-latest: true
     - name: Cache Dependencies
       uses: coursier/cache-action@v6
