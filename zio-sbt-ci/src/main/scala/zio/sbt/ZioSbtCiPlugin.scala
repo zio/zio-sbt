@@ -521,7 +521,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
       val nodeOptions      = ciNodeOptions.value
 
       val jvmMap = Map(
-        "JDK_JAVA_OPTIONS" -> jvmOptions.mkString(" "),
+        "JDK_JAVA_OPTIONS" -> jvmOptions.mkString(" ")
       )
       val nodeMap: Map[String, String] =
         if (nodeOptions.nonEmpty) Map("NODE_OPTIONS" -> nodeOptions.mkString(" ")) else Map.empty
