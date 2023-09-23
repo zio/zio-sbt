@@ -147,7 +147,7 @@ test:
   - name: Setup Scala
     uses: actions/setup-java@v3.12.0
     with:
-      distribution: temurin
+      distribution: corretto
       java-version: ${{ matrix.java }}
       check-latest: true
   - name: Cache Dependencies
@@ -216,7 +216,7 @@ test:
   - name: Setup Scala
     uses: actions/setup-java@v3.10.0
     with:
-      distribution: temurin
+      distribution: corretto
       java-version: ${{ matrix.java }}
       check-latest: true
   - name: Cache Dependencies

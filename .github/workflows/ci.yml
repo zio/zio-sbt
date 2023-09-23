@@ -29,7 +29,7 @@ jobs:
     - name: Setup Scala
       uses: actions/setup-java@v3.13.0
       with:
-        distribution: temurin
+        distribution: corretto
         java-version: '17'
         check-latest: true
     - name: Cache Dependencies
@@ -54,7 +54,7 @@ jobs:
     - name: Setup Scala
       uses: actions/setup-java@v3.13.0
       with:
-        distribution: temurin
+        distribution: corretto
         java-version: '17'
         check-latest: true
     - name: Cache Dependencies
@@ -77,7 +77,7 @@ jobs:
     - name: Setup Scala
       uses: actions/setup-java@v3.13.0
       with:
-        distribution: temurin
+        distribution: corretto
         java-version: ${{ matrix.java }}
         check-latest: true
     - name: Cache Dependencies
@@ -103,7 +103,7 @@ jobs:
     - name: Setup Scala
       uses: actions/setup-java@v3.13.0
       with:
-        distribution: temurin
+        distribution: corretto
         java-version: '17'
         check-latest: true
     - name: Cache Dependencies
@@ -177,7 +177,7 @@ jobs:
     - name: Setup Scala
       uses: actions/setup-java@v3.13.0
       with:
-        distribution: temurin
+        distribution: corretto
         java-version: '17'
         check-latest: true
     - name: Cache Dependencies
@@ -206,7 +206,7 @@ jobs:
     - name: Setup Scala
       uses: actions/setup-java@v3.13.0
       with:
-        distribution: temurin
+        distribution: corretto
         java-version: '17'
         check-latest: true
     - name: Cache Dependencies
