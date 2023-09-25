@@ -138,7 +138,8 @@ test:
   continue-on-error: false
   strategy:
     fail-fast: false
-    java: ['11', '17', '21']
+    matrix:
+      java: ['11', '17', '21']
   steps:
   - name: Install libuv
     run: sudo apt-get update && sudo apt-get install -y libuv1-dev
