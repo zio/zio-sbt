@@ -542,7 +542,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
               Trigger.WorkflowDispatch(),
               Trigger.Release(Seq("published")),
               Trigger.Push(branches = enabledBranches.map(Branch.Named)),
-              Trigger.PullRequest()
+              Trigger.PullRequest(ignoredBranches = Seq(Branch.Named("gh-pages")))
             ),
             jobs =
               buildJobs ++ lintJobs ++ testJobs ++ updateReadmeJobs ++ reportSuccessful ++ releaseJobs ++ postReleaseJobs
