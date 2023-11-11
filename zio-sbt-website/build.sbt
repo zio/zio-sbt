@@ -1,4 +1,4 @@
-addSbtPlugin("org.scalameta"                     % "sbt-mdoc"         % "2.4.0")
+addSbtPlugin("org.scalameta"                     % "sbt-mdoc"         % "2.5.1")
 addSbtPlugin("com.github.sbt"                    % "sbt-unidoc"       % "0.5.0")
 addSbtPlugin("com.thoughtworks.sbt-api-mappings" % "sbt-api-mappings" % "3.0.2")
 
