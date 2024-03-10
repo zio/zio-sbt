@@ -18,8 +18,8 @@ package zio.sbt
 
 import scala.collection.immutable.ListMap
 
-import sbt.Keys.*
-import sbt.*
+import sbt.Keys._
+import sbt._
 
 object Commands {
 

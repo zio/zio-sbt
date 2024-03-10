@@ -18,8 +18,8 @@ package zio.sbt
 
 import scala.Console
 
-import sbt.Keys.*
-import sbt.*
+import sbt.Keys._
+import sbt._
 
 object Tasks {
   private val strictCompilationProp = "enable.strict.compilation"
