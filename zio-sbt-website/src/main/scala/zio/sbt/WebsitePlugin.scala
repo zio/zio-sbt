@@ -17,13 +17,13 @@
 package zio.sbt
 
 import scala.collection.mutable
-import scala.sys.process.*
+import scala.sys.process._
 
 import _root_.java.nio.file.{Files, Path, Paths}
 import mdoc.MdocPlugin
-import mdoc.MdocPlugin.autoImport.*
-import sbt.Keys.*
-import sbt.{Def, *}
+import mdoc.MdocPlugin.autoImport._
+import sbt.Keys._
+import sbt.{Def, _}
 
 import zio.sbt.WebsiteUtils.{readFile, removeYamlHeader}
 
