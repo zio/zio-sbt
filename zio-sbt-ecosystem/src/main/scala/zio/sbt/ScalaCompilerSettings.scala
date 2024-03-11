@@ -16,15 +16,15 @@
 
 package zio.sbt
 
-import explicitdeps.ExplicitDepsPlugin.autoImport.*
-import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport.*
-import sbt.Keys.*
-import sbt.{Def, *}
+import explicitdeps.ExplicitDepsPlugin.autoImport._
+import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
+import sbt.Keys._
+import sbt.{Def, _}
 import sbtbuildinfo.BuildInfoPlugin.autoImport.{BuildInfoKey, buildInfoKeys, buildInfoPackage}
 import sbtcrossproject.CrossPlugin.autoImport.{JVMPlatform, crossProjectPlatform}
 import scalafix.sbt.ScalafixPlugin.autoImport.{scalafixDependencies, scalafixScalaBinaryVersion, scalafixSemanticdb}
 
-import zio.sbt.Versions.*
+import zio.sbt.Versions._
 
 trait ScalaCompilerSettings {
 

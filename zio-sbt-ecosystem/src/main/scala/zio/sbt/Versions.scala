@@ -16,7 +16,7 @@
 
 package zio.sbt
 
-import sbt.*
+import sbt._
 
 object Versions {
   val KindProjectorVersion = "0.13.2"
