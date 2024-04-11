@@ -7,7 +7,7 @@ object V {
       "zio/generate-github-app-token"   -> "v1.0.0",
       "pierotofy/set-swap-space"        -> "master",
       "actions/checkout"                -> "v4.1.1",
-      "coursier/cache-action"           -> "v6.4.5",
+      "coursier/cache-action"           -> "v6.4.6",
       "actions/setup-java"              -> "v4.2.1",
       "actions/setup-node"              -> "v4"
     ).map { case (k, v) => (k, s"$k@$v") }.apply(packageName)
