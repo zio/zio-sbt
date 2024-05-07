@@ -22,7 +22,7 @@ import sbt.Keys._
 import sbt.{Def, _}
 import sbtbuildinfo.BuildInfoPlugin.autoImport.{BuildInfoKey, buildInfoKeys, buildInfoPackage}
 import sbtcrossproject.CrossPlugin.autoImport.{JVMPlatform, crossProjectPlatform}
-import scalafix.sbt.ScalafixPlugin.autoImport.{scalafixDependencies, scalafixScalaBinaryVersion, scalafixSemanticdb}
+import scalafix.sbt.ScalafixPlugin.autoImport.{scalafixDependencies, scalafixSemanticdb}
 
 import zio.sbt.Versions._
 
@@ -207,8 +207,7 @@ trait ScalaCompilerSettings {
     Seq(
       semanticdbEnabled := Keys.scalaBinaryVersion.value != "3",
       semanticdbOptions += "-P:semanticdb:synthetics:on",
-      semanticdbVersion                      := scalafixSemanticdb.revision, // use Scalafix compatible version
-      ThisBuild / scalafixScalaBinaryVersion := CrossVersion.binaryScalaVersion(Keys.scalaVersion.value),
+      semanticdbVersion := scalafixSemanticdb.revision, // use Scalafix compatible version
       ThisBuild / scalafixDependencies ++= List(
         "com.github.vovapolu" %% "scaluzzi" % ScaluzziVersion
       )
