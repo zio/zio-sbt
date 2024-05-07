@@ -207,7 +207,7 @@ trait ScalaCompilerSettings {
     Seq(
       semanticdbEnabled := Keys.scalaBinaryVersion.value != "3",
       semanticdbOptions += "-P:semanticdb:synthetics:on",
-      semanticdbVersion                      := scalafixSemanticdb.revision, // use Scalafix compatible version
+      semanticdbVersion := scalafixSemanticdb.revision, // use Scalafix compatible version
       ThisBuild / scalafixDependencies ++= List(
         "com.github.vovapolu" %% "scaluzzi" % ScaluzziVersion
       )
