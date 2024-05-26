@@ -56,7 +56,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
       )
     val ciDefaultJavaVersion: SettingKey[String] =
       settingKey[String](
-        "The default Java version which is used in CI, especially for releasing artifacts, defaults to 17"
+        "The default Java version which is used in CI, especially for releasing artifacts, defaults to 11"
       )
     val ciCheckGithubWorkflow: TaskKey[Unit] = taskKey[Unit]("Make sure if the ci.yml file is up-to-date")
     val ciCheckArtifactsBuildSteps: SettingKey[Seq[Step]] =
@@ -597,7 +597,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
       ),
       ciBackgroundJobs     := Seq.empty,
       ciMatrixMaxParallel  := None,
-      ciDefaultJavaVersion := "17",
+      ciDefaultJavaVersion := "11",
       ciBuildJobs          := buildJobs.value,
       ciLintJobs           := lintJobs.value,
       ciTestJobs           := testJobs.value,
@@ -659,7 +659,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
     run = Some("sudo apt-get update && sudo apt-get install -y libuv1-dev")
   )
 
-  def SetupJava(version: String = "17"): Step.SingleStep = Step.SingleStep(
+  def SetupJava(version: String = "11"): Step.SingleStep = Step.SingleStep(
     name = "Setup Scala",
     uses = Some(ActionRef(V("actions/setup-java"))),
     parameters = Map(
