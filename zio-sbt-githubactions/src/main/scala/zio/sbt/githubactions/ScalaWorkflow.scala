@@ -18,7 +18,7 @@ package zio.sbt.githubactions
 
 import io.circe.syntax._
 
-import zio.sbt.githubactions.ScalaWorkflow.JavaVersion.AdoptJDK18
+import zio.sbt.githubactions.ScalaWorkflow.JavaVersion.JDK11
 
 // The original code of the githubactions package was originally copied from the zio-aws-codegen project:
 // https://github.com/zio/zio-aws/tree/master/zio-aws-codegen/src/main/scala/zio/aws/codegen/githubactions
@@ -217,23 +217,25 @@ object ScalaWorkflow {
 
   case class ScalaVersion(version: String)
 
-  sealed trait JavaVersion {
+  trait JavaVersion {
     val asString: String
   }
   object JavaVersion {
-    case object AdoptJDK18 extends JavaVersion {
-      override val asString: String = "adopt@1.8"
+
+    case class CorrettoJDK(javaVersion: String) extends JavaVersion {
+      override val asString: String = s"corretto:$javaVersion"
     }
-    case object ZuluJDK17 extends JavaVersion {
-      override val asString: String = "zulu@1.17"
-    }
+
+    val JDK11: JavaVersion = CorrettoJDK("11")
+    val JDK17: JavaVersion = CorrettoJDK("17")
+    val JDK21: JavaVersion = CorrettoJDK("21")
   }
 
   implicit class JobOps(job: Job) {
     def matrix(
       scalaVersions: Seq[ScalaVersion],
       operatingSystems: Seq[OS] = Seq(OS.UbuntuLatest),
-      javaVersions: Seq[JavaVersion] = Seq(AdoptJDK18)
+      javaVersions: Seq[JavaVersion] = Seq(JDK11)
     ): Job =
       job.copy(
         strategy = Some(
