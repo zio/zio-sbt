@@ -129,7 +129,7 @@ This will generate a GitHub workflow file inside the `.github/workflows` directo
 
 ### Default Testing Strategy
 
-The default testing strategy for ZIO SBT CI plugin is to run `sbt +test` on java 8, 11 and 17. So this will generate the following job:
+The default testing strategy for ZIO SBT CI plugin is to run `sbt +test` on Corretto Java 11, 17 and 21. So this will generate the following job:
 
 ```yaml
 test:
