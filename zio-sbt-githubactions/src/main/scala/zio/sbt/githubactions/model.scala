@@ -316,6 +316,12 @@ object Workflow {
                          .map(_.toKeyValuePair): _*
                      )
                    }),
+          "concurrency" := Json.obj(
+            "group" := Json.fromString(
+              "${{ github.workflow }}-${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.run_id || github.ref }}"
+            ),
+            "cancel-in-progress" := true
+          ),
           "jobs" := Json.obj(wf.jobs.map(job => job.id := job): _*)
         )
 }
