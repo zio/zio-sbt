@@ -16,8 +16,7 @@
 
 package zio.sbt.githubactions
 
-import io.circe.syntax._
-
+import zio.json._
 import zio.sbt.githubactions.ScalaWorkflow.JavaVersion.JDK11
 
 // The original code of the githubactions package was originally copied from the zio-aws-codegen project:
@@ -29,8 +28,10 @@ object ScalaWorkflow {
     SingleStep(
       name = "Checkout current branch",
       uses = Some(ActionRef("actions/checkout@v2")),
-      parameters = Map(
-        "fetch-depth" := fetchDepth
+      `with` = Some(
+        Map(
+          "fetch-depth" -> fetchDepth.toJson
+        )
       )
     )
 
@@ -38,11 +39,13 @@ object ScalaWorkflow {
     SingleStep(
       name = "Setup Java and Scala",
       uses = Some(ActionRef("olafurpg/setup-scala@v11")),
-      parameters = Map(
-        "java-version" := (javaVersion match {
-          case None          => "${{ matrix.java }}"
-          case Some(version) => version.asString
-        })
+      `with` = Some(
+        Map(
+          "java-version" -> (javaVersion match {
+            case None          => "${{ matrix.java }}"
+            case Some(version) => version.asString
+          })
+        )
       )
     )
 
@@ -50,12 +53,14 @@ object ScalaWorkflow {
     SingleStep(
       name = "Setup NodeJS",
       uses = Some(ActionRef("actions/setup-node@v3")),
-      parameters = Map(
-        "node-version" := (javaVersion match {
-          case None          => "16.x"
-          case Some(version) => version.asString
-        }),
-        "registry-url" := "https://registry.npmjs.org"
+      `with` = Some(
+        Map(
+          "node-version" -> (javaVersion match {
+            case None          => "16.x"
+            case Some(version) => version.asString
+          }),
+          "registry-url" -> "https://registry.npmjs.org"
+        )
       )
     )
 
@@ -75,14 +80,16 @@ object ScalaWorkflow {
     SingleStep(
       name = "Cache SBT",
       uses = Some(ActionRef("actions/cache@v2")),
-      parameters = Map(
-        "path" := Seq(
-          "~/.ivy2/cache",
-          "~/.sbt",
-          "~/.coursier/cache/v1",
-          "~/.cache/coursier/v1"
-        ).mkString("\n"),
-        "key" := s"$osS-sbt-$scalaS-$${{ hashFiles('**/*.sbt') }}-$${{ hashFiles('**/build.properties') }}"
+      `with` = Some(
+        Map(
+          "path" -> Seq(
+            "~/.ivy2/cache",
+            "~/.sbt",
+            "~/.coursier/cache/v1",
+            "~/.cache/coursier/v1"
+          ).mkString("\n"),
+          "key" -> s"$osS-sbt-$scalaS-$${{ hashFiles('**/*.sbt') }}-$${{ hashFiles('**/build.properties') }}"
+        )
       )
     )
   }
@@ -105,7 +112,7 @@ object ScalaWorkflow {
       run = Some(
         s"sbt -J-XX:+UseG1GC -J-Xmx${heapGb}g -J-Xms${heapGb}g -J-Xss${stackMb}m ${parameters.mkString(" ")}"
       ),
-      env = env
+      env = Some(env).filter(_.nonEmpty)
     )
 
   def storeTargets(
@@ -130,9 +137,11 @@ object ScalaWorkflow {
         SingleStep(
           s"Upload $id targets",
           uses = Some(ActionRef("actions/upload-artifact@v2")),
-          parameters = Map(
-            "name" := s"target-$id-$osS-$scalaS-$javaS",
-            "path" := "targets.tar"
+          `with` = Some(
+            Map(
+              "name" -> s"target-$id-$osS-$scalaS-$javaS",
+              "path" -> "targets.tar"
+            )
           )
         )
       )
@@ -154,8 +163,10 @@ object ScalaWorkflow {
         SingleStep(
           s"Download stored $id targets",
           uses = Some(ActionRef("actions/download-artifact@v2")),
-          parameters = Map(
-            "name" := s"target-$id-$osS-$scalaS-$javaS"
+          `with` = Some(
+            Map(
+              "name" -> s"target-$id-$osS-$scalaS-$javaS"
+            )
           )
         ),
         SingleStep(
@@ -182,15 +193,17 @@ object ScalaWorkflow {
     SingleStep(
       "Load PGP secret",
       run = Some(".github/import-key.sh"),
-      env = Map("PGP_SECRET" -> "${{ secrets.PGP_SECRET }}")
+      env = Some(Map("PGP_SECRET" -> "${{ secrets.PGP_SECRET }}"))
     )
 
   def turnstyle(): Step =
     SingleStep(
       "Turnstyle",
       uses = Some(ActionRef("softprops/turnstyle@v1")),
-      env = Map(
-        "GITHUB_TOKEN" -> "${{ secrets.ADMIN_GITHUB_TOKEN }}"
+      env = Some(
+        Map(
+          "GITHUB_TOKEN" -> "${{ secrets.ADMIN_GITHUB_TOKEN }}"
+        )
       )
     )
 
@@ -231,12 +244,12 @@ object ScalaWorkflow {
     val JDK21: JavaVersion = CorrettoJDK("21")
   }
 
-  implicit class JobOps(job: Job) {
+  implicit class JobOps(job: JobValue) {
     def matrix(
       scalaVersions: Seq[ScalaVersion],
       operatingSystems: Seq[OS] = Seq(OS.UbuntuLatest),
       javaVersions: Seq[JavaVersion] = Seq(JDK11)
-    ): Job =
+    ): JobValue =
       job.copy(
         strategy = Some(
           Strategy(
