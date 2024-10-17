@@ -190,7 +190,7 @@ trait ScalaCompilerSettings {
             )
           } else Seq.empty
         },
-        Test / parallelExecution := scalaBinaryVersion.value != "3",
+        Test / parallelExecution := scalaBinaryVersion.value != "3", // why not parallel execution for Scala 3?
         incOptions ~= (_.withLogRecompileOnMacro(false)),
         autoAPIMappings := true,
         unusedCompileDependenciesFilter -= moduleFilter("org.scala-js", "scalajs-library")
@@ -233,8 +233,7 @@ trait ScalaCompilerSettings {
            libraryDependencies ++= Seq(
              "dev.zio" %%% "zio-test"     % ZioSbtEcosystemPlugin.autoImport.zioVersion.value % Test,
              "dev.zio" %%% "zio-test-sbt" % ZioSbtEcosystemPlugin.autoImport.zioVersion.value % Test
-           ),
-           testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
+           )
          )
        else Seq.empty) ++ {
         if (enableStreaming)

@@ -1,5 +1,5 @@
 // Build Server Plugins
-addSbtPlugin("ch.epfl.scala" % "sbt-bloop" % "1.6.0")
+addSbtPlugin("ch.epfl.scala" % "sbt-bloop" % "2.0.2")
 
 // Linting Plugins
 addSbtPlugin("org.scalameta"    % "sbt-scalafmt"              % "2.5.4")
@@ -31,4 +31,5 @@ addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "1.1.4")
 
 libraryDependencies += "org.snakeyaml" % "snakeyaml-engine" % "2.9"
 libraryDependencies += "dev.zio"      %% "zio"              % "2.1.14"
-libraryDependencies += "io.circe"     %% "circe-yaml"       % "0.15.2"
+libraryDependencies += "dev.zio"      %% "zio-json"         % "0.7.3"
+libraryDependencies += "dev.zio"      %% "zio-json-yaml"    % "0.7.3"
