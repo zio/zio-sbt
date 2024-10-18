@@ -16,16 +16,22 @@
 
 package zio.sbt.githubactions
 
-import io.circe._
-import io.circe.syntax._
+import zio.sbt.{githubactionsnative => ghnative}
 
-import zio.sbt.githubactions.Step.StepSequence
+import zio.json.ast.Json
+import scala.collection.immutable.ListMap
 
 sealed trait OS {
   val asString: String
 }
 object OS {
   case object UbuntuLatest extends OS { val asString = "ubuntu-latest" }
+
+  implicit class OSOps(val os: OS) extends AnyVal {
+    def toNative: ghnative.OS = os match {
+      case UbuntuLatest => ghnative.OS.UbuntuLatest
+    }
+  }
 }
 
 sealed trait Branch
@@ -33,96 +39,97 @@ object Branch {
   case object All                extends Branch
   case class Named(name: String) extends Branch
 
-  implicit val encoder: Encoder[Branch] = {
-    case All         => Json.fromString("*")
-    case Named(name) => Json.fromString(name)
+  implicit class BranchOps(val branch: Branch) extends AnyVal {
+    def toNative: ghnative.Branch = branch match {
+      case All         => ghnative.Branch.All
+      case Named(name) => ghnative.Branch.Named(name)
+    }
   }
 }
 
-sealed trait Trigger {
-  def toKeyValuePair: (String, Json)
-}
+sealed trait Trigger
 
 case class Input(key: String, description: String, required: Boolean, defaultValue: String)
+
+object Input {
+  implicit class InputOps(val input: Input) extends AnyVal {
+    def toNative: (String, ghnative.Trigger.InputValue) =
+      input.key -> ghnative.Trigger.InputValue(input.description, input.required, input.defaultValue)
+  }
+}
 
 object Trigger {
   case class WorkflowDispatch(
     inputs: Seq[Input] = Seq.empty
-  ) extends Trigger {
-    override def toKeyValuePair: (String, Json) =
-      "workflow_dispatch" := inputs.map { i =>
-        i.key ->
-          Json.obj(
-            ("description", i.description.asJson),
-            ("required", i.required.asJson),
-            ("default", i.defaultValue.asJson)
-          )
-      }.toMap.asJson
-  }
+  ) extends Trigger
 
   case class Release(
     releaseTypes: Seq[String] = Seq.empty
-  ) extends Trigger {
-    override def toKeyValuePair: (String, Json) =
-      "release" := Json.obj("types" := releaseTypes)
-  }
+  ) extends Trigger
 
   case class PullRequest(
     branches: Seq[Branch] = Seq.empty,
     ignoredBranches: Seq[Branch] = Seq.empty
-  ) extends Trigger {
-    override def toKeyValuePair: (String, Json) =
-      "pull_request" := Json.obj(
-        Seq(
-          "branches"        := branches,
-          "branches-ignore" := ignoredBranches
-        ).filter { case (_, data) => data.asArray.exists(_.nonEmpty) }: _*
-      )
-  }
+  ) extends Trigger
 
   case class Push(
     branches: Seq[Branch] = Seq.empty,
     ignoredBranches: Seq[Branch] = Seq.empty
-  ) extends Trigger {
-    override def toKeyValuePair: (String, Json) =
-      "push" := Json.obj(
-        Seq(
-          "branches"        := branches,
-          "branches-ignore" := ignoredBranches
-        ).filter { case (_, data) => data.asArray.exists(_.nonEmpty) }: _*
-      )
-  }
+  ) extends Trigger
 
   case class Create(
     branches: Seq[Branch] = Seq.empty,
     ignoredBranches: Seq[Branch] = Seq.empty
-  ) extends Trigger {
-    override def toKeyValuePair: (String, Json) =
-      "create" := Json.obj(
-        Seq(
-          "branches"        := branches,
-          "branches-ignore" := ignoredBranches
-        ).filter { case (_, data) => data.asArray.exists(_.nonEmpty) }: _*
-      )
+  ) extends Trigger
+
+  implicit class TriggerOps(val trigger: Trigger) extends AnyVal {
+    def toNative: ghnative.Trigger = trigger match {
+      case WorkflowDispatch(inputs) =>
+        ghnative.Trigger.WorkflowDispatch(Some(ListMap(inputs.map(_.toNative): _*)).filter(_.nonEmpty))
+      case Release(releaseTypes) =>
+        ghnative.Trigger.Release(releaseTypes.map {
+          case "created"     => ghnative.Trigger.ReleaseType.Created
+          case "published"   => ghnative.Trigger.ReleaseType.Published
+          case "prereleased" => ghnative.Trigger.ReleaseType.Prereleased
+        })
+      case PullRequest(branches, ignoredBranches) =>
+        ghnative.Trigger.PullRequest(
+          Some(branches.map(_.toNative)).filter(_.nonEmpty),
+          Some(ignoredBranches.map(_.toNative)).filter(_.nonEmpty)
+        )
+      case Push(branches, ignoredBranches) =>
+        ghnative.Trigger.Push(
+          Some(branches.map(_.toNative)).filter(_.nonEmpty),
+          Some(ignoredBranches.map(_.toNative)).filter(_.nonEmpty)
+        )
+      case Create(branches, ignoredBranches) =>
+        ghnative.Trigger.Create(
+          Some(branches.map(_.toNative)).filter(_.nonEmpty),
+          Some(ignoredBranches.map(_.toNative)).filter(_.nonEmpty)
+        )
+    }
   }
 }
 
 case class Strategy(matrix: Map[String, List[String]], maxParallel: Option[Int] = None, failFast: Boolean = true)
 
 object Strategy {
-  implicit val encoder: Encoder[Strategy] =
-    (s: Strategy) =>
-      Json.obj(
-        "fail-fast"    := s.failFast,
-        "max-parallel" := s.maxParallel,
-        "matrix"       := s.matrix
+  implicit class StrategyOps(val strategy: Strategy) extends AnyVal {
+    def toNative: ghnative.Strategy =
+      ghnative.Strategy(
+        matrix = strategy.matrix.map { case (key, values) => key -> values },
+        maxParallel = strategy.maxParallel,
+        failFast = strategy.failFast
       )
+  }
 }
 
 case class ActionRef(ref: String)
+
 object ActionRef {
-  implicit val encoder: Encoder[ActionRef] =
-    (action: ActionRef) => Json.fromString(action.ref)
+  implicit class ActionRefOps(val actionRef: ActionRef) extends AnyVal {
+    def toNative: ghnative.ActionRef = ghnative.ActionRef(actionRef.ref)
+  }
 }
 
 sealed trait Condition {
@@ -162,8 +169,12 @@ object Condition {
     def asString: String = expression
   }
 
-  implicit val encoder: Encoder[Condition] =
-    (c: Condition) => Json.fromString(c.asString)
+  implicit class ConditionOps(val condition: Condition) extends AnyVal {
+    def toNative: ghnative.Condition = condition match {
+      case Expression(expression) => ghnative.Condition.Expression(expression)
+      case Function(expression)   => ghnative.Condition.Function(expression)
+    }
+  }
 }
 
 sealed trait Step {
@@ -194,31 +205,38 @@ object Step {
       steps.flatMap(_.flatten)
   }
 
-  implicit val encoder: Encoder[SingleStep] =
-    (s: SingleStep) =>
-      Json
-        .obj(
-          "name" := s.name,
-          "id"   := s.id,
-          "uses" := s.uses,
-          "if"   := s.condition,
-          "with" := (if (s.parameters.nonEmpty) s.parameters.asJson
-                     else Json.Null),
-          "run" := s.run,
-          "env" := (if (s.env.nonEmpty) s.env.asJson else Json.Null)
+  implicit class StepOps(val step: Step) extends AnyVal {
+    def toNative: ghnative.Step = step match {
+      case SingleStep(name, id, uses, condition, parameters, run, env) =>
+        ghnative.Step.SingleStep(
+          name = name,
+          id = id,
+          uses = uses.map(_.toNative),
+          `if` = condition.map(_.toNative),
+          `with` = Some(parameters).filter(_.nonEmpty),
+          run = run,
+          env = Some(env).filter(_.nonEmpty)
         )
+      case StepSequence(steps) =>
+        ghnative.Step.StepSequence(steps.map(_.toNative))
+    }
+  }
 }
 
 case class ImageRef(ref: String)
+
 object ImageRef {
-  implicit val encoder: Encoder[ImageRef] =
-    (image: ImageRef) => Json.fromString(image.ref)
+  implicit class ImageRefOps(val imageRef: ImageRef) extends AnyVal {
+    def toNative: ghnative.ImageRef = ghnative.ImageRef(imageRef.ref)
+  }
 }
 
 case class ServicePort(inner: Int, outer: Int)
+
 object ServicePort {
-  implicit val encoder: Encoder[ServicePort] =
-    (sp: ServicePort) => Json.fromString(s"${sp.inner}:${sp.outer}")
+  implicit class ServicePortOps(val servicePort: ServicePort) extends AnyVal {
+    def toNative: ghnative.ServicePort = ghnative.ServicePort(servicePort.inner, servicePort.outer)
+  }
 }
 
 case class Service(
@@ -227,14 +245,16 @@ case class Service(
   env: Map[String, String] = Map.empty,
   ports: Seq[ServicePort] = Seq.empty
 )
+
 object Service {
-  implicit val encoder: Encoder[Service] =
-    (s: Service) =>
-      Json.obj(
-        "image" := s.image,
-        "env"   := s.env,
-        "ports" := s.ports
-      )
+  implicit class ServiceOps(val service: Service) extends AnyVal {
+    def toNative: ghnative.Service = ghnative.Service(
+      name = service.name,
+      image = service.image.toNative,
+      env = Some(service.env).filter(_.nonEmpty),
+      ports = Some(service.ports.map(_.toNative)).filter(_.nonEmpty)
+    )
+  }
 }
 
 case class Job(
@@ -260,26 +280,22 @@ case class Job(
 }
 
 object Job {
-  implicit val encoder: Encoder[Job] =
-    (job: Job) =>
-      Json
-        .obj(
-          "name"              := job.name,
-          "runs-on"           := job.runsOn,
-          "continue-on-error" := job.continueOnError,
-          "strategy"          := job.strategy,
-          "needs" := (if (job.need.nonEmpty) job.need.asJson
-                      else Json.Null),
-          "services" := (if (job.services.nonEmpty) {
-                           Json.obj(
-                             job.services.map(svc => svc.name := svc): _*
-                           )
-                         } else {
-                           Json.Null
-                         }),
-          "if"    := job.condition,
-          "steps" := StepSequence(job.steps).flatten
-        )
+  implicit class JobOps(val job: Job) extends AnyVal {
+    def toNative: ghnative.Job = (
+      job.id,
+      ghnative.JobValue(
+        name = job.name,
+        runsOn = job.runsOn,
+        timeoutMinutes = Some(job.timeoutMinutes),
+        continueOnError = job.continueOnError,
+        strategy = job.strategy.map(_.toNative),
+        steps = job.steps.map(_.toNative).flatMap(_.flatten),
+        needs = Some(job.need),
+        services = Some(job.services.map(_.toNative)).filter(_.nonEmpty),
+        `if` = job.condition.map(_.toNative)
+      )
+    )
+  }
 }
 
 case class Workflow(
@@ -302,26 +318,24 @@ case class Workflow(
 }
 
 object Workflow {
-  implicit val encoder: Encoder[Workflow] =
-    (wf: Workflow) =>
-      Json
-        .obj(
-          "name" := wf.name,
-          "env"  := wf.env,
-          "on" := (if (wf.triggers.isEmpty)
-                     Json.Null
-                   else {
-                     Json.obj(
-                       wf.triggers
-                         .map(_.toKeyValuePair): _*
-                     )
-                   }),
-          "concurrency" := Json.obj(
-            "group" := Json.fromString(
-              "${{ github.workflow }}-${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.run_id || github.ref }}"
-            ),
-            "cancel-in-progress" := true
-          ),
-          "jobs" := Json.obj(wf.jobs.map(job => job.id := job): _*)
-        )
+  implicit class WorkflowOps(val workflow: Workflow) extends AnyVal {
+    def toNative: ghnative.Workflow = ghnative.Workflow(
+      name = workflow.name,
+      env = Some(ListMap.empty ++ workflow.env).filter(_.nonEmpty),
+      on = {
+        val triggers = workflow.triggers.map(_.toNative)
+        Some(
+          ghnative.Triggers(
+            workflowDispatch = triggers.collectFirst { case t: ghnative.Trigger.WorkflowDispatch => t }
+              .getOrElse(ghnative.Trigger.WorkflowDispatch()),
+            release = triggers.collectFirst { case t: ghnative.Trigger.Release => t },
+            pullRequest = triggers.collectFirst { case t: ghnative.Trigger.PullRequest => t },
+            push = triggers.collectFirst { case t: ghnative.Trigger.Push => t },
+            create = triggers.collectFirst { case t: ghnative.Trigger.Create => t }
+          )
+        ).filter(_ => triggers.nonEmpty)
+      },
+      jobs = ListMap(workflow.jobs.map(_.toNative): _*)
+    )
+  }
 }
