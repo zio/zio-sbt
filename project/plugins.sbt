@@ -1,5 +1,5 @@
 // Build Server Plugins
-addSbtPlugin("ch.epfl.scala" % "sbt-bloop" % "2.0.3")
+addSbtPlugin("ch.epfl.scala" % "sbt-bloop" % "2.0.5")
 
 // Linting Plugins
 addSbtPlugin("org.scalameta"    % "sbt-scalafmt"              % "2.5.4")
