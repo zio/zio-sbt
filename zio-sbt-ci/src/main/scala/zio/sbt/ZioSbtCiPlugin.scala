@@ -27,12 +27,12 @@ import zio.sbt.githubactions.Step.SingleStep
 import zio.sbt.githubactions.{Job, Step, _}
 
 object ZioSbtCiPlugin extends AutoPlugin {
-  override def requires = plugins.CorePlugin
-  override def trigger  = allRequirements
+  override def requires: Plugins = plugins.CorePlugin && ZioSbtCrossbuildPlugin
+  override def trigger           = allRequirements
 
   object autoImport {
     val ciDocsVersioningScheme: SettingKey[DocsVersioning] = settingKey[DocsVersioning]("Docs versioning style")
-    val ciEnabledBranches: SettingKey[Seq[String]]         = settingKey[Seq[String]]("Publish branch for documentation")
+    val ciEnabledBranches: SettingKey[Seq[String]]         = settingKey[Seq[String]]("Branches to trigger CI on")
     val ciGroupSimilarTests: SettingKey[Boolean] =
       settingKey[Boolean]("Group similar test by their Java and Scala versions, default is false")
     val ciMatrixMaxParallel: SettingKey[Option[Int]] =
@@ -46,6 +46,14 @@ object ZioSbtCiPlugin extends AutoPlugin {
       settingKey[Option[Condition]]("condition to update readme")
     val ciTargetJavaVersions: SettingKey[Seq[String]] =
       settingKey[Seq[String]]("The default target Java versions for all modules, default is 11, 17, 21")
+
+    val ciJobPerScalaPlatform: SettingKey[Boolean] =
+      settingKey[Boolean](
+        "Create a job for each Scala platform, when not defined `allScalaPlatforms.value > 1` is used"
+      )
+    val ciJobPerScalaVersion: SettingKey[Boolean] =
+      settingKey[Boolean]("Create a job for each Scala version, when not defined `allScalaVersions.value > 1` is used")
+
     val ciTargetMinJavaVersions: SettingKey[Map[String, String]] =
       SettingKey[Map[String, String]](
         "minimum target Java version for each module, default is an empty map which makes CI to use `ciAllTargetJavaVersions` to determine the minimum target Java version for all modules"
@@ -58,6 +66,10 @@ object ZioSbtCiPlugin extends AutoPlugin {
       settingKey[String](
         "The default Java version which is used in CI, especially for releasing artifacts, defaults to 17. Note that this is just JDK version used for compilation. Artefact will be compiled with -target and -source flags specified by 'javaPlatform' setting or 'javaPlatform' parameter in 'stdSettings'"
       )
+    val ciDefaultJavaDistribution: SettingKey[String] =
+      settingKey[String]("The default Java distribution, default is Corretto")
+    val ciDefaultNodeJSVersion: SettingKey[String] =
+      settingKey[String]("The default NodeJS version, default is 16.x")
     val ciCheckGithubWorkflow: TaskKey[Unit] = taskKey[Unit]("Make sure if the ci.yml file is up-to-date")
     val ciCheckArtifactsBuildSteps: SettingKey[Seq[Step]] =
       settingKey[Seq[Step]]("Workflow steps for checking artifact build process")
@@ -90,11 +102,15 @@ object ZioSbtCiPlugin extends AutoPlugin {
 
   import autoImport.*
 
+  implicit class CommandOps(command: String) {
+    def onlyForCrossbuild(crossbuild: Boolean): String =
+      if (crossbuild) command else ""
+  }
+
   lazy val buildJobs: Def.Initialize[Seq[Job]] = Def.setting {
     val swapSizeGB                = ciSwapSizeGB.value
     val setSwapSpace              = SetSwapSpace.value
     val checkout                  = Checkout.value
-    val javaVersion               = ciDefaultJavaVersion.value
     val checkAllCodeCompiles      = ciCheckArtifactsCompilationSteps.value
     val checkArtifactBuildProcess = ciCheckArtifactsBuildSteps.value
     val checkWebsiteBuildProcess  = ciCheckWebsiteBuildProcess.value
@@ -108,7 +124,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
             Seq(
               checkout,
               SetupLibuv,
-              SetupJava(javaVersion),
+              SetupJava(ciDefaultJavaVersion.value, ciDefaultJavaDistribution.value),
               CacheDependencies
             ) ++ checkAllCodeCompiles.flatMap(_.flatten) ++ checkArtifactBuildProcess.flatMap(
               _.flatten
@@ -122,7 +138,6 @@ object ZioSbtCiPlugin extends AutoPlugin {
     val checkout            = Checkout.value
     val swapSizeGB          = ciSwapSizeGB.value
     val setSwapSpace        = SetSwapSpace.value
-    val javaVersion         = ciDefaultJavaVersion.value
     val checkGithubWorkflow = ciCheckGithubWorkflowSteps.value
     val lint                = Lint.value
 
@@ -130,194 +145,247 @@ object ZioSbtCiPlugin extends AutoPlugin {
       Job(
         name = "Lint",
         steps = (if (swapSizeGB > 0) Seq(setSwapSpace) else Seq.empty) ++
-          Seq(checkout, SetupLibuv, SetupJava(javaVersion), CacheDependencies) ++ checkGithubWorkflow.flatMap(
+          Seq(
+            checkout,
+            SetupLibuv,
+            SetupJava(ciDefaultJavaVersion.value, ciDefaultJavaDistribution.value),
+            CacheDependencies
+          ) ++ checkGithubWorkflow.flatMap(
             _.flatten
           ) ++ Seq(lint)
       )
     )
   }
 
-  lazy val testJobs: Def.Initialize[Seq[Job]] = Def.setting {
-    val groupSimilarTests  = ciGroupSimilarTests.value
-    val scalaVersionMatrix = ciTargetScalaVersions.value
-    val javaPlatforms      = autoImport.ciTargetJavaVersions.value
-    val javaPlatformMatrix = ciTargetMinJavaVersions.value
-    val matrixMaxParallel  = ciMatrixMaxParallel.value
-    val swapSizeGB         = ciSwapSizeGB.value
-    val setSwapSpace       = SetSwapSpace.value
-    val checkout           = Checkout.value
-    val backgroundJobs     = ciBackgroundJobs.value
+  lazy val testJobs: Def.Initialize[Seq[Job]] = Def.settingDyn {
+    Def.setting {
+      val groupSimilarTests  = ciGroupSimilarTests.value
+      val scalaVersionMatrix = ciTargetScalaVersions.value
+      val javaVersions       = autoImport.ciTargetJavaVersions.value
+      val scalaVersions      = ScalaVersions.Keys.allScalaVersions.value
+      val scalaPlatforms     = ScalaPlatforms.Keys.allScalaPlatforms.value
+      val javaPlatformMatrix = ciTargetMinJavaVersions.value
+      val matrixMaxParallel  = ciMatrixMaxParallel.value
+      val swapSizeGB         = ciSwapSizeGB.value
+      val setSwapSpace       = SetSwapSpace.value
+      val checkout           = Checkout.value
+      val backgroundJobs     = ciBackgroundJobs.value
 
-    val prefixJobs = makePrefixJobs(backgroundJobs)
+      val prefixJobs = makePrefixJobs(backgroundJobs)
 
-    val GroupTests = {
-      def makeTests(scalaVersion: String) =
-        s" ${scalaVersionMatrix.filter { case (_, versions) =>
-            versions.contains(scalaVersion)
-          }.map(e => e._1 + "/test").mkString(" ")}"
+      val isSingleBuild   = IsSingleBuild.value
+      val crossbuildOrNot = CrossbuildOrNot.value
 
-      Job(
-        name = "Test",
-        strategy = Some(
-          Strategy(
-            matrix = ListMap(
-              "java"  -> javaPlatforms.toList.sorted,
-              "scala" -> scalaVersionMatrix.values.flatten.toList.distinct.sorted
-            ),
-            maxParallel = matrixMaxParallel,
-            failFast = false
-          )
-        ),
-        steps = {
-          (if (swapSizeGB > 0) Seq(setSwapSpace) else Seq.empty) ++ Seq(
-            SetupLibuv,
-            SetupJava("${{ matrix.java }}"),
-            CacheDependencies,
-            checkout
-          ) ++ (if (javaPlatformMatrix.values.toSet.isEmpty) {
-                  scalaVersionMatrix.values.toSeq.flatten.distinct.map { scalaVersion: String =>
-                    Step.SingleStep(
-                      name = "Test",
-                      `if` = Some(Condition.Expression(s"matrix.scala == '$scalaVersion'")),
-                      run = Some(
-                        prefixJobs + "sbt ++${{ matrix.scala }}" + makeTests(
-                          scalaVersion
+      val jobPerScalaPlatform = ciJobPerScalaPlatform.?.value.getOrElse(scalaPlatforms.size > 1)
+      val jobPerScalaVersion  = ciJobPerScalaVersion.?.value.getOrElse(scalaVersions.size > 1)
+
+      def setScalaVersionOrNot(scalaVersion: String) = if (isSingleBuild) "" else s"++$scalaVersion"
+
+      val testTask: String => String =
+        if (isSingleBuild)
+          (scalaVersion: String) => "test" + TestTasks.scalaVersionToSuffix(scalaVersion)
+        else
+          _ => "test"
+
+      val GroupTests = {
+        def makeTests(scalaVersion: String) =
+          s"${scalaVersionMatrix.filter { case (_, versions) =>
+              versions.contains(scalaVersion)
+            }.map(e => e._1 + "/" + testTask(scalaVersion)).mkString(" ")}"
+
+        Job(
+          name = "Test",
+          strategy = Some(
+            Strategy(
+              matrix = ListMap(
+                "java"  -> javaVersions.toList.sorted,
+                "scala" -> scalaVersionMatrix.values.flatten.toList.distinct.sorted
+              ),
+              maxParallel = matrixMaxParallel,
+              failFast = false
+            )
+          ),
+          steps = {
+            (if (swapSizeGB > 0) Seq(setSwapSpace) else Seq.empty) ++ Seq(
+              SetupLibuv,
+              SetupJava("${{ matrix.java }}", ciDefaultJavaDistribution.value),
+              CacheDependencies,
+              checkout
+            ) ++ (if (javaPlatformMatrix.values.toSet.isEmpty) {
+                    scalaVersionMatrix.values.toSeq.flatten.distinct.map { scalaVersion: String =>
+                      Step.SingleStep(
+                        name = "Test",
+                        `if` = Some(Condition.Expression(s"matrix.scala == '$scalaVersion'")),
+                        run = Some(
+                          Seq(prefixJobs, "sbt", setScalaVersionOrNot("${{ matrix.scala }}"), makeTests(scalaVersion))
+                            .filterNot(_.isBlank())
+                            .mkString(" ")
                         )
                       )
-                    )
-                  }
-                } else {
-                  (for {
-                    javaPlatform: String <- Set("11", "17", "21")
-                    scalaVersion: String <- scalaVersionMatrix.values.toSeq.flatten.toSet
-                    projects =
-                      scalaVersionMatrix.filterKeys { p =>
-                        javaPlatformMatrix.getOrElse(p, javaPlatform).toInt <= javaPlatform.toInt
-                      }.filter { case (_, versions) =>
-                        versions.contains(scalaVersion)
-                      }.keys
-                  } yield
-                    if (projects.nonEmpty)
-                      Seq(
-                        Step.SingleStep(
-                          name = "Test",
-                          `if` = Some(
-                            Condition.Expression(s"matrix.java == '$javaPlatform'") && Condition.Expression(
-                              s"matrix.scala == '$scalaVersion'"
+                    }
+                  } else {
+                    (for {
+                      javaPlatform: String <- Set("11", "17", "21")
+                      scalaVersion: String <- scalaVersionMatrix.values.toSeq.flatten.toSet
+                      projects =
+                        scalaVersionMatrix.filterKeys { p =>
+                          javaPlatformMatrix.getOrElse(p, javaPlatform).toInt <= javaPlatform.toInt
+                        }.filter { case (_, versions) =>
+                          versions.contains(scalaVersion)
+                        }.keys
+                    } yield
+                      if (projects.nonEmpty)
+                        Seq(
+                          Step.SingleStep(
+                            name = "Test",
+                            `if` = Some(
+                              Condition.Expression(s"matrix.java == '$javaPlatform'") && Condition.Expression(
+                                s"matrix.scala == '$scalaVersion'"
+                              )
+                            ),
+                            run = Some(
+                              Seq(
+                                prefixJobs,
+                                "sbt",
+                                setScalaVersionOrNot("${{ matrix.scala }}"),
+                                projects.map(_ + "/" + testTask(scalaVersion)).mkString(" ")
+                              ).filterNot(_.isBlank()).mkString(" ")
                             )
-                          ),
-                          run = Some(
-                            prefixJobs + "sbt ++${{ matrix.scala }}" ++ s" ${projects.map(_ + "/test ").mkString(" ")}"
                           )
                         )
-                      )
-                    else Seq.empty).flatten.toSeq
-                })
-        }
-      )
-    }
+                      else Seq.empty).flatten.toSeq
+                  })
+          }
+        )
+      }
 
-    val FlattenTests =
-      Job(
-        name = "Test",
-        strategy = Some(
-          Strategy(
-            matrix = ListMap(
-              "java" -> javaPlatforms.toList.sorted
-            ) ++
-              (if (javaPlatformMatrix.isEmpty) {
-                 ListMap("scala-project" -> scalaVersionMatrix.flatMap { case (moduleName, versions) =>
-                   versions.map { version =>
-                     s"++$version $moduleName"
-                   }
-                 }.toList)
-               } else {
-                 def generateScalaProjectJavaPlatform(javaPlatform: String) =
-                   s"scala-project-java$javaPlatform" -> scalaVersionMatrix.filterKeys { p =>
-                     javaPlatformMatrix.getOrElse(p, javaPlatform).toInt <= javaPlatform.toInt
-                   }.flatMap { case (moduleName, versions) =>
+      val FlattenTests =
+        Job(
+          name = "Test",
+          strategy = Some(
+            Strategy(
+              matrix = ListMap(
+                "java" -> javaVersions.toList.sorted
+              ) ++
+                (if (javaPlatformMatrix.isEmpty) {
+                   ListMap("scala-project" -> scalaVersionMatrix.flatMap { case (moduleName, versions) =>
                      versions.map { version =>
-                       s"++$version $moduleName"
+                       Seq(setScalaVersionOrNot(version), moduleName + "/" + testTask(version))
+                         .filterNot(_.isBlank())
+                         .mkString(" ")
                      }
-                   }.toList
+                   }.toList)
+                 } else {
+                   def generateScalaProjectJavaPlatform(javaPlatform: String) =
+                     s"scala-project-java$javaPlatform" -> scalaVersionMatrix.filterKeys { p =>
+                       javaPlatformMatrix.getOrElse(p, javaPlatform).toInt <= javaPlatform.toInt
+                     }.flatMap { case (moduleName, versions) =>
+                       versions.map { version =>
+                         Seq(setScalaVersionOrNot(version), moduleName + "/" + testTask(version))
+                           .filterNot(_.isBlank())
+                           .mkString(" ")
+                       }
+                     }.toList
 
-                 javaPlatforms.map(jp => generateScalaProjectJavaPlatform(jp))
-               }),
-            maxParallel = matrixMaxParallel,
-            failFast = false
-          )
-        ),
-        steps = (if (swapSizeGB > 0) Seq(setSwapSpace) else Seq.empty) ++
-          Seq(
-            SetupLibuv,
-            SetupJava("${{ matrix.java }}"),
-            CacheDependencies,
-            checkout
-          ) ++ (
-            if (javaPlatformMatrix.values.toSet.isEmpty) {
-              Seq(
-                Step.SingleStep(
-                  name = "Test",
-                  run = Some(prefixJobs + "sbt ${{ matrix.scala-project }}/test")
-                )
-              )
-            } else {
-              Seq(
-                Step.SingleStep(
-                  name = "Java 11 Tests",
-                  `if` = Some(Condition.Expression("matrix.java == '11'")),
-                  run = Some(
-                    prefixJobs + "sbt ${{ matrix.scala-project-java11 }}/test"
-                  )
-                ),
-                Step.SingleStep(
-                  name = "Java 17 Tests",
-                  `if` = Some(Condition.Expression("matrix.java == '17'")),
-                  run = Some(
-                    prefixJobs + "sbt ${{ matrix.scala-project-java17 }}/test"
-                  )
-                ),
-                Step.SingleStep(
-                  name = "Java 21 Tests",
-                  `if` = Some(Condition.Expression("matrix.java == '21'")),
-                  run = Some(
-                    prefixJobs + "sbt ${{ matrix.scala-project-java21 }}/test"
-                  )
-                )
-              )
-            }
-          )
-      )
-
-    val DefaultTestStrategy =
-      Job(
-        name = "Test",
-        strategy = Some(
-          Strategy(
-            matrix = ListMap(
-              "java" -> javaPlatforms.toList.sorted
-            ),
-            maxParallel = matrixMaxParallel,
-            failFast = false
-          )
-        ),
-        steps = (if (swapSizeGB > 0) Seq(setSwapSpace) else Seq.empty) ++
-          Seq(
-            SetupLibuv,
-            SetupJava("${{ matrix.java }}"),
-            CacheDependencies,
-            checkout,
-            Step.SingleStep(
-              name = "Test",
-              run = Some(prefixJobs + "sbt +test")
+                   javaVersions.map(jp => generateScalaProjectJavaPlatform(jp))
+                 }),
+              maxParallel = matrixMaxParallel,
+              failFast = false
             )
-          )
-      )
+          ),
+          steps = (if (swapSizeGB > 0) Seq(setSwapSpace) else Seq.empty) ++
+            Seq(
+              SetupLibuv,
+              SetupJava("${{ matrix.java }}", ciDefaultJavaDistribution.value),
+              CacheDependencies,
+              checkout
+            ) ++ (
+              if (javaPlatformMatrix.values.toSet.isEmpty) {
+                Seq(
+                  Step.SingleStep(
+                    name = "Test",
+                    run = Some(prefixJobs + "sbt ${{ matrix.scala-project }}")
+                  )
+                )
+              } else {
+                Seq(
+                  Step.SingleStep(
+                    name = "Java 11 Tests",
+                    `if` = Some(Condition.Expression("matrix.java == '11'")),
+                    run = Some(
+                      prefixJobs + "sbt ${{ matrix.scala-project-java11 }}"
+                    )
+                  ),
+                  Step.SingleStep(
+                    name = "Java 17 Tests",
+                    `if` = Some(Condition.Expression("matrix.java == '17'")),
+                    run = Some(
+                      prefixJobs + "sbt ${{ matrix.scala-project-java17 }}"
+                    )
+                  ),
+                  Step.SingleStep(
+                    name = "Java 21 Tests",
+                    `if` = Some(Condition.Expression("matrix.java == '21'")),
+                    run = Some(
+                      prefixJobs + "sbt ${{ matrix.scala-project-java21 }}"
+                    )
+                  )
+                )
+              }
+            )
+        )
 
-    if (javaPlatformMatrix.isEmpty && scalaVersionMatrix.isEmpty)
-      Seq(DefaultTestStrategy)
-    else
-      Seq(if (groupSimilarTests) GroupTests else FlattenTests)
+      val DefaultTestStrategy = {
+        val ((testMatrix: ListMap[String, List[String]]), (testTaskSuffix: String)) =
+          if (jobPerScalaPlatform && jobPerScalaVersion) {
+            ListMap(
+              "scalaVersion"  -> scalaVersions.toList.sorted,
+              "scalaPlatform" -> scalaPlatforms.toList.map(_.asString).sorted
+            ) ->
+              "${{ matrix.scalaPlatform }}${{ startsWith(matrix.scalaVersion, '2.12') && '2_12' || (startsWith(matrix.scalaVersion, '2.13') && '2_13' || (startsWith(matrix.scalaVersion, '3') && '3' || '')) }}"
+          } else if (jobPerScalaPlatform) {
+            ListMap(
+              "scalaPlatform" -> scalaPlatforms.toList.map(_.asString).sorted
+            ) -> "${{ matrix.scalaPlatform }}"
+          } else if (jobPerScalaVersion) {
+            ListMap(
+              "scalaVersion" -> scalaVersions.toList.sorted
+            ) -> "${{ startsWith(matrix.scalaVersion, '2.12') && '2_12' || (startsWith(matrix.scalaVersion, '2.13') && '2_13' || (startsWith(matrix.scalaVersion, '3') && '3' || '')) }}"
+          } else {
+            ListMap.empty -> ""
+          }
+        Job(
+          name = "Test",
+          strategy = Some(
+            Strategy(
+              matrix = ListMap(
+                "java" -> javaVersions.toList.sorted
+              ) ++ testMatrix,
+              maxParallel = matrixMaxParallel,
+              failFast = false
+            )
+          ),
+          steps = (if (swapSizeGB > 0) Seq(setSwapSpace) else Seq.empty) ++
+            Seq(
+              SetupLibuv,
+              SetupJava("${{ matrix.java }}", ciDefaultJavaDistribution.value),
+              CacheDependencies,
+              checkout,
+              Step.SingleStep(
+                name = "Test",
+                run = Some(
+                  prefixJobs + s"sbt ${crossbuildOrNot}test" ++ testTaskSuffix
+                )
+              )
+            )
+        )
+      }
+
+      if (javaPlatformMatrix.isEmpty && scalaVersionMatrix.isEmpty)
+        Seq(DefaultTestStrategy)
+      else
+        Seq(if (groupSimilarTests) GroupTests else FlattenTests)
+    }
   }
 
   lazy val reportSuccessfulJobs: Def.Initialize[Seq[Job]] = Def.setting {
@@ -341,7 +409,6 @@ object ZioSbtCiPlugin extends AutoPlugin {
     val swapSizeGB            = ciSwapSizeGB.value
     val setSwapSpace          = SetSwapSpace.value
     val checkout              = Checkout.value
-    val javaVersion           = ciDefaultJavaVersion.value
     val updateReadmeCondition = autoImport.ciUpdateReadmeCondition.value
     val generateReadme        = GenerateReadme.value
 
@@ -353,7 +420,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
           Seq(
             checkout,
             SetupLibuv,
-            SetupJava(javaVersion),
+            SetupJava(ciDefaultJavaVersion.value, ciDefaultJavaDistribution.value),
             CacheDependencies,
             generateReadme,
             Step.SingleStep(
@@ -426,7 +493,6 @@ object ZioSbtCiPlugin extends AutoPlugin {
     val swapSizeGB   = ciSwapSizeGB.value
     val setSwapSpace = SetSwapSpace.value
     val checkout     = Checkout.value
-    val javaVersion  = ciDefaultJavaVersion.value
     val release      = Release.value
     val jobs         = ciReleaseApprovalJobs.value
 
@@ -439,7 +505,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
           Seq(
             checkout,
             SetupLibuv,
-            SetupJava(javaVersion),
+            SetupJava(ciDefaultJavaVersion.value, ciDefaultJavaDistribution.value),
             CacheDependencies,
             release
           )
@@ -451,7 +517,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
     val swapSizeGB           = ciSwapSizeGB.value
     val setSwapSpace         = SetSwapSpace.value
     val checkout             = Checkout.value
-    val javaVersion          = ciDefaultJavaVersion.value
+    val nodeJsVersion        = ciDefaultNodeJSVersion.value
     val publishToNpmRegistry = PublishToNpmRegistry.value
 
     Seq(
@@ -468,9 +534,9 @@ object ZioSbtCiPlugin extends AutoPlugin {
           Seq(
             checkout,
             SetupLibuv,
-            SetupJava(javaVersion),
+            SetupJava(ciDefaultJavaVersion.value, ciDefaultJavaDistribution.value),
             CacheDependencies,
-            SetupNodeJs,
+            SetupNodeJs(nodeJsVersion),
             publishToNpmRegistry
           )
       ),
@@ -564,34 +630,48 @@ object ZioSbtCiPlugin extends AutoPlugin {
       IO.write(new File(s".github/workflows/${ciWorkflowName.value.toLowerCase}.yml"), template)
     }
 
+  val IsSingleBuild: Def.Initialize[Boolean] = BuildAssertions.scalaCrossVersionsCountsOnePerProject
+  val CrossbuildOrNot: Def.Initialize[String] = Def.setting {
+    if (IsSingleBuild.value) "" else "+"
+  }
+
   override lazy val buildSettings: Seq[Setting[_]] =
     Seq(
-      ciWorkflowName           := "CI",
-      ciEnabledBranches        := Seq.empty,
-      ciGenerateGithubWorkflow := generateGithubWorkflowTask.value,
-      ciDocsVersioningScheme   := DocsVersioning.SemanticVersioning,
-      ciCheckGithubWorkflow    := checkGithubWorkflowTask.value,
-      ciTargetScalaVersions    := Map.empty,
-      ciTargetMinJavaVersions  := Map.empty,
-      ciJvmOptions             := Seq.empty,
-      ciNodeOptions            := Seq.empty,
-      ciUpdateReadmeCondition  := None,
-      ciGroupSimilarTests      := false,
-      ciSwapSizeGB             := 0,
-      ciTargetJavaVersions     := Seq("11", "17", "21"),
+      ciWorkflowName            := "CI",
+      ciEnabledBranches         := Seq.empty,
+      ciGenerateGithubWorkflow  := generateGithubWorkflowTask.value,
+      ciDocsVersioningScheme    := DocsVersioning.SemanticVersioning,
+      ciCheckGithubWorkflow     := checkGithubWorkflowTask.value,
+      ciTargetScalaVersions     := Map.empty,
+      ciTargetMinJavaVersions   := Map.empty,
+      ciJvmOptions              := Seq.empty,
+      ciNodeOptions             := Seq.empty,
+      ciUpdateReadmeCondition   := None,
+      ciGroupSimilarTests       := false,
+      ciSwapSizeGB              := 0,
+      ciTargetJavaVersions      := CiVersions.TargetJavaVersions,
+      ciDefaultJavaDistribution := CiVersions.JavaDistribution,
+      ciDefaultNodeJSVersion    := CiVersions.NodeJS,
       ciCheckArtifactsBuildSteps :=
         Seq(
           Step.SingleStep(
             name = "Check artifacts build process",
-            run = Some("sbt +publishLocal")
+            run = Some(s"sbt ${CrossbuildOrNot.value}publishLocal")
           )
         ),
       ciCheckWebsiteBuildProcess := CheckWebsiteBuildProcess.value,
-      ciCheckArtifactsCompilationSteps := Seq(
-        Step.SingleStep(
-          name = "Check all code compiles",
-          run = Some(makePrefixJobs(ciBackgroundJobs.value) + "sbt +Test/compile")
-        )
+      ciCheckArtifactsCompilationSteps := (
+        Def.settingDyn {
+          val compileCommand = s"sbt ${CrossbuildOrNot.value}Test/compile"
+          Def.setting(
+            Seq(
+              Step.SingleStep(
+                name = "Check all code compiles",
+                run = Some(makePrefixJobs(ciBackgroundJobs.value) + compileCommand)
+              )
+            )
+          )
+        }.value
       ),
       ciCheckGithubWorkflowSteps := Seq(
         Step.SingleStep(
@@ -603,7 +683,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
       ),
       ciBackgroundJobs     := Seq.empty,
       ciMatrixMaxParallel  := None,
-      ciDefaultJavaVersion := "17",
+      ciDefaultJavaVersion := zio.sbt.JavaVersion.`17`,
       ciBuildJobs          := buildJobs.value,
       ciLintJobs           := lintJobs.value,
       ciTestJobs           := testJobs.value,
@@ -665,12 +745,12 @@ object ZioSbtCiPlugin extends AutoPlugin {
     run = Some("sudo apt-get update && sudo apt-get install -y libuv1-dev")
   )
 
-  def SetupJava(version: String = "17"): Step.SingleStep = Step.SingleStep(
+  def SetupJava(version: String = "17", distribution: String = "corretto"): Step.SingleStep = Step.SingleStep(
     name = "Setup Scala",
     uses = Some(ActionRef(V("actions/setup-java"))),
     `with` = Some(
       ListMap(
-        "distribution" -> "corretto".toJsonAST.right.get,
+        "distribution" -> distribution.toJsonAST.right.get,
         "java-version" -> version.toJsonAST.right.get,
         "check-latest" -> true.toJsonAST.right.get
       )
@@ -710,26 +790,30 @@ object ZioSbtCiPlugin extends AutoPlugin {
 
     val prefixJobs = makePrefixJobs(backgroundJobs)
 
+    val isSingleBuild = IsSingleBuild.value
+
     Step.SingleStep(
       name = "Release",
       run = Some(prefixJobs + "sbt ci-release"),
       env = Some(
         ListMap(
-          "PGP_PASSPHRASE"    -> "${{ secrets.PGP_PASSPHRASE }}",
-          "PGP_SECRET"        -> "${{ secrets.PGP_SECRET }}",
-          "SONATYPE_PASSWORD" -> "${{ secrets.SONATYPE_PASSWORD }}",
-          "SONATYPE_USERNAME" -> "${{ secrets.SONATYPE_USERNAME }}"
+          "PGP_PASSPHRASE"      -> "${{ secrets.PGP_PASSPHRASE }}",
+          "PGP_SECRET"          -> "${{ secrets.PGP_SECRET }}",
+          "SONATYPE_PASSWORD"   -> "${{ secrets.SONATYPE_PASSWORD }}",
+          "SONATYPE_USERNAME"   -> "${{ secrets.SONATYPE_USERNAME }}",
+          "CI_RELEASE"          -> (if (isSingleBuild) "publishSigned" else "+publishSigned"),
+          "CI_SNAPSHOT_RELEASE" -> (if (isSingleBuild) "publish" else "+publish")
         )
       )
     )
   }
 
-  val SetupNodeJs: Step.SingleStep = Step.SingleStep(
+  def SetupNodeJs(version: String = CiVersions.NodeJS): Step.SingleStep = Step.SingleStep(
     name = "Setup NodeJs",
     uses = Some(ActionRef(V("actions/setup-node"))),
     `with` = Some(
       ListMap(
-        "node-version" -> "16.x".toJsonAST.right.get,
+        "node-version" -> version.toJsonAST.right.get,
         "registry-url" -> "https://registry.npmjs.org".toJsonAST.right.get
       )
     )

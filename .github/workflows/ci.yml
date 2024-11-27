@@ -39,9 +39,9 @@ jobs:
       - name: Cache Dependencies
         uses: coursier/cache-action@v6
       - name: Check all code compiles
-        run: sbt +Test/compile
+        run: sbt Test/compile
       - name: Check artifacts build process
-        run: sbt +publishLocal
+        run: sbt publishLocal
       - name: Check website build process
         run: sbt docs/clean; sbt docs/buildWebsite
   lint:
@@ -94,7 +94,7 @@ jobs:
         with:
           fetch-depth: '0'
       - name: Test
-        run: sbt +test
+        run: sbt test
   update-readme:
     name: Update README
     runs-on: ubuntu-latest
@@ -196,6 +196,8 @@ jobs:
           PGP_SECRET: ${{ secrets.PGP_SECRET }}
           SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
           SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
+          CI_RELEASE: publishSigned
+          CI_SNAPSHOT_RELEASE: publish
   release-docs:
     name: Release Docs
     runs-on: ubuntu-latest

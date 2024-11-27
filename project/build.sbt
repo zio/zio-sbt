@@ -1,3 +1,9 @@
+Compile / unmanagedSourceDirectories += file("zio-sbt-shared/src/main/scala")
+Compile / unmanagedResourceDirectories += file("zio-sbt-shared/src/main/resources")
+
+Compile / unmanagedSourceDirectories += file("zio-sbt-project/src/main/scala")
+Compile / unmanagedResourceDirectories += file("zio-sbt-project/src/main/resources")
+
 Compile / unmanagedSourceDirectories += file("zio-sbt-ecosystem/src/main/scala")
 Compile / unmanagedResourceDirectories += file("zio-sbt-ecosystem/src/main/resources")
 
