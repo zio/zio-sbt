@@ -20,12 +20,20 @@ import scala.collection.immutable.ListMap
 import scala.util.{Failure, Success, Try}
 
 import zio.json._
+import zio.json.ast.Json
 
-sealed trait OS {
-  val asString: String
+abstract class OS(name: String) {
+  val asString: String = name
 }
 object OS {
-  case object UbuntuLatest extends OS { val asString = "ubuntu-latest" }
+
+  def apply(name: String): OS = Custom(name)
+
+  case class Custom(name: String) extends OS(name)
+
+  case object UbuntuLatest extends OS("ubuntu-latest")
+  case object Ubuntu2404   extends OS("ubuntu-24.04")
+  case object Ubuntu2204   extends OS("ubuntu-22.04")
 }
 
 sealed trait Branch
@@ -33,7 +41,7 @@ object Branch {
   case object All                extends Branch
   case class Named(name: String) extends Branch
 
-  implicit val codec: JsonCodec[Branch] = JsonCodec.string.transform(
+  implicit lazy val codec: JsonCodec[Branch] = JsonCodec.string.transform(
     {
       case "*"  => All
       case name => Named(name)
@@ -47,22 +55,29 @@ object Branch {
 
 @jsonMemberNames(SnakeCase)
 case class Triggers(
-  workflowDispatch: Option[Triggers.WorkflowDispatch] = None,
-  release: Option[Triggers.Release] = None,
-  pullRequest: Option[Triggers.PullRequest] = None,
-  push: Option[Triggers.Push] = None,
-  create: Option[Triggers.Create] = None
+  workflowDispatch: Trigger.WorkflowDispatch = Trigger.WorkflowDispatch(),
+  release: Option[Trigger.Release] = None,
+  pullRequest: Option[Trigger.PullRequest] = None,
+  push: Option[Trigger.Push] = None,
+  create: Option[Trigger.Create] = None
 )
 
 object Triggers {
+
+  implicit lazy val codec: JsonCodec[Triggers] = DeriveJsonCodec.gen[Triggers]
+}
+
+sealed trait Trigger
+
+object Trigger {
   case class InputValue(description: String, required: Boolean, default: String)
   object InputValue {
-    implicit val jsonCodec: JsonCodec[InputValue] = DeriveJsonCodec.gen[InputValue]
+    implicit lazy val jsonCodec: JsonCodec[InputValue] = DeriveJsonCodec.gen[InputValue]
   }
 
   case class WorkflowDispatch(
-    inputs: ListMap[String, InputValue] = ListMap.empty
-  )
+    inputs: Option[ListMap[String, InputValue]] = None
+  ) extends Trigger
 
   object WorkflowDispatch {
     implicit def listMapCodec[K: JsonFieldDecoder: JsonFieldEncoder, V: JsonCodec]: JsonCodec[ListMap[K, V]] =
@@ -71,15 +86,15 @@ object Triggers {
         JsonDecoder.keyValueChunk[K, V].map(c => ListMap(c: _*))
       )
 
-    implicit val jsonCodec: JsonCodec[WorkflowDispatch] = DeriveJsonCodec.gen[WorkflowDispatch]
+    implicit lazy val jsonCodec: JsonCodec[WorkflowDispatch] = DeriveJsonCodec.gen[WorkflowDispatch]
   }
 
   case class Release(
     types: Seq[ReleaseType] = Seq.empty
-  )
+  ) extends Trigger
 
   object Release {
-    implicit val jsonCodec: JsonCodec[Release] = DeriveJsonCodec.gen[Release]
+    implicit lazy val jsonCodec: JsonCodec[Release] = DeriveJsonCodec.gen[Release]
   }
 
   sealed trait ReleaseType
@@ -88,7 +103,7 @@ object Triggers {
     case object Published   extends ReleaseType
     case object Prereleased extends ReleaseType
 
-    implicit val codec: JsonCodec[ReleaseType] = JsonCodec.string.transformOrFail(
+    implicit lazy val codec: JsonCodec[ReleaseType] = JsonCodec.string.transformOrFail(
       {
         case "created"     => Right(Created)
         case "published"   => Right(Published)
@@ -109,43 +124,43 @@ object Triggers {
     branches: Option[Seq[Branch]] = None,
     branchesIgnore: Option[Seq[Branch]] = None,
     paths: Option[Seq[String]] = None
-  )
+  ) extends Trigger
 
   object PullRequest {
-    implicit val jsonCodec: JsonCodec[PullRequest] = DeriveJsonCodec.gen[PullRequest]
+    implicit lazy val jsonCodec: JsonCodec[PullRequest] = DeriveJsonCodec.gen[PullRequest]
   }
 
   case class Push(
     branches: Option[Seq[Branch]] = None,
     branchesIgnore: Option[Seq[Branch]] = None
-  )
+  ) extends Trigger
 
   object Push {
-    implicit val jsonCodec: JsonCodec[Push] = DeriveJsonCodec.gen[Push]
+    implicit lazy val jsonCodec: JsonCodec[Push] = DeriveJsonCodec.gen[Push]
   }
 
   case class Create(
     branches: Option[Seq[Branch]] = None,
     branchesIgnore: Option[Seq[Branch]] = None
-  )
+  ) extends Trigger
 
   object Create {
-    implicit val jsonCodec: JsonCodec[Create] = DeriveJsonCodec.gen[Create]
+    implicit lazy val jsonCodec: JsonCodec[Create] = DeriveJsonCodec.gen[Create]
   }
-
-  implicit val codec: JsonCodec[Triggers] = DeriveJsonCodec.gen[Triggers]
 }
 
 @jsonMemberNames(KebabCase)
-case class Strategy(matrix: Map[String, List[String]], maxParallel: Option[Int] = None, failFast: Boolean = true)
+case class Strategy(matrix: ListMap[String, List[String]], maxParallel: Option[Int] = None, failFast: Boolean = true)
 
 object Strategy {
-  implicit val codec: JsonCodec[Strategy] = DeriveJsonCodec.gen[Strategy]
+  import Workflow.listMapCodec
+
+  implicit lazy val codec: JsonCodec[Strategy] = DeriveJsonCodec.gen[Strategy]
 }
 
 case class ActionRef(ref: String)
 object ActionRef {
-  implicit val codec: JsonCodec[ActionRef] = JsonCodec.string.transform(ActionRef(_), _.ref)
+  implicit lazy val codec: JsonCodec[ActionRef] = JsonCodec.string.transform(ActionRef(_), _.ref)
 }
 
 sealed trait Condition {
@@ -176,7 +191,7 @@ object Condition {
   }
 
   object Expression {
-    implicit val codec: JsonCodec[Expression] = JsonCodec.string.transform(Expression(_), _.asString)
+    implicit lazy val codec: JsonCodec[Expression] = JsonCodec.string.transform(Expression(_), _.asString)
   }
 
   case class Function(expression: String) extends Condition {
@@ -190,10 +205,10 @@ object Condition {
   }
 
   object Function {
-    implicit val codec: JsonCodec[Function] = JsonCodec.string.transform(Function(_), _.expression)
+    implicit lazy val codec: JsonCodec[Function] = JsonCodec.string.transform(Function(_), _.expression)
   }
 
-  implicit val codec: JsonCodec[Condition] = JsonCodec.string.transform(
+  implicit lazy val codec: JsonCodec[Condition] = JsonCodec.string.transform(
     {
       case expression if expression.startsWith("${{") => Expression(expression)
       case expression                                 => Function(expression)
@@ -212,9 +227,9 @@ object Step {
     id: Option[String] = None,
     uses: Option[ActionRef] = None,
     `if`: Option[Condition] = None,
-    `with`: Option[Map[String, String]] = None,
+    `with`: Option[ListMap[String, Json]] = None,
     run: Option[String] = None,
-    env: Option[Map[String, String]] = None
+    env: Option[ListMap[String, String]] = None
   ) extends Step {
     override def when(condition: Condition): Step =
       copy(`if` = Some(condition))
@@ -223,7 +238,9 @@ object Step {
   }
 
   object SingleStep {
-    implicit val codec: JsonCodec[SingleStep] = DeriveJsonCodec.gen[SingleStep]
+    import Workflow.listMapCodec
+
+    implicit lazy val codec: JsonCodec[SingleStep] = DeriveJsonCodec.gen[SingleStep]
   }
 
   case class StepSequence(steps: Seq[Step]) extends Step {
@@ -234,17 +251,17 @@ object Step {
       steps.flatMap(_.flatten)
   }
 
-  implicit val codec: JsonCodec[Step] = DeriveJsonCodec.gen[Step]
+  implicit lazy val codec: JsonCodec[Step] = DeriveJsonCodec.gen[Step]
 }
 
 case class ImageRef(ref: String)
 object ImageRef {
-  implicit val codec: JsonCodec[ImageRef] = JsonCodec.string.transform(ImageRef(_), _.ref)
+  implicit lazy val codec: JsonCodec[ImageRef] = JsonCodec.string.transform(ImageRef(_), _.ref)
 }
 
 case class ServicePort(inner: Int, outer: Int)
 object ServicePort {
-  implicit val codec: JsonCodec[ServicePort] = JsonCodec.string.transformOrFail(
+  implicit lazy val codec: JsonCodec[ServicePort] = JsonCodec.string.transformOrFail(
     v =>
       Try(v.split(":", 2).map(_.toInt).toList) match {
         case Success(inner :: outer :: Nil) => Right(ServicePort(inner.toInt, outer.toInt))
@@ -258,15 +275,15 @@ object ServicePort {
 case class Service(
   name: String,
   image: ImageRef,
-  env: Map[String, String] = Map.empty,
-  ports: Seq[ServicePort] = Seq.empty
+  env: Option[Map[String, String]] = None,
+  ports: Option[Seq[ServicePort]] = None
 )
 object Service {
-  implicit val codec: JsonCodec[Service] = DeriveJsonCodec.gen[Service]
+  implicit lazy val codec: JsonCodec[Service] = DeriveJsonCodec.gen[Service]
 }
 
 @jsonMemberNames(KebabCase)
-case class JobValue(
+case class Job(
   name: String,
   runsOn: String = "ubuntu-latest",
   timeoutMinutes: Option[Int] = None,
@@ -277,22 +294,43 @@ case class JobValue(
   `if`: Option[Condition] = None,
   steps: Seq[Step.SingleStep] = Seq.empty
 ) {
-  def withStrategy(strategy: Strategy): JobValue =
+
+  def id: String = name.toLowerCase().replace(" ", "-")
+
+  def withStrategy(strategy: Strategy): Job =
     copy(strategy = Some(strategy))
 
-  def withSteps(steps: Step*): JobValue = steps match {
+  def withSteps(steps: Step*): Job = steps match {
     case steps: Step.StepSequence =>
       copy(steps = steps.flatten)
     case step: Step.SingleStep =>
       copy(steps = step :: Nil)
   }
 
-  def withServices(services: Service*): JobValue =
+  def withServices(services: Service*): Job =
     copy(services = Some(services))
+
+  def withRunsOn(runsOn: String): Job =
+    copy(runsOn = runsOn)
+
+  def withName(name: String): Job =
+    copy(name = name)
+
+  def withTimeoutMinutes(timeoutMinutes: Option[Int]): Job =
+    copy(timeoutMinutes = timeoutMinutes)
+
+  def withContinueOnError(continueOnError: Boolean): Job =
+    copy(continueOnError = continueOnError)
+
+  def withStrategy(strategy: Option[Strategy]): Job =
+    copy(strategy = strategy)
+
+  def withNeeds(needs: Option[Seq[String]]): Job =
+    copy(needs = needs)
 }
 
-object JobValue {
-  implicit val codec: JsonCodec[JobValue] = DeriveJsonCodec.gen[JobValue]
+object Job {
+  implicit lazy val codec: JsonCodec[Job] = DeriveJsonCodec.gen[Job]
 }
 
 @jsonMemberNames(KebabCase)
@@ -302,36 +340,37 @@ case class Concurrency(
 )
 
 object Concurrency {
-  implicit val codec: JsonCodec[Concurrency] = DeriveJsonCodec.gen[Concurrency]
+  implicit lazy val codec: JsonCodec[Concurrency] = DeriveJsonCodec.gen[Concurrency]
 }
 
 case class Workflow(
   name: String,
-  env: ListMap[String, String] = ListMap.empty,
+  env: Option[ListMap[String, String]] = None,
   on: Option[Triggers] = None,
   concurrency: Concurrency = Concurrency(
     "${{ github.workflow }}-${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.run_id || github.ref }}"
   ),
-  jobs: ListMap[String, JobValue] = ListMap.empty
+  jobs: ListMap[String, Job] = ListMap.empty
 ) {
   def withOn(on: Triggers): Workflow =
     copy(on = Some(on))
 
-  def withJobs(jobs: (String, JobValue)*): Workflow =
+  def withJobs(jobs: (String, Job)*): Workflow =
     copy(jobs = ListMap(jobs: _*))
 
-  def addJob(job: (String, JobValue)): Workflow =
+  def addJob(job: (String, Job)): Workflow =
     copy(jobs = jobs + job)
 
-  def addJobs(newJobs: (String, JobValue)*): Workflow =
+  def addJobs(newJobs: (String, Job)*): Workflow =
     copy(jobs = jobs ++ newJobs)
 }
 
 object Workflow {
+
   implicit def listMapCodec[K: JsonFieldDecoder: JsonFieldEncoder, V: JsonCodec]: JsonCodec[ListMap[K, V]] =
     JsonCodec(
       JsonEncoder.keyValueIterable[K, V, ListMap],
       JsonDecoder.keyValueChunk[K, V].map(c => ListMap(c: _*))
     )
-  implicit val codec: JsonCodec[Workflow] = DeriveJsonCodec.gen[Workflow]
+  implicit lazy val codec: JsonCodec[Workflow] = DeriveJsonCodec.gen[Workflow]
 }

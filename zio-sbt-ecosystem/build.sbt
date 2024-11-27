@@ -27,7 +27,7 @@ addSbtPlugin("pl.project13.scala" % "sbt-jmh"      % "0.4.7")
 addSbtPlugin("pl.project13.scala" % "sbt-jcstress" % "0.2.0")
 
 // Binary Compatibility Plugin
-addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "1.1.3")
+libraryDependencies += "dev.zio" %% "zio" % "2.1.13"
 
 libraryDependencies += "dev.zio" %% "zio"           % "2.1.9"
 libraryDependencies += "dev.zio" %% "zio-json"      % "0.7.3"
