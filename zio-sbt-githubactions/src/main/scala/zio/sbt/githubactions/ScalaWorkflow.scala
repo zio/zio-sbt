@@ -16,8 +16,9 @@
 
 package zio.sbt.githubactions
 
+import scala.collection.immutable.ListMap
+
 import zio.json._
-import zio.sbt.githubactions.ScalaWorkflow.JavaVersion.JDK11
 
 // The original code of the githubactions package was originally copied from the zio-aws-codegen project:
 // https://github.com/zio/zio-aws/tree/master/zio-aws-codegen/src/main/scala/zio/aws/codegen/githubactions
@@ -29,8 +30,8 @@ object ScalaWorkflow {
       name = "Checkout current branch",
       uses = Some(ActionRef("actions/checkout@v2")),
       `with` = Some(
-        Map(
-          "fetch-depth" -> fetchDepth.toJson
+        ListMap(
+          "fetch-depth" -> fetchDepth.toJsonAST.right.get
         )
       )
     )
@@ -40,11 +41,11 @@ object ScalaWorkflow {
       name = "Setup Java and Scala",
       uses = Some(ActionRef("olafurpg/setup-scala@v11")),
       `with` = Some(
-        Map(
+        ListMap(
           "java-version" -> (javaVersion match {
             case None          => "${{ matrix.java }}"
             case Some(version) => version.asString
-          })
+          }).toJsonAST.right.get
         )
       )
     )
@@ -54,12 +55,12 @@ object ScalaWorkflow {
       name = "Setup NodeJS",
       uses = Some(ActionRef("actions/setup-node@v3")),
       `with` = Some(
-        Map(
+        ListMap(
           "node-version" -> (javaVersion match {
             case None          => "16.x"
             case Some(version) => version.asString
-          }),
-          "registry-url" -> "https://registry.npmjs.org"
+          }).toJsonAST.right.get,
+          "registry-url" -> "https://registry.npmjs.org".toJsonAST.right.get
         )
       )
     )
@@ -81,14 +82,14 @@ object ScalaWorkflow {
       name = "Cache SBT",
       uses = Some(ActionRef("actions/cache@v2")),
       `with` = Some(
-        Map(
+        ListMap(
           "path" -> Seq(
             "~/.ivy2/cache",
             "~/.sbt",
             "~/.coursier/cache/v1",
             "~/.cache/coursier/v1"
-          ).mkString("\n"),
-          "key" -> s"$osS-sbt-$scalaS-$${{ hashFiles('**/*.sbt') }}-$${{ hashFiles('**/build.properties') }}"
+          ).mkString("\n").toJsonAST.right.get,
+          "key" -> s"$osS-sbt-$scalaS-$${{ hashFiles('**/*.sbt') }}-$${{ hashFiles('**/build.properties') }}".toJsonAST.right.get
         )
       )
     )
@@ -105,7 +106,7 @@ object ScalaWorkflow {
     parameters: List[String],
     heapGb: Int = 6,
     stackMb: Int = 16,
-    env: Map[String, String] = Map.empty
+    env: ListMap[String, String] = ListMap.empty
   ): Step =
     SingleStep(
       name,
@@ -138,9 +139,9 @@ object ScalaWorkflow {
           s"Upload $id targets",
           uses = Some(ActionRef("actions/upload-artifact@v2")),
           `with` = Some(
-            Map(
-              "name" -> s"target-$id-$osS-$scalaS-$javaS",
-              "path" -> "targets.tar"
+            ListMap(
+              "name" -> s"target-$id-$osS-$scalaS-$javaS".toJsonAST.right.get,
+              "path" -> "targets.tar".toJsonAST.right.get
             )
           )
         )
@@ -164,8 +165,8 @@ object ScalaWorkflow {
           s"Download stored $id targets",
           uses = Some(ActionRef("actions/download-artifact@v2")),
           `with` = Some(
-            Map(
-              "name" -> s"target-$id-$osS-$scalaS-$javaS"
+            ListMap(
+              "name" -> s"target-$id-$osS-$scalaS-$javaS".toJsonAST.right.get
             )
           )
         ),
@@ -193,7 +194,7 @@ object ScalaWorkflow {
     SingleStep(
       "Load PGP secret",
       run = Some(".github/import-key.sh"),
-      env = Some(Map("PGP_SECRET" -> "${{ secrets.PGP_SECRET }}"))
+      env = Some(ListMap("PGP_SECRET" -> "${{ secrets.PGP_SECRET }}"))
     )
 
   def turnstyle(): Step =
@@ -201,7 +202,7 @@ object ScalaWorkflow {
       "Turnstyle",
       uses = Some(ActionRef("softprops/turnstyle@v1")),
       env = Some(
-        Map(
+        ListMap(
           "GITHUB_TOKEN" -> "${{ secrets.ADMIN_GITHUB_TOKEN }}"
         )
       )
@@ -230,30 +231,39 @@ object ScalaWorkflow {
 
   case class ScalaVersion(version: String)
 
-  trait JavaVersion {
-    val asString: String
+  sealed trait JavaVersion {
+    def distribution: String
+    def version: String
+    def asString: String = s"$distribution:$version"
   }
+
   object JavaVersion {
 
-    case class CorrettoJDK(javaVersion: String) extends JavaVersion {
-      override val asString: String = s"corretto:$javaVersion"
+    def apply(distribution: String, version: String): JavaVersion = CustomJDK(distribution, version)
+
+    case class CustomJDK(distribution: String, version: String) extends JavaVersion
+
+    case class CorrettoJDK(version: String) extends JavaVersion {
+      override def distribution: String = "corretto"
     }
 
-    val JDK11: JavaVersion = CorrettoJDK("11")
-    val JDK17: JavaVersion = CorrettoJDK("17")
-    val JDK21: JavaVersion = CorrettoJDK("21")
+    object CorrettoJDK {
+      val `11`: JavaVersion = CorrettoJDK("11")
+      val `17`: JavaVersion = CorrettoJDK("17")
+      val `21`: JavaVersion = CorrettoJDK("21")
+    }
   }
 
-  implicit class JobOps(job: JobValue) {
+  implicit class JobOps(job: Job) {
     def matrix(
       scalaVersions: Seq[ScalaVersion],
       operatingSystems: Seq[OS] = Seq(OS.UbuntuLatest),
-      javaVersions: Seq[JavaVersion] = Seq(JDK11)
-    ): JobValue =
+      javaVersions: Seq[JavaVersion] = Seq(JavaVersion.CorrettoJDK.`11`)
+    ): Job =
       job.copy(
         strategy = Some(
           Strategy(
-            matrix = Map(
+            matrix = ListMap(
               "os"    -> operatingSystems.map(_.asString).toList,
               "scala" -> scalaVersions.map(_.version).toList,
               "java"  -> javaVersions.map(_.asString).toList
@@ -263,5 +273,4 @@ object ScalaWorkflow {
         runsOn = "${{ matrix.os }}"
       )
   }
-
 }
