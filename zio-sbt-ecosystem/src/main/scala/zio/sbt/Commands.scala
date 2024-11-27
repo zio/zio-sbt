@@ -88,6 +88,9 @@ object Commands {
     val fmt: ComposableCommand =
       (quietOn >> "scalafmtSbt" >> "+scalafmt" >> "+Test / scalafmt") ?? ("fmt", "Formats source files using scalafmt.")
 
+    val checkMima: ComposableCommand =
+      (quietOn >> "+checkMima") ?? ("checkMima", "Checks binary compatibility against previous versions.")
+
     // TODO: have the correct license headers
     val lint: ComposableCommand = {
       quietOn >>
@@ -96,6 +99,7 @@ object Commands {
         "+scalafmtCheckAll" >>
 //        "+headerCheckAll" >>
         fixLint >>
+        checkMima >>
         "disableStrictCompile"
     } ?? (
       "lint",
@@ -125,6 +129,7 @@ object Commands {
       lint.toItem,
       fmt.toItem,
       fix.toItem,
+      checkMima.toItem,
       prepare.toItem,
 //      buildAll.toItem,
       prepare.toItem,

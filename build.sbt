@@ -9,13 +9,14 @@ addCommandAlias("test", "scripted")
 
 inThisBuild(
   List(
-    name               := "ZIO SBT",
-    startYear          := Some(2022),
-    scalaVersion       := Scala212,
-    crossScalaVersions := Seq(scalaVersion.value),
+    name                      := "ZIO SBT",
+    startYear                 := Some(2022),
+    scalaVersion              := Scala212,
+    defaultCrossScalaVersions := Seq(Scala212),
     developers := List(
       Developer("khajavi", "Milad Khajavi", "khajavi@gmail.com", url("https://github.com/khajavi"))
     ),
+    checkMima / skip  := true,
     ciEnabledBranches := Seq("main")
   )
 )
@@ -27,13 +28,27 @@ lazy val root = project
     publish / skip := true
   )
   .aggregate(
+    `zio-sbt-shared`,
     `zio-sbt-githubactions`,
     `zio-sbt-website`,
+    `zio-sbt-project`,
     `zio-sbt-ecosystem`,
     `zio-sbt-ci`,
     `zio-sbt-tests`
   )
-  .enablePlugins(ZioSbtCiPlugin)
+
+lazy val `zio-sbt-shared` =
+  project
+    .settings(stdSettings())
+    .settings(
+      headerEndYear := Some(2024),
+      scriptedLaunchOpts := {
+        scriptedLaunchOpts.value ++
+          Seq("-Xmx1024M", "-Dplugin.version=" + version.value)
+      },
+      scriptedBufferLog := false
+    )
+    .enablePlugins(SbtPlugin)
 
 lazy val `zio-sbt-tests` =
   project
@@ -56,6 +71,20 @@ lazy val `zio-sbt-website` =
     )
     .enablePlugins(SbtPlugin)
 
+lazy val `zio-sbt-project` =
+  project
+    .settings(stdSettings())
+    .settings(
+      headerEndYear := Some(2024),
+      scriptedLaunchOpts := {
+        scriptedLaunchOpts.value ++
+          Seq("-Xmx1024M", "-Dplugin.version=" + version.value)
+      },
+      scriptedBufferLog := false
+    )
+    .enablePlugins(SbtPlugin)
+    .dependsOn(`zio-sbt-shared`)
+
 lazy val `zio-sbt-ecosystem` =
   project
     .settings(stdSettings())
@@ -68,6 +97,7 @@ lazy val `zio-sbt-ecosystem` =
       scriptedBufferLog := false
     )
     .enablePlugins(SbtPlugin)
+    .dependsOn(`zio-sbt-project`)
 
 lazy val `zio-sbt-ci` =
   project
@@ -81,7 +111,7 @@ lazy val `zio-sbt-ci` =
       scriptedBufferLog := false
     )
     .enablePlugins(SbtPlugin)
-    .dependsOn(`zio-sbt-githubactions`)
+    .dependsOn(`zio-sbt-githubactions`, `zio-sbt-project`)
 
 lazy val `zio-sbt-githubactions` =
   project
