@@ -110,9 +110,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
               SetupLibuv,
               SetupJava(javaVersion),
               CacheDependencies
-            ) ++ checkAllCodeCompiles.flatMap(_.flatten) ++ checkArtifactBuildProcess.flatMap(
-              _.flatten
-            ) ++ checkWebsiteBuildProcess.flatMap(_.flatten)
+            ) ++ checkAllCodeCompiles ++ checkArtifactBuildProcess ++ checkWebsiteBuildProcess
         }
       )
     )
