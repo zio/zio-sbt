@@ -250,8 +250,6 @@ object Step {
     override def flatten: Seq[SingleStep] =
       steps.flatMap(_.flatten)
   }
-
-  implicit lazy val codec: JsonCodec[Step] = DeriveJsonCodec.gen[Step]
 }
 
 case class ImageRef(ref: String)
@@ -292,7 +290,7 @@ case class Job(
   needs: Option[Seq[String]] = None,
   services: Option[Seq[Service]] = None,
   `if`: Option[Condition] = None,
-  steps: Seq[Step.SingleStep] = Seq.empty
+  steps: Seq[Step] = Seq.empty
 ) {
 
   def id: String = name.toLowerCase().replace(" ", "-")
@@ -330,6 +328,8 @@ case class Job(
 }
 
 object Job {
+  implicit lazy val stepsCodec: JsonCodec[Seq[Step]] =
+    JsonCodec.seq[Step.SingleStep].transform[Seq[Step]](identity, _.flatMap(_.flatten))
   implicit lazy val codec: JsonCodec[Job] = DeriveJsonCodec.gen[Job]
 }
 
