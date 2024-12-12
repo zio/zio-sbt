@@ -129,7 +129,8 @@ object ZioSbtCiPlugin extends AutoPlugin {
       Job(
         name = "Lint",
         steps = (if (swapSizeGB > 0) Seq(setSwapSpace) else Seq.empty) ++
-          Seq(checkout, SetupLibuv, SetupJava(javaVersion), SetupSBT, CacheDependencies) ++ checkGithubWorkflow.flatMap(
+          Seq(checkout, SetupLibuv, SetupJava(javaVersion), SetupSBT, CacheDependencies) ++
+          checkGithubWorkflow.flatMap(
             _.flatten
           ) ++ Seq(lint)
       )
