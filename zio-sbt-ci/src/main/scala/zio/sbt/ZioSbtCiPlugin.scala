@@ -109,6 +109,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
               checkout,
               SetupLibuv,
               SetupJava(javaVersion),
+              SetupSbt,
               CacheDependencies
             ) ++ checkAllCodeCompiles ++ checkArtifactBuildProcess ++ checkWebsiteBuildProcess
         }
@@ -128,7 +129,8 @@ object ZioSbtCiPlugin extends AutoPlugin {
       Job(
         name = "Lint",
         steps = (if (swapSizeGB > 0) Seq(setSwapSpace) else Seq.empty) ++
-          Seq(checkout, SetupLibuv, SetupJava(javaVersion), CacheDependencies) ++ checkGithubWorkflow.flatMap(
+          Seq(checkout, SetupLibuv, SetupJava(javaVersion), SetupSbt, CacheDependencies) ++
+          checkGithubWorkflow.flatMap(
             _.flatten
           ) ++ Seq(lint)
       )
@@ -170,6 +172,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
           (if (swapSizeGB > 0) Seq(setSwapSpace) else Seq.empty) ++ Seq(
             SetupLibuv,
             SetupJava("${{ matrix.java }}"),
+            SetupSbt,
             CacheDependencies,
             checkout
           ) ++ (if (javaPlatformMatrix.values.toSet.isEmpty) {
@@ -249,6 +252,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
           Seq(
             SetupLibuv,
             SetupJava("${{ matrix.java }}"),
+            SetupSbt,
             CacheDependencies,
             checkout
           ) ++ (
@@ -303,6 +307,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
           Seq(
             SetupLibuv,
             SetupJava("${{ matrix.java }}"),
+            SetupSbt,
             CacheDependencies,
             checkout,
             Step.SingleStep(
@@ -352,6 +357,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
             checkout,
             SetupLibuv,
             SetupJava(javaVersion),
+            SetupSbt,
             CacheDependencies,
             generateReadme,
             Step.SingleStep(
@@ -438,6 +444,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
             checkout,
             SetupLibuv,
             SetupJava(javaVersion),
+            SetupSbt,
             CacheDependencies,
             release
           )
@@ -673,6 +680,11 @@ object ZioSbtCiPlugin extends AutoPlugin {
         "check-latest" -> true.toJsonAST.right.get
       )
     )
+  )
+
+  val SetupSbt: Step.SingleStep = Step.SingleStep(
+    name = "Setup SBT",
+    uses = Some(ActionRef(V("sbt/setup-sbt")))
   )
 
   lazy val CacheDependencies: Step.SingleStep = Step.SingleStep(
