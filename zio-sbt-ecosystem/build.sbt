@@ -30,5 +30,5 @@ addSbtPlugin("pl.project13.scala" % "sbt-jcstress" % "0.2.0")
 addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "1.1.4")
 
 libraryDependencies += "dev.zio" %% "zio"           % "2.1.14"
-libraryDependencies += "dev.zio" %% "zio-json"      % "0.7.3"
-libraryDependencies += "dev.zio" %% "zio-json-yaml" % "0.7.3"
+libraryDependencies += "dev.zio" %% "zio-json"      % "0.7.4"
+libraryDependencies += "dev.zio" %% "zio-json-yaml" % "0.7.4"
