@@ -76,7 +76,7 @@ object Trigger {
   }
 
   case class WorkflowDispatch(
-    inputs: Option[ListMap[String, InputValue]] = None
+    inputs: ListMap[String, InputValue] = ListMap.empty
   ) extends Trigger
 
   object WorkflowDispatch {
@@ -120,10 +120,10 @@ object Trigger {
 
   @jsonMemberNames(KebabCase)
   case class PullRequest(
-    // types: Option[Seq[PullRequestType]] = None,
-    branches: Option[Seq[Branch]] = None,
-    branchesIgnore: Option[Seq[Branch]] = None,
-    paths: Option[Seq[String]] = None
+    // types: Seq[PullRequestType] = Seq.empty,
+    branches: Seq[Branch] = Seq.empty,
+    branchesIgnore: Seq[Branch] = Seq.empty,
+    paths: Seq[String] = Seq.empty
   ) extends Trigger
 
   object PullRequest {
@@ -131,8 +131,8 @@ object Trigger {
   }
 
   case class Push(
-    branches: Option[Seq[Branch]] = None,
-    branchesIgnore: Option[Seq[Branch]] = None
+    branches: Seq[Branch] = Seq.empty,
+    branchesIgnore: Seq[Branch] = Seq.empty
   ) extends Trigger
 
   object Push {
@@ -140,8 +140,8 @@ object Trigger {
   }
 
   case class Create(
-    branches: Option[Seq[Branch]] = None,
-    branchesIgnore: Option[Seq[Branch]] = None
+    branches: Seq[Branch] = Seq.empty,
+    branchesIgnore: Seq[Branch] = Seq.empty
   ) extends Trigger
 
   object Create {
@@ -227,10 +227,14 @@ object Step {
     id: Option[String] = None,
     uses: Option[ActionRef] = None,
     `if`: Option[Condition] = None,
-    `with`: Option[ListMap[String, Json]] = None,
+    `with`: ListMap[String, Json] = ListMap.empty,
     run: Option[String] = None,
-    env: Option[ListMap[String, String]] = None
+    env: ListMap[String, String] = ListMap.empty
   ) extends Step {
+
+    @deprecated("Use `if` instead", "0.4.0-alpha.29")
+    def condition: Option[Condition] = `if`
+
     override def when(condition: Condition): Step =
       copy(`if` = Some(condition))
 
@@ -273,8 +277,8 @@ object ServicePort {
 case class Service(
   name: String,
   image: ImageRef,
-  env: Option[Map[String, String]] = None,
-  ports: Option[Seq[ServicePort]] = None
+  env: Map[String, String] = Map.empty,
+  ports: Seq[ServicePort] = Seq.empty
 )
 object Service {
   implicit lazy val codec: JsonCodec[Service] = DeriveJsonCodec.gen[Service]
@@ -287,13 +291,16 @@ case class Job(
   timeoutMinutes: Option[Int] = None,
   continueOnError: Boolean = false,
   strategy: Option[Strategy] = None,
-  needs: Option[Seq[String]] = None,
-  services: Option[Seq[Service]] = None,
+  needs: Seq[String] = Seq.empty,
+  services: Seq[Service] = Seq.empty,
   `if`: Option[Condition] = None,
   steps: Seq[Step] = Seq.empty
 ) {
 
   def id: String = name.toLowerCase().replace(" ", "-")
+
+  @deprecated("Use `if` instead", "0.4.0-alpha.29")
+  def condition: Option[Condition] = `if`
 
   def withStrategy(strategy: Strategy): Job =
     copy(strategy = Some(strategy))
@@ -306,7 +313,7 @@ case class Job(
   }
 
   def withServices(services: Service*): Job =
-    copy(services = Some(services))
+    copy(services = services)
 
   def withRunsOn(runsOn: String): Job =
     copy(runsOn = runsOn)
@@ -323,7 +330,7 @@ case class Job(
   def withStrategy(strategy: Option[Strategy]): Job =
     copy(strategy = strategy)
 
-  def withNeeds(needs: Option[Seq[String]]): Job =
+  def withNeeds(needs: Seq[String]): Job =
     copy(needs = needs)
 }
 
@@ -331,6 +338,7 @@ object Job {
   implicit lazy val stepsCodec: JsonCodec[Seq[Step]] =
     JsonCodec.seq[Step.SingleStep].transform[Seq[Step]](identity, _.flatMap(_.flatten))
   implicit lazy val codec: JsonCodec[Job] = DeriveJsonCodec.gen[Job]
+
 }
 
 @jsonMemberNames(KebabCase)
@@ -345,7 +353,7 @@ object Concurrency {
 
 case class Workflow(
   name: String,
-  env: Option[ListMap[String, String]] = None,
+  env: ListMap[String, String] = ListMap.empty,
   on: Option[Triggers] = None,
   concurrency: Concurrency = Concurrency(
     "${{ github.workflow }}-${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.run_id || github.ref }}"
