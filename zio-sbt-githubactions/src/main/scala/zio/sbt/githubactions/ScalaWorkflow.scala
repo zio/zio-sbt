@@ -29,10 +29,8 @@ object ScalaWorkflow {
     SingleStep(
       name = "Checkout current branch",
       uses = Some(ActionRef("actions/checkout@v2")),
-      `with` = Some(
-        ListMap(
-          "fetch-depth" -> fetchDepth.toJsonAST.right.get
-        )
+      `with` = ListMap(
+        "fetch-depth" -> fetchDepth.toJsonAST.right.get
       )
     )
 
@@ -40,13 +38,11 @@ object ScalaWorkflow {
     SingleStep(
       name = "Setup Java and Scala",
       uses = Some(ActionRef("olafurpg/setup-scala@v11")),
-      `with` = Some(
-        ListMap(
-          "java-version" -> (javaVersion match {
-            case None          => "${{ matrix.java }}"
-            case Some(version) => version.asString
-          }).toJsonAST.right.get
-        )
+      `with` = ListMap(
+        "java-version" -> (javaVersion match {
+          case None          => "${{ matrix.java }}"
+          case Some(version) => version.asString
+        }).toJsonAST.right.get
       )
     )
 
@@ -54,14 +50,12 @@ object ScalaWorkflow {
     SingleStep(
       name = "Setup NodeJS",
       uses = Some(ActionRef("actions/setup-node@v3")),
-      `with` = Some(
-        ListMap(
-          "node-version" -> (javaVersion match {
-            case None          => "16.x"
-            case Some(version) => version.asString
-          }).toJsonAST.right.get,
-          "registry-url" -> "https://registry.npmjs.org".toJsonAST.right.get
-        )
+      `with` = ListMap(
+        "node-version" -> (javaVersion match {
+          case None          => "16.x"
+          case Some(version) => version.asString
+        }).toJsonAST.right.get,
+        "registry-url" -> "https://registry.npmjs.org".toJsonAST.right.get
       )
     )
 
@@ -81,16 +75,14 @@ object ScalaWorkflow {
     SingleStep(
       name = "Cache SBT",
       uses = Some(ActionRef("actions/cache@v2")),
-      `with` = Some(
-        ListMap(
-          "path" -> Seq(
-            "~/.ivy2/cache",
-            "~/.sbt",
-            "~/.coursier/cache/v1",
-            "~/.cache/coursier/v1"
-          ).mkString("\n").toJsonAST.right.get,
-          "key" -> s"$osS-sbt-$scalaS-$${{ hashFiles('**/*.sbt') }}-$${{ hashFiles('**/build.properties') }}".toJsonAST.right.get
-        )
+      `with` = ListMap(
+        "path" -> Seq(
+          "~/.ivy2/cache",
+          "~/.sbt",
+          "~/.coursier/cache/v1",
+          "~/.cache/coursier/v1"
+        ).mkString("\n").toJsonAST.right.get,
+        "key" -> s"$osS-sbt-$scalaS-$${{ hashFiles('**/*.sbt') }}-$${{ hashFiles('**/build.properties') }}".toJsonAST.right.get
       )
     )
   }
@@ -113,7 +105,7 @@ object ScalaWorkflow {
       run = Some(
         s"sbt -J-XX:+UseG1GC -J-Xmx${heapGb}g -J-Xms${heapGb}g -J-Xss${stackMb}m ${parameters.mkString(" ")}"
       ),
-      env = Some(env).filter(_.nonEmpty)
+      env = env
     )
 
   def storeTargets(
@@ -138,11 +130,9 @@ object ScalaWorkflow {
         SingleStep(
           s"Upload $id targets",
           uses = Some(ActionRef("actions/upload-artifact@v2")),
-          `with` = Some(
-            ListMap(
-              "name" -> s"target-$id-$osS-$scalaS-$javaS".toJsonAST.right.get,
-              "path" -> "targets.tar".toJsonAST.right.get
-            )
+          `with` = ListMap(
+            "name" -> s"target-$id-$osS-$scalaS-$javaS".toJsonAST.right.get,
+            "path" -> "targets.tar".toJsonAST.right.get
           )
         )
       )
@@ -164,10 +154,8 @@ object ScalaWorkflow {
         SingleStep(
           s"Download stored $id targets",
           uses = Some(ActionRef("actions/download-artifact@v2")),
-          `with` = Some(
-            ListMap(
-              "name" -> s"target-$id-$osS-$scalaS-$javaS".toJsonAST.right.get
-            )
+          `with` = ListMap(
+            "name" -> s"target-$id-$osS-$scalaS-$javaS".toJsonAST.right.get
           )
         ),
         SingleStep(
@@ -194,17 +182,15 @@ object ScalaWorkflow {
     SingleStep(
       "Load PGP secret",
       run = Some(".github/import-key.sh"),
-      env = Some(ListMap("PGP_SECRET" -> "${{ secrets.PGP_SECRET }}"))
+      env = ListMap("PGP_SECRET" -> "${{ secrets.PGP_SECRET }}")
     )
 
   def turnstyle(): Step =
     SingleStep(
       "Turnstyle",
       uses = Some(ActionRef("softprops/turnstyle@v1")),
-      env = Some(
-        ListMap(
-          "GITHUB_TOKEN" -> "${{ secrets.ADMIN_GITHUB_TOKEN }}"
-        )
+      env = ListMap(
+        "GITHUB_TOKEN" -> "${{ secrets.ADMIN_GITHUB_TOKEN }}"
       )
     )
 
