@@ -8,7 +8,7 @@ addSbtPlugin("com.github.cb372" % "sbt-explicit-dependencies" % "0.3.1")
 
 // Versioning and Release Plugins
 addSbtPlugin("com.eed3si9n"   % "sbt-buildinfo"  % "0.12.0")
-addSbtPlugin("com.github.sbt" % "sbt-ci-release" % "1.5.12")
+addSbtPlugin("com.github.sbt" % "sbt-ci-release" % "1.9.2")
 
 // Docs Plugins
 addSbtPlugin("org.scalameta"     % "sbt-mdoc"   % "2.5.4")
