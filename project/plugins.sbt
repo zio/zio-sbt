@@ -8,7 +8,7 @@ addSbtPlugin("com.github.cb372" % "sbt-explicit-dependencies" % "0.3.1")
 
 // Versioning and Release Plugins
 addSbtPlugin("com.eed3si9n"   % "sbt-buildinfo"  % "0.13.1")
-addSbtPlugin("com.github.sbt" % "sbt-ci-release" % "1.5.12")
+addSbtPlugin("com.github.sbt" % "sbt-ci-release" % "1.9.2")
 
 // Docs Plugins
 addSbtPlugin("org.scalameta"     % "sbt-mdoc"   % "2.5.4")
@@ -25,6 +25,6 @@ addSbtPlugin("org.portable-scala" % "sbt-platform-deps"             % "1.0.2")
 // Benchmarking Plugins
 addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.4.7")
 
-libraryDependencies += "org.snakeyaml" % "snakeyaml-engine" % "2.7"
+libraryDependencies += "org.snakeyaml" % "snakeyaml-engine" % "2.8"
 libraryDependencies += "dev.zio"      %% "zio"              % "2.1.14"
 libraryDependencies += "io.circe"     %% "circe-yaml"       % "0.15.2"
