@@ -190,7 +190,6 @@ trait ScalaCompilerSettings {
             )
           } else Seq.empty
         },
-        Test / parallelExecution := scalaBinaryVersion.value != "3", // why not parallel execution for Scala 3?
         incOptions ~= (_.withLogRecompileOnMacro(false)),
         autoAPIMappings := true,
         unusedCompileDependenciesFilter -= moduleFilter("org.scala-js", "scalajs-library")
