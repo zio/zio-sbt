@@ -3,5 +3,5 @@ addSbtPlugin("com.github.sbt"                    % "sbt-unidoc"       % "0.5.0")
 addSbtPlugin("com.thoughtworks.sbt-api-mappings" % "sbt-api-mappings" % "3.0.2")
 
 libraryDependencies += "dev.zio" %% "zio"           % "2.1.14"
-libraryDependencies += "dev.zio" %% "zio-json"      % "0.7.4"
-libraryDependencies += "dev.zio" %% "zio-json-yaml" % "0.7.4"
+libraryDependencies += "dev.zio" %% "zio-json"      % "0.7.7"
+libraryDependencies += "dev.zio" %% "zio-json-yaml" % "0.7.7"
