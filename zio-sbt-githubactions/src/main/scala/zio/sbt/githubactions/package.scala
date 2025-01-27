@@ -1,7 +1,6 @@
 package zio.sbt
 
-import zio.json.ExplicitEmptyCollections
-import zio.json.JsonCodecConfiguration
+import zio.json.{ExplicitEmptyCollections, JsonCodecConfiguration}
 
 package object githubactions {
   implicit val jsonConfig: JsonCodecConfiguration =
