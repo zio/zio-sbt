@@ -30,32 +30,32 @@ import zio.sbt.WebsiteUtils.{readFile, removeYamlHeader}
 object WebsitePlugin extends sbt.AutoPlugin {
 
   object autoImport {
-    val compileDocs: InputKey[Unit]                 = inputKey[Unit]("Compile docs")
-    val installWebsite: TaskKey[Unit]               = taskKey[Unit]("Install the website for the first time")
-    val buildWebsite: TaskKey[Unit]                 = taskKey[Unit]("Build website (default output: target/website/build)")
-    val previewWebsite: TaskKey[Unit]               = taskKey[Unit]("preview website")
-    val publishToNpm: InputKey[Unit]                = inputKey[Unit]("Publish website to the npm registry")
-    val publishSnapshotToNpm: InputKey[Unit]        = inputKey[Unit]("Publish snapshot version of website to the npm registry")
-    val publishHashverToNpm: InputKey[Unit]         = inputKey[Unit]("Publish hash version of website to the npm registry")
-    val checkReadme: TaskKey[Unit]                  = taskKey[Unit]("Make sure if the README.md file is up-to-date")
-    val generateReadme: TaskKey[Unit]               = taskKey[Unit]("Generate readme file")
-    val npmToken: SettingKey[String]                = settingKey[String]("NPM Token")
-    val docsDependencies: SettingKey[Seq[ModuleID]] = settingKey[Seq[ModuleID]]("documentation project dependencies")
-    val websiteDir: SettingKey[Path]                = settingKey[Path]("Website directory")
-    val projectStage: SettingKey[ProjectStage]      = settingKey[ProjectStage]("Project stage")
-    val projectName: SettingKey[String]             = settingKey[String]("Project name e.g. ZIO SBT")
-    val mainModuleName: SettingKey[String]          = settingKey[String]("Main Module Name e.g. zio-sbt")
-    val ciWorkflowName: SettingKey[String]          = settingKey[String]("CI Workflow Name")
-    val projectHomePage: SettingKey[String]         = settingKey[String]("Project home page url e.g. https://zio.dev/zio-sbt")
-    val readmeBanner: SettingKey[String]            = settingKey[String]("Readme banner section")
-    val readmeDocumentation: SettingKey[String]     = settingKey[String]("Readme documentation section")
-    val readmeContribution: SettingKey[String]      = settingKey[String]("Readme contribution section")
-    val readmeCodeOfConduct: SettingKey[String]     = settingKey[String]("Readme code of conduct")
-    val readmeSupport: SettingKey[String]           = settingKey[String]("Readme support section")
-    val readmeLicense: SettingKey[String]           = settingKey[String]("Readme license section")
-    val readmeAcknowledgement: SettingKey[String]   = settingKey[String]("Acknowledgement section")
-    val readmeCredits: SettingKey[String]           = settingKey[String]("Credits section")
-    val readmeMaintainers: SettingKey[String]       = settingKey[String]("Maintainers section")
+    val compileDocs: InputKey[Unit]                        = inputKey[Unit]("Compile docs")
+    val installWebsite: TaskKey[Unit]                      = taskKey[Unit]("Install the website for the first time")
+    val buildWebsite: TaskKey[Unit]                        = taskKey[Unit]("Build website (default output: target/website/build)")
+    val previewWebsite: TaskKey[Unit]                      = taskKey[Unit]("preview website")
+    val publishToNpm: InputKey[Unit]                       = inputKey[Unit]("Publish website to the npm registry")
+    val publishSnapshotToNpm: InputKey[Unit]               = inputKey[Unit]("Publish snapshot version of website to the npm registry")
+    val publishHashverToNpm: InputKey[Unit]                = inputKey[Unit]("Publish hash version of website to the npm registry")
+    val checkReadme: TaskKey[Unit]                         = taskKey[Unit]("Make sure if the README.md file is up-to-date")
+    val generateReadme: TaskKey[Unit]                      = taskKey[Unit]("Generate readme file")
+    val npmToken: SettingKey[String]                       = settingKey[String]("NPM Token")
+    val docsDependencies: SettingKey[Seq[ModuleID]]        = settingKey[Seq[ModuleID]]("documentation project dependencies")
+    val websiteDir: SettingKey[Path]                       = settingKey[Path]("Website directory")
+    val projectStage: SettingKey[ProjectStage]             = settingKey[ProjectStage]("Project stage")
+    val projectName: SettingKey[String]                    = settingKey[String]("Project name e.g. ZIO SBT")
+    val mainModuleName: SettingKey[String]                 = settingKey[String]("Main Module Name e.g. zio-sbt")
+    val ciWorkflowName: SettingKey[String]                 = settingKey[String]("CI Workflow Name")
+    val projectHomePage: SettingKey[String]                = settingKey[String]("Project home page url e.g. https://zio.dev/zio-sbt")
+    val readmeBanner: SettingKey[String]                   = settingKey[String]("Readme banner section")
+    val readmeDocumentation: SettingKey[String]            = settingKey[String]("Readme documentation section")
+    val readmeContribution: SettingKey[String]             = settingKey[String]("Readme contribution section")
+    val readmeCodeOfConduct: SettingKey[String]            = settingKey[String]("Readme code of conduct")
+    val readmeSupport: SettingKey[String]                  = settingKey[String]("Readme support section")
+    val readmeLicense: SettingKey[String]                  = settingKey[String]("Readme license section")
+    val readmeAcknowledgement: SettingKey[String]          = settingKey[String]("Acknowledgement section")
+    val readmeCredits: SettingKey[String]                  = settingKey[String]("Credits section")
+    val readmeMaintainers: SettingKey[String]              = settingKey[String]("Maintainers section")
     val docsVersioningScheme: SettingKey[VersioningScheme] =
       settingKey[VersioningScheme]("Versioning scheme used for docs package")
     val docsVersion: SettingKey[String] = settingKey[String]("Docs package version")
@@ -94,7 +94,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
           "VERSION"          -> WebsiteUtils.releaseVersion(sLog.value.warn(_)).getOrElse(version.value),
           "RELEASE_VERSION"  -> WebsiteUtils.releaseVersion(sLog.value.warn(_)).getOrElse("NOT RELEASED YET"),
           "SNAPSHOT_VERSION" -> version.value,
-          "PROJECT_BADGES" -> {
+          "PROJECT_BADGES"   -> {
             WebsiteUtils.generateProjectBadges(
               projectStage = projectStage.value,
               groupId = organization.value,
