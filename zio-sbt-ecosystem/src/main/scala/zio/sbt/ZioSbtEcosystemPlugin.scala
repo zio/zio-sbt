@@ -118,7 +118,7 @@ object ZioSbtEcosystemPlugin extends AutoPlugin {
       organization   := "dev.zio",
       homepage       := Some(url(s"https://zio.dev/${normalizedName.value}")),
       normalizedName := (ThisBuild / name).value.toLowerCase.replaceAll(" ", "-"),
-      scmInfo := Some(
+      scmInfo        := Some(
         ScmInfo(
           homepage.value.get,
           s"scm:git:git@github.com:zio/${normalizedName}.git"

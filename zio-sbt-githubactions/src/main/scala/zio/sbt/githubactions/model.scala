@@ -268,7 +268,7 @@ object Job {
           "runs-on"           := job.runsOn,
           "continue-on-error" := job.continueOnError,
           "strategy"          := job.strategy,
-          "needs" := (if (job.need.nonEmpty) job.need.asJson
+          "needs"             := (if (job.need.nonEmpty) job.need.asJson
                       else Json.Null),
           "services" := (if (job.services.nonEmpty) {
                            Json.obj(
@@ -308,7 +308,7 @@ object Workflow {
         .obj(
           "name" := wf.name,
           "env"  := wf.env,
-          "on" := (if (wf.triggers.isEmpty)
+          "on"   := (if (wf.triggers.isEmpty)
                      Json.Null
                    else {
                      Json.obj(

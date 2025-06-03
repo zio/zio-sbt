@@ -149,7 +149,7 @@ object WebsiteUtils {
     val maintainersSection     = if (maintainers.nonEmpty) s"\n## Maintainers\n\n$maintainers\n" else ""
     val acknowledgementSection = if (acknowledgement.nonEmpty) s"\n## Acknowledgement\n\n$acknowledgement\n" else ""
     val licenseSection         = s"\n## License\n\n$license\n"
-    val readme =
+    val readme                 =
       commentSection + banner + introductionSection + documentationSection + contributingSection + codeOfConductSection +
         supportSection + maintainersSection + creditsSection + acknowledgementSection + licenseSection
 
