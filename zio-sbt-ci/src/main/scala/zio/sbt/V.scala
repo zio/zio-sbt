@@ -6,7 +6,7 @@ object V {
       "peter-evans/create-pull-request" -> "v7",
       "zio/generate-github-app-token"   -> "v1.0.0",
       "pierotofy/set-swap-space"        -> "master",
-      "actions/checkout"                -> "v4",
+      "actions/checkout"                -> "v5",
       "coursier/cache-action"           -> "v6",
       "actions/setup-java"              -> "v4",
       "actions/setup-node"              -> "v4",
