@@ -12,7 +12,7 @@ addSbtPlugin("com.github.sbt" % "sbt-ci-release" % "1.11.2")
 
 // Docs Plugins
 addSbtPlugin("org.scalameta"     % "sbt-mdoc"   % "2.7.2")
-addSbtPlugin("com.github.sbt"    % "sbt-unidoc" % "0.5.0")
+addSbtPlugin("com.github.sbt"    % "sbt-unidoc" % "0.6.0")
 addSbtPlugin("de.heikoseeberger" % "sbt-header" % "5.10.0")
 
 // Cross-Compiler Plugins
