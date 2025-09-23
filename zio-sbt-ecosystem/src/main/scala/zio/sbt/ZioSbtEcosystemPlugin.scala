@@ -20,11 +20,11 @@ import scala.collection.immutable.ListMap
 
 import com.jsuereth.sbtpgp.SbtPgp.autoImport._
 import org.scalafmt.sbt.ScalafmtPlugin
-import sbtheader.HeaderPlugin
 import sbt.Keys._
 import sbt.nio.Keys.{ReloadOnSourceChanges, onChangedBuildSource}
 import sbt.{Def, _}
 import sbtbuildinfo.BuildInfoPlugin
+import sbtheader.HeaderPlugin
 import scalafix.sbt.ScalafixPlugin
 
 object ZioSbtEcosystemPlugin extends AutoPlugin {
