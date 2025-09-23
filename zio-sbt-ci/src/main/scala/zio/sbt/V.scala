@@ -9,7 +9,7 @@ object V {
       "actions/checkout"                -> "v5",
       "coursier/cache-action"           -> "v6",
       "actions/setup-java"              -> "v5",
-      "actions/setup-node"              -> "v4",
+      "actions/setup-node"              -> "v5.0.0",
       "sbt/setup-sbt"                   -> "v1"
     ).map { case (k, v) => (k, s"$k@$v") }.apply(packageName)
 }
