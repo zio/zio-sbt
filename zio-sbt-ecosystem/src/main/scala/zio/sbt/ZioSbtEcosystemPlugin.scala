@@ -20,6 +20,7 @@ import scala.collection.immutable.ListMap
 
 import com.jsuereth.sbtpgp.SbtPgp.autoImport._
 import org.scalafmt.sbt.ScalafmtPlugin
+import sbtheader.HeaderPlugin
 import sbt.Keys._
 import sbt.nio.Keys.{ReloadOnSourceChanges, onChangedBuildSource}
 import sbt.{Def, _}
@@ -31,7 +32,7 @@ object ZioSbtEcosystemPlugin extends AutoPlugin {
   override def trigger = allRequirements
 
   override def requires: Plugins =
-    super.requires && ScalafixPlugin && ScalafmtPlugin && BuildInfoPlugin
+    super.requires && HeaderPlugin && ScalafixPlugin && ScalafmtPlugin && BuildInfoPlugin
 
   object autoImport extends ScalaCompilerSettings {
 
