@@ -355,7 +355,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
       Job(
         id = "update-readme",
         name = "Update README",
-        condition = updateReadmeCondition orElse Some(Condition.Expression("github.event_name == 'push'")),
+        condition = updateReadmeCondition orElse Some(Condition.Expression("github.ref == format('refs/heads/{0}', github.event.repository.default_branch)")),
         steps = (if (swapSizeGB > 0) Seq(setSwapSpace) else Seq.empty) ++
           Seq(
             checkout,
@@ -435,7 +435,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
         id = "release",
         name = "Release",
         need = jobs,
-        condition = Some(Condition.Expression("github.ref == format('refs/heads/{0}', github.event.repository.default_branch)")),
+        condition = Some(Condition.Expression("github.event_name != 'pull_request'")),
         steps = (if (swapSizeGB > 0) Seq(setSwapSpace) else Seq.empty) ++
           Seq(
             checkout,
