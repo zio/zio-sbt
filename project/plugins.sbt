@@ -20,7 +20,7 @@ addSbtPlugin("org.portable-scala" % "sbt-scala-native-crossproject" % "1.3.2")
 addSbtPlugin("org.portable-scala" % "sbt-platform-deps"             % "1.0.2")
 
 // Benchmarking Plugins
-addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.4.7")
+addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.4.8")
 
 libraryDependencies += "org.snakeyaml" % "snakeyaml-engine" % "2.10"
 libraryDependencies += "dev.zio"      %% "zio"              % "2.1.21"

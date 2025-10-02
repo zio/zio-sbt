@@ -20,7 +20,7 @@ addSbtPlugin("org.portable-scala" % "sbt-scala-native-crossproject" % "1.3.2")
 addSbtPlugin("org.portable-scala" % "sbt-platform-deps"             % "1.0.2")
 
 // Benchmarking Plugins
-addSbtPlugin("pl.project13.scala" % "sbt-jmh"      % "0.4.7")
+addSbtPlugin("pl.project13.scala" % "sbt-jmh"      % "0.4.8")
 addSbtPlugin("pl.project13.scala" % "sbt-jcstress" % "0.2.0")
 
 // Binary Compatibility Plugin
