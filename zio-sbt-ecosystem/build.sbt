@@ -1,6 +1,6 @@
 // Linting Plugins
 addSbtPlugin("org.scalameta"    % "sbt-scalafmt"              % "2.5.5")
-addSbtPlugin("ch.epfl.scala"    % "sbt-scalafix"              % "0.14.3")
+addSbtPlugin("ch.epfl.scala"    % "sbt-scalafix"              % "0.14.4")
 addSbtPlugin("com.github.cb372" % "sbt-explicit-dependencies" % "0.3.1")
 
 // Versioning and Release Plugins
@@ -27,5 +27,5 @@ addSbtPlugin("pl.project13.scala" % "sbt-jcstress" % "0.2.0")
 addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "1.1.4")
 
 libraryDependencies += "org.snakeyaml" % "snakeyaml-engine" % "2.10"
-libraryDependencies += "dev.zio"      %% "zio"              % "2.1.21"
+libraryDependencies += "dev.zio"      %% "zio"              % "2.1.22"
 libraryDependencies += "io.circe"     %% "circe-yaml"       % "0.15.2"
