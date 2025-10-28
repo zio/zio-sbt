@@ -19,12 +19,12 @@ package zio.sbt
 import scala.collection.immutable.ListMap
 
 import com.jsuereth.sbtpgp.SbtPgp.autoImport._
-import de.heikoseeberger.sbtheader.HeaderPlugin
 import org.scalafmt.sbt.ScalafmtPlugin
 import sbt.Keys._
 import sbt.nio.Keys.{ReloadOnSourceChanges, onChangedBuildSource}
 import sbt.{Def, _}
 import sbtbuildinfo.BuildInfoPlugin
+import sbtheader.HeaderPlugin
 import scalafix.sbt.ScalafixPlugin
 
 object ZioSbtEcosystemPlugin extends AutoPlugin {
@@ -118,7 +118,7 @@ object ZioSbtEcosystemPlugin extends AutoPlugin {
       organization   := "dev.zio",
       homepage       := Some(url(s"https://zio.dev/${normalizedName.value}")),
       normalizedName := (ThisBuild / name).value.toLowerCase.replaceAll(" ", "-"),
-      scmInfo := Some(
+      scmInfo        := Some(
         ScmInfo(
           homepage.value.get,
           s"scm:git:git@github.com:zio/${normalizedName}.git"

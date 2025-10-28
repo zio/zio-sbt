@@ -13,7 +13,7 @@ inThisBuild(
     startYear          := Some(2022),
     scalaVersion       := Scala212,
     crossScalaVersions := Seq(scalaVersion.value),
-    developers := List(
+    developers         := List(
       Developer("khajavi", "Milad Khajavi", "khajavi@gmail.com", url("https://github.com/khajavi"))
     ),
     ciEnabledBranches := Seq("main")
@@ -47,7 +47,7 @@ lazy val `zio-sbt-website` =
   project
     .settings(stdSettings())
     .settings(
-      headerEndYear := Some(2023),
+      headerEndYear      := Some(2023),
       scriptedLaunchOpts := {
         scriptedLaunchOpts.value ++
           Seq("-Xmx1024M", "-Dplugin.version=" + version.value)
@@ -60,7 +60,7 @@ lazy val `zio-sbt-ecosystem` =
   project
     .settings(stdSettings())
     .settings(
-      headerEndYear := Some(2023),
+      headerEndYear      := Some(2023),
       scriptedLaunchOpts := {
         scriptedLaunchOpts.value ++
           Seq("-Xmx1024M", "-Dplugin.version=" + version.value)
@@ -73,7 +73,7 @@ lazy val `zio-sbt-ci` =
   project
     .settings(stdSettings())
     .settings(
-      headerEndYear := Some(2023),
+      headerEndYear      := Some(2023),
       scriptedLaunchOpts := {
         scriptedLaunchOpts.value ++
           Seq("-Xmx1024M", "-Dplugin.version=" + version.value)
@@ -101,7 +101,7 @@ lazy val docs = project
     projectStage                               := ProjectStage.ProductionReady,
     ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(`zio-sbt-website`),
     headerLicense                              := None,
-    readmeContribution := readmeContribution.value +
+    readmeContribution                         := readmeContribution.value +
       """|
          |#### TL;DR
          |
