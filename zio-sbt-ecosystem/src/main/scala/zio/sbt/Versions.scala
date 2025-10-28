@@ -26,7 +26,7 @@ object Versions {
   val scala212 = "2.12.20"
   val scala213 = "2.13.17"
 
-  val zioVersion = "2.1.21"
+  val zioVersion = "2.1.22"
 
   lazy val betterMonadFor: ModuleID = "com.olegpy" %% "better-monadic-for" % "0.3.1"
 }
