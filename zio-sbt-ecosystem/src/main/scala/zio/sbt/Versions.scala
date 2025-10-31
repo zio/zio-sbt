@@ -19,14 +19,14 @@ package zio.sbt
 import sbt._
 
 object Versions {
-  val KindProjectorVersion = "0.13.3"
+  val KindProjectorVersion = "0.13.4"
   val ScaluzziVersion      = "0.1.23"
 
-  val scala3   = "3.3.3"
+  val scala3   = "3.3.7"
   val scala212 = "2.12.20"
-  val scala213 = "2.13.13"
+  val scala213 = "2.13.17"
 
-  val zioVersion = "2.0.21"
+  val zioVersion = "2.0.22"
 
   lazy val betterMonadFor: ModuleID = "com.olegpy" %% "better-monadic-for" % "0.3.1"
 }

@@ -13,9 +13,9 @@ _ZIO SBT_ contains multiple sbt plugins that are useful for ZIO projects. It pro
 Add the following lines to your `plugin.sbt` file:
 
 ```scala
-addSbtPlugin("dev.zio" % "zio-sbt-ecosystem" % "0.4.0-alpha.34")
-addSbtPlugin("dev.zio" % "zio-sbt-ci"        % "0.4.0-alpha.34")
-addSbtPlugin("dev.zio" % "zio-sbt-website"   % "0.4.0-alpha.34")
+addSbtPlugin("dev.zio" % "zio-sbt-ecosystem" % "0.4.0-alpha.35")
+addSbtPlugin("dev.zio" % "zio-sbt-ci"        % "0.4.0-alpha.35")
+addSbtPlugin("dev.zio" % "zio-sbt-website"   % "0.4.0-alpha.35")
 ```
 
 Then you can enable them by using the following code in your `build.sbt` file:
@@ -98,7 +98,7 @@ ZIO SBT CI plugin generates a default GitHub workflow that includes common CI ta
 To use ZIO SBT CI plugin, add the following lines to your `plugins.sbt` file:
 
 ```scala
-addSbtPlugin("dev.zio" % "zio-sbt-ci" % "0.4.0-alpha.34")
+addSbtPlugin("dev.zio" % "zio-sbt-ci" % "0.4.0-alpha.35")
 
 resolvers ++= Resolver.sonatypeOssRepos("public")
 ```
@@ -168,12 +168,12 @@ In some cases, we may have multiple submodules in our project and we want to tes
 
 The `ciTargetScalaVersions` setting key is used to define a mapping of project names to the Scala versions that should be used for testing phase of continuous integration (CI).
 
-For example, suppose we have a project with the name "submoduleA" and we want to test it against Scala `2.12.19`, and for the "submoduleB" we want to test it against Scala `2.12.19` and `2.13.13` and `3.3.3`, We can define the `ciTargetScalaVersions` setting as follows:
+For example, suppose we have a project with the name "submoduleA" and we want to test it against Scala `2.12.20`, and for the "submoduleB" we want to test it against Scala `2.12.20` and `2.13.17` and `3.3.7`, We can define the `ciTargetScalaVersions` setting as follows:
 
 ```scala
 ThisBuild / ciTargetScalaVersions := Map(
-    "submoduleA" -> Seq("2.12.19"),
-    "submoduleB" -> Seq("2.12.19", "2.13.13", "3.3.3")
+    "submoduleA" -> Seq("2.12.20"),
+    "submoduleB" -> Seq("2.12.20", "2.13.17", "3.3.7")
   )
 ```
 
@@ -206,10 +206,10 @@ test:
     matrix:
       java: ['11', '17', '21']
       scala-project:
-      - ++2.12.19 submoduleA
-      - ++2.12.19 submoduleB
-      - ++2.13.13 submoduleB
-      - ++3.3.3 submoduleB
+      - ++2.12.20 submoduleA
+      - ++2.12.20 submoduleB
+      - ++2.13.17 submoduleB
+      - ++3.3.7 submoduleB
   steps:
   - name: Install libuv
     run: sudo apt-get update && sudo apt-get install -y libuv1-dev
