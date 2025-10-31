@@ -49,8 +49,8 @@ object ScalaWorkflow {
   def setupNode(javaVersion: Option[JavaVersion] = None): Step =
     SingleStep(
       name = "Setup NodeJS",
-      uses = Some(ActionRef("actions/setup-node@v3")),
-      `with` = ListMap(
+      uses = Some(ActionRef("actions/setup-node@v6")),
+      `with` = Map(
         "node-version" -> (javaVersion match {
           case None          => "16.x"
           case Some(version) => version.asString
