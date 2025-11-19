@@ -15,14 +15,14 @@
  */
 
 package zio.sbt
+import scala.collection.immutable.ListMap
 import scala.language.experimental.macros
 import scala.sys.process._
 
-import io.circe._
-import io.circe.syntax._
-import io.circe.yaml.Printer.{LineBreak, YamlVersion}
 import sbt.{Def, io => _, _}
 
+import zio.json._
+import zio.json.yaml._
 import zio.sbt.githubactions.Step.SingleStep
 import zio.sbt.githubactions.{Job, Step, _}
 
@@ -101,7 +101,6 @@ object ZioSbtCiPlugin extends AutoPlugin {
 
     Seq(
       Job(
-        id = "build",
         name = "Build",
         continueOnError = true,
         steps = {
@@ -128,10 +127,15 @@ object ZioSbtCiPlugin extends AutoPlugin {
 
     Seq(
       Job(
-        id = "lint",
         name = "Lint",
         steps = (if (swapSizeGB > 0) Seq(setSwapSpace) else Seq.empty) ++
-          Seq(checkout, SetupLibuv, SetupJava(javaVersion), SetupSBT, CacheDependencies) ++ checkGithubWorkflow ++ Seq(
+          Seq(
+            checkout,
+            SetupLibuv,
+            SetupJava(javaVersion),
+            SetupSBT,
+            CacheDependencies,
+            Step.StepSequence(checkGithubWorkflow),
             lint
           )
       )
@@ -158,13 +162,12 @@ object ZioSbtCiPlugin extends AutoPlugin {
           }.map(e => e._1 + "/test").mkString(" ")}"
 
       Job(
-        id = "test",
         name = "Test",
         strategy = Some(
           Strategy(
-            matrix = Map(
-              "java"  -> javaPlatforms.toList,
-              "scala" -> scalaVersionMatrix.values.flatten.toSet.toList
+            matrix = ListMap(
+              "java"  -> javaPlatforms.toList.sorted,
+              "scala" -> scalaVersionMatrix.values.flatten.toList.distinct.sorted
             ),
             maxParallel = matrixMaxParallel,
             failFast = false
@@ -181,7 +184,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
                   scalaVersionMatrix.values.toSeq.flatten.distinct.map { scalaVersion: String =>
                     Step.SingleStep(
                       name = "Test",
-                      condition = Some(Condition.Expression(s"matrix.scala == '$scalaVersion'")),
+                      `if` = Some(Condition.Expression(s"matrix.scala == '$scalaVersion'")),
                       run = Some(
                         prefixJobs + "sbt ++${{ matrix.scala }}" + makeTests(
                           scalaVersion
@@ -204,7 +207,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
                       Seq(
                         Step.SingleStep(
                           name = "Test",
-                          condition = Some(
+                          `if` = Some(
                             Condition.Expression(s"matrix.java == '$javaPlatform'") && Condition.Expression(
                               s"matrix.scala == '$scalaVersion'"
                             )
@@ -222,15 +225,14 @@ object ZioSbtCiPlugin extends AutoPlugin {
 
     val FlattenTests =
       Job(
-        id = "test",
         name = "Test",
         strategy = Some(
           Strategy(
-            matrix = Map(
-              "java" -> javaPlatforms.toList
+            matrix = ListMap(
+              "java" -> javaPlatforms.toList.sorted
             ) ++
               (if (javaPlatformMatrix.isEmpty) {
-                 Map("scala-project" -> scalaVersionMatrix.flatMap { case (moduleName, versions) =>
+                 ListMap("scala-project" -> scalaVersionMatrix.flatMap { case (moduleName, versions) =>
                    versions.map { version =>
                      s"++$version $moduleName"
                    }
@@ -257,50 +259,51 @@ object ZioSbtCiPlugin extends AutoPlugin {
             SetupJava("${{ matrix.java }}"),
             SetupSBT,
             CacheDependencies,
-            checkout,
+            checkout
+          ) ++ (
             if (javaPlatformMatrix.values.toSet.isEmpty) {
-              Step.SingleStep(
-                name = "Test",
-                run = Some(prefixJobs + "sbt ${{ matrix.scala-project }}/test")
+              Seq(
+                Step.SingleStep(
+                  name = "Test",
+                  run = Some(prefixJobs + "sbt ${{ matrix.scala-project }}/test")
+                )
               )
             } else {
-              Step.StepSequence(
-                Seq(
-                  Step.SingleStep(
-                    name = "Java 11 Tests",
-                    condition = Some(Condition.Expression("matrix.java == '11'")),
-                    run = Some(
-                      prefixJobs + "sbt ${{ matrix.scala-project-java11 }}/test"
-                    )
-                  ),
-                  Step.SingleStep(
-                    name = "Java 17 Tests",
-                    condition = Some(Condition.Expression("matrix.java == '17'")),
-                    run = Some(
-                      prefixJobs + "sbt ${{ matrix.scala-project-java17 }}/test"
-                    )
-                  ),
-                  Step.SingleStep(
-                    name = "Java 21 Tests",
-                    condition = Some(Condition.Expression("matrix.java == '21'")),
-                    run = Some(
-                      prefixJobs + "sbt ${{ matrix.scala-project-java21 }}/test"
-                    )
+              Seq(
+                Step.SingleStep(
+                  name = "Java 11 Tests",
+                  `if` = Some(Condition.Expression("matrix.java == '11'")),
+                  run = Some(
+                    prefixJobs + "sbt ${{ matrix.scala-project-java11 }}/test"
+                  )
+                ),
+                Step.SingleStep(
+                  name = "Java 17 Tests",
+                  `if` = Some(Condition.Expression("matrix.java == '17'")),
+                  run = Some(
+                    prefixJobs + "sbt ${{ matrix.scala-project-java17 }}/test"
+                  )
+                ),
+                Step.SingleStep(
+                  name = "Java 21 Tests",
+                  `if` = Some(Condition.Expression("matrix.java == '21'")),
+                  run = Some(
+                    prefixJobs + "sbt ${{ matrix.scala-project-java21 }}/test"
                   )
                 )
               )
-
             }
           )
       )
 
     val DefaultTestStrategy =
       Job(
-        id = "test",
         name = "Test",
         strategy = Some(
           Strategy(
-            matrix = Map("java" -> javaPlatforms.toList),
+            matrix = ListMap(
+              "java" -> javaPlatforms.toList.sorted
+            ),
             maxParallel = matrixMaxParallel,
             failFast = false
           )
@@ -330,9 +333,8 @@ object ZioSbtCiPlugin extends AutoPlugin {
 
     Seq(
       Job(
-        id = "ci",
         name = "ci",
-        need = pullRequestApprovalJobs,
+        needs = pullRequestApprovalJobs,
         steps = Seq(
           SingleStep(
             name = "Report Successful CI",
@@ -353,9 +355,8 @@ object ZioSbtCiPlugin extends AutoPlugin {
 
     Seq(
       Job(
-        id = "update-readme",
         name = "Update README",
-        condition = updateReadmeCondition orElse Some(
+        `if` = updateReadmeCondition orElse Some(
           Condition.Expression("github.ref == format('refs/heads/{0}', github.event.repository.default_branch)")
         ),
         steps = (if (swapSizeGB > 0) Seq(setSwapSpace) else Seq.empty) ++
@@ -378,33 +379,33 @@ object ZioSbtCiPlugin extends AutoPlugin {
               name = "Generate Token",
               id = Some("generate-token"),
               uses = Some(ActionRef(V("zio/generate-github-app-token"))),
-              parameters = Map(
-                "app_id"          -> "${{ secrets.APP_ID }}".asJson,
-                "app_private_key" -> "${{ secrets.APP_PRIVATE_KEY }}".asJson
+              `with` = ListMap(
+                "app_id"          -> "${{ secrets.APP_ID }}".toJsonAST.right.get,
+                "app_private_key" -> "${{ secrets.APP_PRIVATE_KEY }}".toJsonAST.right.get
               )
             ),
             Step.SingleStep(
               name = "Create Pull Request",
               id = Some("cpr"),
               uses = Some(ActionRef(V("peter-evans/create-pull-request"))),
-              parameters = Map(
-                "title"          -> "Update README.md".asJson,
-                "commit-message" -> "Update README.md".asJson,
-                "branch"         -> "zio-sbt-website/update-readme".asJson,
-                "delete-branch"  -> true.asJson,
+              `with` = ListMap(
+                "title"          -> "Update README.md".toJsonAST.right.get,
+                "commit-message" -> "Update README.md".toJsonAST.right.get,
+                "branch"         -> "zio-sbt-website/update-readme".toJsonAST.right.get,
+                "delete-branch"  -> true.toJsonAST.right.get,
                 "body"           ->
                   """|Autogenerated changes after running the `sbt docs/generateReadme` command of the [zio-sbt-website](https://zio.dev/zio-sbt) plugin.
                      |
                      |I will automatically update the README.md file whenever there is new change for README.md, e.g.
                      |  - After each release, I will update the version in the installation section.
-                     |  - After any changes to the "docs/index.md" file, I will update the README.md file accordingly.""".stripMargin.asJson,
-                "token" -> "${{ steps.generate-token.outputs.token }}".asJson
+                     |  - After any changes to the "docs/index.md" file, I will update the README.md file accordingly.""".stripMargin.toJsonAST.right.get,
+                "token" -> "${{ steps.generate-token.outputs.token }}".toJsonAST.right.get
               )
             ),
             Step.SingleStep(
               name = "Approve PR",
-              condition = Some(Condition.Expression("steps.cpr.outputs.pull-request-number")),
-              env = Map(
+              `if` = Some(Condition.Expression("steps.cpr.outputs.pull-request-number")),
+              env = ListMap(
                 "GITHUB_TOKEN" -> "${{ secrets.GITHUB_TOKEN }}",
                 "PR_URL"       -> "${{ steps.cpr.outputs.pull-request-url }}"
               ),
@@ -412,8 +413,8 @@ object ZioSbtCiPlugin extends AutoPlugin {
             ),
             Step.SingleStep(
               name = "Enable Auto-Merge",
-              condition = Some(Condition.Expression("steps.cpr.outputs.pull-request-number")),
-              env = Map(
+              `if` = Some(Condition.Expression("steps.cpr.outputs.pull-request-number")),
+              env = ListMap(
                 "GITHUB_TOKEN" -> "${{ secrets.GITHUB_TOKEN }}",
                 "PR_URL"       -> "${{ steps.cpr.outputs.pull-request-url }}"
               ),
@@ -434,10 +435,9 @@ object ZioSbtCiPlugin extends AutoPlugin {
 
     Seq(
       Job(
-        id = "release",
         name = "Release",
-        need = jobs,
-        condition = Some(Condition.Expression("github.event_name != 'pull_request'")),
+        needs = jobs,
+        `if` = Some(Condition.Expression("github.event_name != 'pull_request'")),
         steps = (if (swapSizeGB > 0) Seq(setSwapSpace) else Seq.empty) ++
           Seq(
             checkout,
@@ -460,10 +460,9 @@ object ZioSbtCiPlugin extends AutoPlugin {
 
     Seq(
       Job(
-        id = "release-docs",
         name = "Release Docs",
-        need = Seq("release"),
-        condition = Some(
+        needs = Seq("release"),
+        `if` = Some(
           Condition.Expression("github.event_name == 'release'") &&
             Condition.Expression("github.event.action == 'published'") || Condition.Expression(
               "github.event_name == 'workflow_dispatch'"
@@ -471,24 +470,19 @@ object ZioSbtCiPlugin extends AutoPlugin {
         ),
         steps = (if (swapSizeGB > 0) Seq(setSwapSpace) else Seq.empty) ++
           Seq(
-            Step.StepSequence(
-              Seq(
-                checkout,
-                SetupLibuv,
-                SetupJava(javaVersion),
-                SetupSBT,
-                CacheDependencies,
-                SetupNodeJs,
-                publishToNpmRegistry
-              )
-            )
+            checkout,
+            SetupLibuv,
+            SetupJava(javaVersion),
+            SetupSBT,
+            CacheDependencies,
+            SetupNodeJs,
+            publishToNpmRegistry
           )
       ),
       Job(
-        id = "notify-docs-release",
         name = "Notify Docs Release",
-        need = Seq("release-docs"),
-        condition = Some(
+        needs = Seq("release-docs"),
+        `if` = Some(
           Condition.Expression("github.event_name == 'release'") &&
             Condition.Expression("github.event.action == 'published'")
         ),
@@ -531,40 +525,48 @@ object ZioSbtCiPlugin extends AutoPlugin {
       val jvmOptions       = Seq("-XX:+PrintCommandLineFlags") ++ ciJvmOptions.value
       val nodeOptions      = ciNodeOptions.value
 
-      val jvmMap = Map(
+      val jvmMap = ListMap(
         "JDK_JAVA_OPTIONS" -> jvmOptions.mkString(" ")
       )
-      val nodeMap: Map[String, String] =
-        if (nodeOptions.nonEmpty) Map("NODE_OPTIONS" -> nodeOptions.mkString(" ")) else Map.empty
+      val nodeMap: ListMap[String, String] =
+        if (nodeOptions.nonEmpty) ListMap("NODE_OPTIONS" -> nodeOptions.mkString(" ")) else ListMap.empty
 
-      val workflow = yaml
-        .Printer(
-          preserveOrder = true,
-          dropNullKeys = true,
-          splitLines = false,
-          lineBreak = LineBreak.Unix,
-          version = YamlVersion.Auto
+      val yamlOptions =
+        YamlOptions.default.copy(
+          dropNulls = true,
+          lineBreak = org.yaml.snakeyaml.DumperOptions.LineBreak.UNIX,
+          maxScalarWidth = Some(1024)
         )
-        .pretty(
-          Workflow(
-            name = workflowName,
-            env = jvmMap ++ nodeMap,
-            triggers = Seq(
-              Trigger.WorkflowDispatch(),
-              Trigger.Release(Seq("published")),
-              Trigger.Push(branches = enabledBranches.map(Branch.Named)),
-              Trigger.PullRequest(ignoredBranches = Seq(Branch.Named("gh-pages")))
-            ),
-            jobs =
-              buildJobs ++ lintJobs ++ testJobs ++ updateReadmeJobs ++ reportSuccessful ++ releaseJobs ++ postReleaseJobs
-          ).asJson
+
+      val workflow =
+        Workflow(
+          name = workflowName,
+          env = jvmMap ++ nodeMap,
+          on = Some(
+            Triggers(
+              release = Some(Trigger.Release(Seq(Trigger.ReleaseType.Published))),
+              push = Some(Trigger.Push(branches = enabledBranches.map(Branch.Named))).filter(_.branches.nonEmpty),
+              pullRequest = Some(Trigger.PullRequest(branchesIgnore = Seq(Branch.Named("gh-pages"))))
+            )
+          ),
+          jobs = ListMap(
+            (buildJobs ++ lintJobs ++ testJobs ++ updateReadmeJobs ++ reportSuccessful ++ releaseJobs ++ postReleaseJobs)
+              .map(job => job.id -> job): _*
+          )
         )
+
+      val yaml: String = zio.json.ast.Json.decoder
+        .decodeJson(workflow.toJson)
+        .flatMap(_.toYaml(yamlOptions).left.map(_.getMessage())) match {
+        case Right(value) => value
+        case Left(error)  => sys.error(s"Error generating workflow yaml: $error")
+      }
 
       val template =
         s"""|# This file was autogenerated using `zio-sbt-ci` plugin via `sbt ciGenerateGithubWorkflow` 
             |# task and should be included in the git repository. Please do not edit it manually.
             |
-            |$workflow""".stripMargin
+            |$yaml""".stripMargin
 
       IO.write(new File(s".github/workflows/${ciWorkflowName.value.toLowerCase}.yml"), template)
     }
@@ -652,7 +654,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
       Step.SingleStep(
         name = "Set Swap Space",
         uses = Some(ActionRef(V("pierotofy/set-swap-space"))),
-        parameters = Map("swap-size-gb" -> swapSizeGB.asJson)
+        `with` = ListMap("swap-size-gb" -> swapSizeGB.toString.toJsonAST.right.get)
       )
     }
 
@@ -661,7 +663,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
       Step.SingleStep(
         name = "Git Checkout",
         uses = Some(ActionRef(V("actions/checkout"))),
-        parameters = Map("fetch-depth" -> "0".asJson)
+        `with` = ListMap("fetch-depth" -> "0".toJsonAST.right.get)
       )
     }
 
@@ -673,10 +675,10 @@ object ZioSbtCiPlugin extends AutoPlugin {
   def SetupJava(version: String = "17"): Step.SingleStep = Step.SingleStep(
     name = "Setup Scala",
     uses = Some(ActionRef(V("actions/setup-java"))),
-    parameters = Map(
-      "distribution" -> "corretto".asJson,
-      "java-version" -> version.asJson,
-      "check-latest" -> true.asJson
+    `with` = ListMap(
+      "distribution" -> "corretto".toJsonAST.right.get,
+      "java-version" -> version.toJsonAST.right.get,
+      "check-latest" -> true.toJsonAST.right.get
     )
   )
 
@@ -721,7 +723,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
     Step.SingleStep(
       name = "Release",
       run = Some(prefixJobs + "sbt ci-release"),
-      env = Map(
+      env = ListMap(
         "PGP_PASSPHRASE"    -> "${{ secrets.PGP_PASSPHRASE }}",
         "PGP_SECRET"        -> "${{ secrets.PGP_SECRET }}",
         "SONATYPE_PASSWORD" -> "${{ secrets.SONATYPE_PASSWORD }}",
@@ -733,9 +735,9 @@ object ZioSbtCiPlugin extends AutoPlugin {
   val SetupNodeJs: Step.SingleStep = Step.SingleStep(
     name = "Setup NodeJs",
     uses = Some(ActionRef(V("actions/setup-node"))),
-    parameters = Map(
-      "node-version" -> "16.x".asJson,
-      "registry-url" -> "https://registry.npmjs.org".asJson
+    `with` = ListMap(
+      "node-version" -> "16.x".toJsonAST.right.get,
+      "registry-url" -> "https://registry.npmjs.org".toJsonAST.right.get
     )
   )
 
@@ -748,7 +750,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
     Step.SingleStep(
       name = "Publish Docs to NPM Registry",
       run = Some(prefixJobs + s"sbt docs/${docsVersioning.npmCommand}"),
-      env = Map("NODE_AUTH_TOKEN" -> "${{ secrets.NPM_TOKEN }}")
+      env = ListMap("NODE_AUTH_TOKEN" -> "${{ secrets.NPM_TOKEN }}")
     )
   }
 
