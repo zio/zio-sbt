@@ -437,7 +437,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
         id = "release",
         name = "Release",
         need = jobs,
-        condition = Some(Condition.Expression("github.event_name != 'pull_request'")),
+        condition = Some(Condition.Expression("github.event_name == 'release'")),
         steps = (if (swapSizeGB > 0) Seq(setSwapSpace) else Seq.empty) ++
           Seq(
             checkout,
