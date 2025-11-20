@@ -181,7 +181,7 @@ jobs:
     continue-on-error: false
     needs:
     - ci
-    if: ${{ github.event_name != 'pull_request' }}
+    if: ${{ github.event_name == 'release' }}
     steps:
     - name: Git Checkout
       uses: actions/checkout@v5
