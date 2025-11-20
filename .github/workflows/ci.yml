@@ -181,7 +181,7 @@ jobs:
     continue-on-error: false
     needs:
     - ci
-    if: ${{ github.event_name == 'release' }}
+    if: ${{ (github.event_name == 'release' || (github.event_name == 'workflow_dispatch')) }}
     steps:
     - name: Git Checkout
       uses: actions/checkout@v5
