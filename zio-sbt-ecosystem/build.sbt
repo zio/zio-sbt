@@ -28,4 +28,5 @@ addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "1.1.4")
 
 libraryDependencies += "org.snakeyaml" % "snakeyaml-engine" % "3.0.1"
 libraryDependencies += "dev.zio"      %% "zio"              % "2.1.22"
-libraryDependencies += "io.circe"     %% "circe-yaml"       % "0.15.2"
+libraryDependencies += "dev.zio"      %% "zio-json"         % "0.7.45"
+libraryDependencies += "dev.zio"      %% "zio-json-yaml"    % "0.7.45"
