@@ -16,7 +16,7 @@
 
 package zio.sbt.githubactions
 
-import io.circe.syntax._
+import zio.json.ast.Json
 
 import zio.sbt.githubactions.ScalaWorkflow.JavaVersion.JDK11
 
@@ -30,7 +30,7 @@ object ScalaWorkflow {
       name = "Checkout current branch",
       uses = Some(ActionRef("actions/checkout@v2")),
       parameters = Map(
-        "fetch-depth" := fetchDepth
+        "fetch-depth" -> Json.Num(fetchDepth)
       )
     )
 
@@ -39,7 +39,7 @@ object ScalaWorkflow {
       name = "Setup Java and Scala",
       uses = Some(ActionRef("olafurpg/setup-scala@v11")),
       parameters = Map(
-        "java-version" := (javaVersion match {
+        "java-version" -> Json.Str(javaVersion match {
           case None          => "${{ matrix.java }}"
           case Some(version) => version.asString
         })
@@ -51,11 +51,11 @@ object ScalaWorkflow {
       name = "Setup NodeJS",
       uses = Some(ActionRef("actions/setup-node@v6")),
       parameters = Map(
-        "node-version" := (javaVersion match {
+        "node-version" -> Json.Str(javaVersion match {
           case None          => "16.x"
           case Some(version) => version.asString
         }),
-        "registry-url" := "https://registry.npmjs.org"
+        "registry-url" -> Json.Str("https://registry.npmjs.org")
       )
     )
 
@@ -76,13 +76,15 @@ object ScalaWorkflow {
       name = "Cache SBT",
       uses = Some(ActionRef("actions/cache@v2")),
       parameters = Map(
-        "path" := Seq(
-          "~/.ivy2/cache",
-          "~/.sbt",
-          "~/.coursier/cache/v1",
-          "~/.cache/coursier/v1"
-        ).mkString("\n"),
-        "key" := s"$osS-sbt-$scalaS-$${{ hashFiles('**/*.sbt') }}-$${{ hashFiles('**/build.properties') }}"
+        "path" -> Json.Str(
+          Seq(
+            "~/.ivy2/cache",
+            "~/.sbt",
+            "~/.coursier/cache/v1",
+            "~/.cache/coursier/v1"
+          ).mkString("\n")
+        ),
+        "key" -> Json.Str(s"$osS-sbt-$scalaS-$${{ hashFiles('**/*.sbt') }}-$${{ hashFiles('**/build.properties') }}")
       )
     )
   }
@@ -131,8 +133,8 @@ object ScalaWorkflow {
           s"Upload $id targets",
           uses = Some(ActionRef("actions/upload-artifact@v2")),
           parameters = Map(
-            "name" := s"target-$id-$osS-$scalaS-$javaS",
-            "path" := "targets.tar"
+            "name" -> Json.Str(s"target-$id-$osS-$scalaS-$javaS"),
+            "path" -> Json.Str("targets.tar")
           )
         )
       )
@@ -155,7 +157,7 @@ object ScalaWorkflow {
           s"Download stored $id targets",
           uses = Some(ActionRef("actions/download-artifact@v2")),
           parameters = Map(
-            "name" := s"target-$id-$osS-$scalaS-$javaS"
+            "name" -> Json.Str(s"target-$id-$osS-$scalaS-$javaS")
           )
         ),
         SingleStep(
