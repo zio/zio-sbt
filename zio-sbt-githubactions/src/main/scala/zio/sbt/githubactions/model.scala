@@ -49,18 +49,16 @@ case class Input(key: String, description: String, required: Boolean, defaultVal
 
 object Trigger {
   case class WorkflowDispatch(
-    inputs: Seq[Input] = Seq.empty
+    inputs: Chunk[Input] = Chunk.empty
   ) extends Trigger {
     override def toKeyValuePair: (String, Json) = {
       val inputsMap = inputs.map { i =>
         (
           i.key,
           Json.Obj(
-            Chunk(
-              ("description", Json.Str(i.description)),
-              ("required", Json.Bool(i.required)),
-              ("default", Json.Str(i.defaultValue))
-            )
+            ("description", Json.Str(i.description)),
+            ("required", Json.Bool(i.required)),
+            ("default", Json.Str(i.defaultValue))
           )
         )
       }.toMap
@@ -69,18 +67,18 @@ object Trigger {
   }
 
   case class Release(
-    releaseTypes: Seq[String] = Seq.empty
+    releaseTypes: Chunk[String] = Chunk.empty
   ) extends Trigger {
     override def toKeyValuePair: (String, Json) =
-      ("release", Json.Obj(Chunk("types" -> releaseTypes.toJsonAST.getOrElse(Json.Null))))
+      ("release", Json.Obj("types" -> releaseTypes.toJsonAST.getOrElse(Json.Null)))
   }
 
   case class PullRequest(
-    branches: Seq[Branch] = Seq.empty,
-    ignoredBranches: Seq[Branch] = Seq.empty
+    branches: Chunk[Branch] = Chunk.empty,
+    ignoredBranches: Chunk[Branch] = Chunk.empty
   ) extends Trigger {
     override def toKeyValuePair: (String, Json) = {
-      val fields = Seq(
+      val fields = Chunk(
         ("branches", branches.toJsonAST.getOrElse(Json.Null)),
         ("branches-ignore", ignoredBranches.toJsonAST.getOrElse(Json.Null))
       ).filter { case (_, data) =>
@@ -89,16 +87,16 @@ object Trigger {
           case _                  => false
         }
       }
-      ("pull_request", Json.Obj(Chunk.fromIterable(fields)))
+      ("pull_request", Json.Obj(fields))
     }
   }
 
   case class Push(
-    branches: Seq[Branch] = Seq.empty,
-    ignoredBranches: Seq[Branch] = Seq.empty
+    branches: Chunk[Branch] = Chunk.empty,
+    ignoredBranches: Chunk[Branch] = Chunk.empty
   ) extends Trigger {
     override def toKeyValuePair: (String, Json) = {
-      val fields = Seq(
+      val fields = Chunk(
         ("branches", branches.toJsonAST.getOrElse(Json.Null)),
         ("branches-ignore", ignoredBranches.toJsonAST.getOrElse(Json.Null))
       ).filter { case (_, data) =>
@@ -107,16 +105,16 @@ object Trigger {
           case _                  => false
         }
       }
-      ("push", Json.Obj(Chunk.fromIterable(fields)))
+      ("push", Json.Obj(fields))
     }
   }
 
   case class Create(
-    branches: Seq[Branch] = Seq.empty,
-    ignoredBranches: Seq[Branch] = Seq.empty
+    branches: Chunk[Branch] = Chunk.empty,
+    ignoredBranches: Chunk[Branch] = Chunk.empty
   ) extends Trigger {
     override def toKeyValuePair: (String, Json) = {
-      val fields = Seq(
+      val fields = Chunk(
         ("branches", branches.toJsonAST.getOrElse(Json.Null)),
         ("branches-ignore", ignoredBranches.toJsonAST.getOrElse(Json.Null))
       ).filter { case (_, data) =>
@@ -125,7 +123,7 @@ object Trigger {
           case _                  => false
         }
       }
-      ("create", Json.Obj(Chunk.fromIterable(fields)))
+      ("create", Json.Obj(fields))
     }
   }
 }
@@ -136,11 +134,9 @@ object Strategy {
   implicit val encoder: JsonEncoder[Strategy] =
     JsonEncoder[Json].contramap { s =>
       Json.Obj(
-        Chunk(
-          ("fail-fast", Json.Bool(s.failFast)),
-          ("max-parallel", s.maxParallel.toJsonAST.getOrElse(Json.Null)),
-          ("matrix", s.matrix.toJsonAST.getOrElse(Json.Null))
-        )
+        ("fail-fast", Json.Bool(s.failFast)),
+        ("max-parallel", s.maxParallel.toJsonAST.getOrElse(Json.Null)),
+        ("matrix", s.matrix.toJsonAST.getOrElse(Json.Null))
       )
     }
 }
@@ -194,7 +190,7 @@ object Condition {
 
 sealed trait Step {
   def when(condition: Condition): Step
-  def flatten: Seq[Step.SingleStep]
+  def flatten: Chunk[Step.SingleStep]
 }
 object Step {
   case class SingleStep(
@@ -209,29 +205,27 @@ object Step {
     override def when(condition: Condition): Step =
       copy(condition = Some(condition))
 
-    override def flatten: Seq[Step.SingleStep] = Seq(this)
+    override def flatten: Chunk[Step.SingleStep] = Chunk.single(this)
   }
 
-  case class StepSequence(steps: Seq[Step]) extends Step {
+  case class StepSequence(steps: Chunk[Step]) extends Step {
     override def when(condition: Condition): Step =
       copy(steps = steps.map(_.when(condition)))
 
-    override def flatten: Seq[SingleStep] =
+    override def flatten: Chunk[SingleStep] =
       steps.flatMap(_.flatten)
   }
 
   implicit val encoder: JsonEncoder[SingleStep] =
     JsonEncoder[Json].contramap { s =>
       Json.Obj(
-        Chunk(
-          ("name", Json.Str(s.name)),
-          ("id", s.id.toJsonAST.getOrElse(Json.Null)),
-          ("uses", s.uses.toJsonAST.getOrElse(Json.Null)),
-          ("if", s.condition.toJsonAST.getOrElse(Json.Null)),
-          ("with", if (s.parameters.nonEmpty) s.parameters.toJsonAST.getOrElse(Json.Null) else Json.Null),
-          ("run", s.run.toJsonAST.getOrElse(Json.Null)),
-          ("env", if (s.env.nonEmpty) s.env.toJsonAST.getOrElse(Json.Null) else Json.Null)
-        )
+        ("name", Json.Str(s.name)),
+        ("id", s.id.toJsonAST.getOrElse(Json.Null)),
+        ("uses", s.uses.toJsonAST.getOrElse(Json.Null)),
+        ("if", s.condition.toJsonAST.getOrElse(Json.Null)),
+        ("with", if (s.parameters.nonEmpty) s.parameters.toJsonAST.getOrElse(Json.Null) else Json.Null),
+        ("run", s.run.toJsonAST.getOrElse(Json.Null)),
+        ("env", if (s.env.nonEmpty) s.env.toJsonAST.getOrElse(Json.Null) else Json.Null)
       )
     }
 }
@@ -252,17 +246,15 @@ case class Service(
   name: String,
   image: ImageRef,
   env: Map[String, String] = Map.empty,
-  ports: Seq[ServicePort] = Seq.empty
+  ports: Chunk[ServicePort] = Chunk.empty
 )
 object Service {
   implicit val encoder: JsonEncoder[Service] =
     JsonEncoder[Json].contramap { s =>
       Json.Obj(
-        Chunk(
-          ("image", s.image.toJsonAST.getOrElse(Json.Null)),
-          ("env", s.env.toJsonAST.getOrElse(Json.Null)),
-          ("ports", s.ports.toJsonAST.getOrElse(Json.Null))
-        )
+        ("image", s.image.toJsonAST.getOrElse(Json.Null)),
+        ("env", s.env.toJsonAST.getOrElse(Json.Null)),
+        ("ports", s.ports.toJsonAST.getOrElse(Json.Null))
       )
     }
 }
@@ -274,41 +266,63 @@ case class Job(
   timeoutMinutes: Int = 30,
   continueOnError: Boolean = false,
   strategy: Option[Strategy] = None,
-  steps: Seq[Step] = Seq.empty,
-  need: Seq[String] = Seq.empty,
-  services: Seq[Service] = Seq.empty,
+  steps: Chunk[Step] = Chunk.empty,
+  need: Chunk[String] = Chunk.empty,
+  services: Chunk[Service] = Chunk.empty,
   condition: Option[Condition] = None
 ) {
   def withStrategy(strategy: Strategy): Job =
     copy(strategy = Some(strategy))
 
   def withSteps(steps: Step*): Job =
-    copy(steps = steps)
+    copy(steps = Chunk.fromIterable(steps))
 
   def withServices(services: Service*): Job =
-    copy(services = services)
+    copy(services = Chunk.fromIterable(services))
 }
 
 object Job {
+  def apply(
+    id: String,
+    name: String,
+    runsOn: String = "ubuntu-latest",
+    timeoutMinutes: Int = 30,
+    continueOnError: Boolean = false,
+    strategy: Option[Strategy] = None,
+    steps: Seq[Step] = Seq.empty,
+    need: Seq[String] = Seq.empty,
+    services: Seq[Service] = Seq.empty,
+    condition: Option[Condition] = None
+  ): Job = Job(
+    id = id,
+    name = name,
+    runsOn = runsOn,
+    timeoutMinutes = timeoutMinutes,
+    continueOnError = continueOnError,
+    strategy = strategy,
+    steps = Chunk.fromIterable(steps),
+    need = Chunk.fromIterable(need),
+    services = Chunk.fromIterable(services),
+    condition = condition
+  )
+
   implicit val encoder: JsonEncoder[Job] =
     JsonEncoder[Json].contramap { job =>
       val servicesJson = if (job.services.nonEmpty) {
-        Json.Obj(Chunk.fromIterable(job.services.map(svc => (svc.name, svc.toJsonAST.getOrElse(Json.Null)))))
+        Json.Obj(job.services.map(svc => (svc.name, svc.toJsonAST.getOrElse(Json.Null))))
       } else {
         Json.Null
       }
 
       Json.Obj(
-        Chunk(
-          ("name", Json.Str(job.name)),
-          ("runs-on", Json.Str(job.runsOn)),
-          ("continue-on-error", Json.Bool(job.continueOnError)),
-          ("strategy", job.strategy.toJsonAST.getOrElse(Json.Null)),
-          ("needs", if (job.need.nonEmpty) job.need.toJsonAST.getOrElse(Json.Null) else Json.Null),
-          ("services", servicesJson),
-          ("if", job.condition.toJsonAST.getOrElse(Json.Null)),
-          ("steps", StepSequence(job.steps).flatten.toJsonAST.getOrElse(Json.Null))
-        )
+        ("name", Json.Str(job.name)),
+        ("runs-on", Json.Str(job.runsOn)),
+        ("continue-on-error", Json.Bool(job.continueOnError)),
+        ("strategy", job.strategy.toJsonAST.getOrElse(Json.Null)),
+        ("needs", if (job.need.nonEmpty) job.need.toJsonAST.getOrElse(Json.Null) else Json.Null),
+        ("services", servicesJson),
+        ("if", job.condition.toJsonAST.getOrElse(Json.Null)),
+        ("steps", StepSequence(job.steps).flatten.toJsonAST.getOrElse(Json.Null))
       )
     }
 }
@@ -316,19 +330,19 @@ object Job {
 case class Workflow(
   name: String,
   env: Map[String, String] = Map.empty,
-  triggers: Seq[Trigger] = Seq.empty,
-  jobs: Seq[Job] = Seq.empty
+  triggers: Chunk[Trigger] = Chunk.empty,
+  jobs: Chunk[Job] = Chunk.empty
 ) {
   def on(triggers: Trigger*): Workflow =
-    copy(triggers = triggers)
+    copy(triggers = Chunk.fromIterable(triggers))
 
   def withJobs(jobs: Job*): Workflow =
-    copy(jobs = jobs)
+    copy(jobs = Chunk.fromIterable(jobs))
 
   def addJob(job: Job): Workflow =
     copy(jobs = jobs :+ job)
 
-  def addJobs(newJobs: Seq[Job]): Workflow =
+  def addJobs(newJobs: Chunk[Job]): Workflow =
     copy(jobs = jobs ++ newJobs)
 }
 
@@ -338,31 +352,27 @@ object Workflow {
       val onJson = if (wf.triggers.isEmpty) {
         Json.Null
       } else {
-        Json.Obj(Chunk.fromIterable(wf.triggers.map(_.toKeyValuePair)))
+        Json.Obj(wf.triggers.map(_.toKeyValuePair))
       }
 
       val concurrencyJson = Json.Obj(
-        Chunk(
-          (
-            "group",
-            Json.Str(
-              "${{ github.workflow }}-${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.run_id || github.ref }}"
-            )
-          ),
-          ("cancel-in-progress", Json.Bool(true))
-        )
+        (
+          "group",
+          Json.Str(
+            "${{ github.workflow }}-${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.run_id || github.ref }}"
+          )
+        ),
+        ("cancel-in-progress", Json.Bool(true))
       )
 
-      val jobsJson = Json.Obj(Chunk.fromIterable(wf.jobs.map(job => (job.id, job.toJsonAST.getOrElse(Json.Null)))))
+      val jobsJson = Json.Obj(wf.jobs.map(job => (job.id, job.toJsonAST.getOrElse(Json.Null))): _*)
 
       Json.Obj(
-        Chunk(
-          ("name", Json.Str(wf.name)),
-          ("env", wf.env.toJsonAST.getOrElse(Json.Null)),
-          ("on", onJson),
-          ("concurrency", concurrencyJson),
-          ("jobs", jobsJson)
-        )
+        ("name", Json.Str(wf.name)),
+        ("env", wf.env.toJsonAST.getOrElse(Json.Null)),
+        ("on", onJson),
+        ("concurrency", concurrencyJson),
+        ("jobs", jobsJson)
       )
     }
 }
