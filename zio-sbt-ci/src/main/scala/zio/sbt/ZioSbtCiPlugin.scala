@@ -15,16 +15,15 @@
  */
 
 package zio.sbt
-import scala.language.experimental.macros
-import scala.sys.process._
-
-import zio.json._
+import sbt.{Def, io as _, *}
+import zio.json.*
 import zio.json.ast.Json
-import zio.json.yaml._
-import sbt.{Def, io => _, _}
-
+import zio.json.yaml.*
 import zio.sbt.githubactions.Step.SingleStep
-import zio.sbt.githubactions.{Job, Step, _}
+import zio.sbt.githubactions.*
+
+import scala.language.experimental.macros
+import scala.sys.process.*
 
 object ZioSbtCiPlugin extends AutoPlugin {
   override def requires = plugins.CorePlugin
@@ -552,7 +551,13 @@ object ZioSbtCiPlugin extends AutoPlugin {
           buildJobs ++ lintJobs ++ testJobs ++ updateReadmeJobs ++ reportSuccessful ++ releaseJobs ++ postReleaseJobs
       ).toJsonAST.getOrElse(Json.Null)
 
-      val workflow = workflowJson.toYaml(YamlOptions.default.copy(dropNulls = true)) match {
+      val workflow = workflowJson.toYaml(
+        YamlOptions.default.copy(
+          dropNulls = true,
+          sequenceIndentation = 0,
+          maxScalarWidth = None
+        )
+      ) match {
         case Right(yaml) => yaml
         case Left(err)   => throw new Exception(s"Failed to convert workflow to YAML: $err")
       }
