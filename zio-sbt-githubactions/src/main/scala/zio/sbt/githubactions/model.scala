@@ -48,8 +48,8 @@ sealed trait Trigger {
 case class Input(key: String, description: String, required: Boolean, defaultValue: String)
 
 object Trigger {
-  case class WorkflowDispatch(
-    inputs: Chunk[Input] = Chunk.empty
+  case class WorkflowDispatch private (
+    inputs: Chunk[Input]
   ) extends Trigger {
     override def toKeyValuePair: (String, Json) = {
       val inputsMap = inputs.map { i =>
@@ -64,6 +64,11 @@ object Trigger {
       }.toMap
       ("workflow_dispatch", inputsMap.toJsonAST.getOrElse(Json.Null))
     }
+  }
+
+  object WorkflowDispatch {
+    def apply(inputs: Seq[Input] = Seq.empty): WorkflowDispatch =
+      WorkflowDispatch(Chunk.fromIterable(inputs))
   }
 
   case class Release private (
