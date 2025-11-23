@@ -66,16 +66,20 @@ object Trigger {
     }
   }
 
-  case class Release(
-    releaseTypes: Chunk[String] = Chunk.empty
+  case class Release private (
+    releaseTypes: Chunk[String]
   ) extends Trigger {
     override def toKeyValuePair: (String, Json) =
       ("release", Json.Obj("types" -> releaseTypes.toJsonAST.getOrElse(Json.Null)))
   }
+  object Release {
+    def apply(releaseTypes: Seq[String] = Seq.empty): Release =
+      Release(Chunk.fromIterable(releaseTypes))
+  }
 
-  case class PullRequest(
-    branches: Chunk[Branch] = Chunk.empty,
-    ignoredBranches: Chunk[Branch] = Chunk.empty
+  case class PullRequest private (
+    branches: Chunk[Branch],
+    ignoredBranches: Chunk[Branch]
   ) extends Trigger {
     override def toKeyValuePair: (String, Json) = {
       val fields = Chunk(
@@ -91,9 +95,20 @@ object Trigger {
     }
   }
 
-  case class Push(
-    branches: Chunk[Branch] = Chunk.empty,
-    ignoredBranches: Chunk[Branch] = Chunk.empty
+  object PullRequest {
+    def apply(
+      branches: Seq[Branch] = Seq.empty,
+      ignoredBranches: Seq[Branch] = Seq.empty
+    ): PullRequest =
+      PullRequest(
+        Chunk.fromIterable(branches),
+        Chunk.fromIterable(ignoredBranches)
+      )
+  }
+
+  case class Push private (
+    branches: Chunk[Branch],
+    ignoredBranches: Chunk[Branch]
   ) extends Trigger {
     override def toKeyValuePair: (String, Json) = {
       val fields = Chunk(
@@ -109,9 +124,20 @@ object Trigger {
     }
   }
 
-  case class Create(
-    branches: Chunk[Branch] = Chunk.empty,
-    ignoredBranches: Chunk[Branch] = Chunk.empty
+  object Push {
+    def apply(
+      branches: Seq[Branch] = Seq.empty,
+      ignoredBranches: Seq[Branch] = Seq.empty
+    ): Push =
+      Push(
+        Chunk.fromIterable(branches),
+        Chunk.fromIterable(ignoredBranches)
+      )
+  }
+
+  case class Create private (
+    branches: Chunk[Branch],
+    ignoredBranches: Chunk[Branch]
   ) extends Trigger {
     override def toKeyValuePair: (String, Json) = {
       val fields = Chunk(
@@ -125,6 +151,17 @@ object Trigger {
       }
       ("create", Json.Obj(fields))
     }
+  }
+
+  object Create {
+    def apply(
+      branches: Seq[Branch] = Seq.empty,
+      ignoredBranches: Seq[Branch] = Seq.empty
+    ): Create =
+      Create(
+        Chunk.fromIterable(branches),
+        Chunk.fromIterable(ignoredBranches)
+      )
   }
 }
 
@@ -208,12 +245,17 @@ object Step {
     override def flatten: Chunk[Step.SingleStep] = Chunk.single(this)
   }
 
-  case class StepSequence(steps: Chunk[Step]) extends Step {
+  case class StepSequence private (steps: Chunk[Step]) extends Step {
     override def when(condition: Condition): Step =
       copy(steps = steps.map(_.when(condition)))
 
     override def flatten: Chunk[SingleStep] =
       steps.flatMap(_.flatten)
+  }
+
+  object StepSequence {
+    def apply(steps: Seq[Step]): StepSequence =
+      StepSequence(Chunk.fromIterable(steps))
   }
 
   implicit val encoder: JsonEncoder[SingleStep] =
@@ -259,17 +301,17 @@ object Service {
     }
 }
 
-case class Job(
+case class Job private (
   id: String,
   name: String,
-  runsOn: String = "ubuntu-latest",
-  timeoutMinutes: Int = 30,
-  continueOnError: Boolean = false,
-  strategy: Option[Strategy] = None,
-  steps: Chunk[Step] = Chunk.empty,
-  need: Chunk[String] = Chunk.empty,
-  services: Chunk[Service] = Chunk.empty,
-  condition: Option[Condition] = None
+  runsOn: String,
+  timeoutMinutes: Int,
+  continueOnError: Boolean,
+  strategy: Option[Strategy],
+  steps: Chunk[Step],
+  need: Chunk[String],
+  services: Chunk[Service],
+  condition: Option[Condition]
 ) {
   def withStrategy(strategy: Strategy): Job =
     copy(strategy = Some(strategy))
@@ -327,11 +369,11 @@ object Job {
     }
 }
 
-case class Workflow(
+case class Workflow private (
   name: String,
-  env: Map[String, String] = Map.empty,
-  triggers: Chunk[Trigger] = Chunk.empty,
-  jobs: Chunk[Job] = Chunk.empty
+  env: Map[String, String],
+  triggers: Chunk[Trigger],
+  jobs: Chunk[Job]
 ) {
   def on(triggers: Trigger*): Workflow =
     copy(triggers = Chunk.fromIterable(triggers))
@@ -347,6 +389,18 @@ case class Workflow(
 }
 
 object Workflow {
+  def apply(
+    name: String,
+    env: Map[String, String] = Map.empty,
+    triggers: Seq[Trigger] = Seq.empty,
+    jobs: Seq[Job] = Seq.empty
+  ): Workflow = Workflow(
+    name = name,
+    env = env,
+    triggers = Chunk.fromIterable(triggers),
+    jobs = Chunk.fromIterable(jobs)
+  )
+
   implicit val encoder: JsonEncoder[Workflow] =
     JsonEncoder[Json].contramap { wf =>
       val onJson = if (wf.triggers.isEmpty) {
