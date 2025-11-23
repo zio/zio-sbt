@@ -15,15 +15,16 @@
  */
 
 package zio.sbt
-import sbt.{Def, io as _, *}
-import zio.json.*
-import zio.json.ast.Json
-import zio.json.yaml.*
-import zio.sbt.githubactions.Step.SingleStep
-import zio.sbt.githubactions.*
-
 import scala.language.experimental.macros
-import scala.sys.process.*
+import scala.sys.process._
+
+import sbt.{Def, io => _, _}
+
+import zio.json._
+import zio.json.ast.Json
+import zio.json.yaml._
+import zio.sbt.githubactions.Step.SingleStep
+import zio.sbt.githubactions._
 
 object ZioSbtCiPlugin extends AutoPlugin {
   override def requires = plugins.CorePlugin

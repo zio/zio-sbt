@@ -17,7 +17,6 @@
 package zio.sbt.githubactions
 
 import zio.json.ast.Json
-
 import zio.sbt.githubactions.ScalaWorkflow.JavaVersion.JDK11
 
 // The original code of the githubactions package was originally copied from the zio-aws-codegen project:

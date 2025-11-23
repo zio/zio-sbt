@@ -19,7 +19,6 @@ package zio.sbt.githubactions
 import zio.Chunk
 import zio.json._
 import zio.json.ast.Json
-
 import zio.sbt.githubactions.Step.StepSequence
 
 sealed trait OS {
