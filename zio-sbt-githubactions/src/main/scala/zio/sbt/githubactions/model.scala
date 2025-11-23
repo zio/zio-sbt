@@ -35,9 +35,9 @@ object Branch {
   case class Named(name: String) extends Branch
 
   implicit val encoder: JsonEncoder[Branch] =
-    JsonEncoder[Json].contramap {
-      case All         => Json.Str("*")
-      case Named(name) => Json.Str(name)
+    JsonEncoder.string.contramap {
+      case All         => "*"
+      case Named(name) => name
     }
 }
 
@@ -148,9 +148,7 @@ object Strategy {
 case class ActionRef(ref: String)
 object ActionRef {
   implicit val encoder: JsonEncoder[ActionRef] =
-    JsonEncoder[Json].contramap { action =>
-      Json.Str(action.ref)
-    }
+    JsonEncoder.string.contramap(_.ref)
 }
 
 sealed trait Condition {
@@ -191,9 +189,7 @@ object Condition {
   }
 
   implicit val encoder: JsonEncoder[Condition] =
-    JsonEncoder[Json].contramap { c =>
-      Json.Str(c.asString)
-    }
+    JsonEncoder.string.contramap(_.asString)
 }
 
 sealed trait Step {
@@ -243,17 +239,13 @@ object Step {
 case class ImageRef(ref: String)
 object ImageRef {
   implicit val encoder: JsonEncoder[ImageRef] =
-    JsonEncoder[Json].contramap { image =>
-      Json.Str(image.ref)
-    }
+    JsonEncoder.string.contramap(_.ref)
 }
 
 case class ServicePort(inner: Int, outer: Int)
 object ServicePort {
   implicit val encoder: JsonEncoder[ServicePort] =
-    JsonEncoder[Json].contramap { sp =>
-      Json.Str(s"${sp.inner}:${sp.outer}")
-    }
+    JsonEncoder.string.contramap(sp => s"${sp.inner}:${sp.outer}")
 }
 
 case class Service(
