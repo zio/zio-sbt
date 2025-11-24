@@ -152,7 +152,7 @@ test:
   - name: Cache Dependencies
     uses: coursier/cache-action@v6
   - name: Git Checkout
-    uses: actions/checkout@v4.1.1
+    uses: actions/checkout@v6
     with:
       fetch-depth: '0'
   - name: Test
@@ -221,7 +221,7 @@ test:
   - name: Cache Dependencies
     uses: coursier/cache-action@v6
   - name: Git Checkout
-    uses: actions/checkout@v4.1.1
+    uses: actions/checkout@v6
     with:
       fetch-depth: '0'
   - name: Test
