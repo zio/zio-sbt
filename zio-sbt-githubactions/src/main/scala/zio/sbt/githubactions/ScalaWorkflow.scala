@@ -27,7 +27,7 @@ object ScalaWorkflow {
   def checkoutCurrentBranch(fetchDepth: Int = 0): Step =
     SingleStep(
       name = "Checkout current branch",
-      uses = Some(ActionRef("actions/checkout@v2")),
+      uses = Some(ActionRef("actions/checkout@v6")),
       parameters = Map(
         "fetch-depth" -> Json.Num(fetchDepth)
       )
