@@ -22,7 +22,7 @@ jobs:
       matrix:
         java: ['11', '17', '21']
         # These version must be different than the versions in V.scala to verify that we are reading from the ci.yml file.
-        scala: ['2.12.20', '2.13.17', '3.3.7' ]
+        scala: ['2.12.20', '2.13.18', '3.3.7' ]
     steps:
     - uses: actions/checkout@v6
     - uses: actions/setup-java@v3.13.0
