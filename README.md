@@ -168,12 +168,12 @@ In some cases, we may have multiple submodules in our project and we want to tes
 
 The `ciTargetScalaVersions` setting key is used to define a mapping of project names to the Scala versions that should be used for testing phase of continuous integration (CI).
 
-For example, suppose we have a project with the name "submoduleA" and we want to test it against Scala `2.12.20`, and for the "submoduleB" we want to test it against Scala `2.12.20` and `2.13.17` and `3.3.7`, We can define the `ciTargetScalaVersions` setting as follows:
+For example, suppose we have a project with the name "submoduleA" and we want to test it against Scala `2.12.20`, and for the "submoduleB" we want to test it against Scala `2.12.20` and `2.13.18` and `3.3.7`, We can define the `ciTargetScalaVersions` setting as follows:
 
 ```scala
 ThisBuild / ciTargetScalaVersions := Map(
     "submoduleA" -> Seq("2.12.20"),
-    "submoduleB" -> Seq("2.12.20", "2.13.17", "3.3.7")
+    "submoduleB" -> Seq("2.12.20", "2.13.18", "3.3.7")
   )
 ```
 
@@ -208,7 +208,7 @@ test:
       scala-project:
       - ++2.12.20 submoduleA
       - ++2.12.20 submoduleB
-      - ++2.13.17 submoduleB
+      - ++2.13.18 submoduleB
       - ++3.3.7 submoduleB
   steps:
   - name: Install libuv
