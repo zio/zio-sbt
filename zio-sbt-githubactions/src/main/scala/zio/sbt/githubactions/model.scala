@@ -429,6 +429,7 @@ object Workflow {
         ("name", Json.Str(wf.name)),
         ("env", wf.env.toJsonAST.getOrElse(Json.Null)),
         ("on", onJson),
+        ("permissions", Json.Obj(("id-token", Json.Str("write")), ("contents", Json.Str("read")))),
         ("concurrency", concurrencyJson),
         ("jobs", jobsJson)
       )

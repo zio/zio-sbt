@@ -751,7 +751,6 @@ object ZioSbtCiPlugin extends AutoPlugin {
     Step.SingleStep(
       name = "Publish Docs to NPM Registry",
       run = Some(prefixJobs + s"sbt docs/${docsVersioning.npmCommand}"),
-      env = Map("NODE_AUTH_TOKEN" -> "${{ secrets.NPM_TOKEN }}")
     )
   }
 
