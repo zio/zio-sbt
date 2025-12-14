@@ -237,7 +237,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
       exit(
         Process(
-          s"npm version --new-version $version --no-git-tag-version",
+          s"npm version $version --no-git-tag-version",
           new File(s"${websiteDir.value.toString}/docs/")
         ).!
       )
