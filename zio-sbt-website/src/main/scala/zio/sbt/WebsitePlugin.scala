@@ -235,6 +235,11 @@ object WebsitePlugin extends sbt.AutoPlugin {
     val version       = docsVersionTask.value
     val docsDir: File = new File(websiteDir.value.toString, "docs")
 
+    // Get repository URL from scmInfo
+    val repoUrl: String = scmInfo.value
+      .map(_.browseUrl.toString)
+      .getOrElse(sys.error("scmInfo must be set for npm provenance verification"))
+
     // Extract prerelease tag from version (e.g., "1.0.0-beta.1" -> "beta")
     val prereleaseTag: Option[String] = {
       val prereleasePattern = """^\d+\.\d+\.\d+-([a-zA-Z]+).*""".r
@@ -243,10 +248,10 @@ object WebsitePlugin extends sbt.AutoPlugin {
         case _                      => None
       }
     }
-
     val npmTag = prereleaseTag.map(tag => s"--tag $tag").getOrElse("")
 
     exit(Process(s"npm version $version --no-git-tag-version", docsDir).!)
+    exit(Process(s"npm pkg set repository.url=$repoUrl", docsDir).!)
     exit("npm config set access public".!)
     exit(Process(s"npm publish $npmTag".trim, docsDir).!)
   }
