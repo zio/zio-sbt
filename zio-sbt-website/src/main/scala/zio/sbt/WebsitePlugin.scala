@@ -230,22 +230,26 @@ object WebsitePlugin extends sbt.AutoPlugin {
       }
     }
 
-  lazy val publishToNpmTask: Def.Initialize[Task[Unit]] =
-    Def.task {
-      val _       = compileDocs.toTask("").value
-      val version = docsVersionTask.value
+  lazy val publishToNpmTask: Def.Initialize[Task[Unit]] = Def.task {
+    val _             = compileDocs.toTask("").value
+    val version       = docsVersionTask.value
+    val docsDir: File = new File(websiteDir.value.toString, "docs")
 
-      exit(
-        Process(
-          s"npm version $version --no-git-tag-version",
-          new File(s"${websiteDir.value.toString}/docs/")
-        ).!
-      )
-
-      exit("npm config set access public".!)
-
-      exit(Process("npm publish", new File(s"${websiteDir.value.toString}/docs/")).!)
+    // Extract prerelease tag from version (e.g., "1.0.0-beta.1" -> "beta")
+    val prereleaseTag: Option[String] = {
+      val prereleasePattern = """^\d+\.\d+\.\d+-([a-zA-Z]+).*""".r
+      version match {
+        case prereleasePattern(tag) => Some(tag.toLowerCase)
+        case _                      => None
+      }
     }
+
+    val npmTag = prereleaseTag.map(tag => s"--tag $tag").getOrElse("")
+
+    exit(Process(s"npm version $version --no-git-tag-version", docsDir).!)
+    exit("npm config set access public".!)
+    exit(Process(s"npm publish $npmTag".trim, docsDir).!)
+  }
 
   private def hashVersion: String = {
     val hashPart = s"git rev-parse --short=12 HEAD".!!
