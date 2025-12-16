@@ -724,10 +724,6 @@ object ZioSbtCiPlugin extends AutoPlugin {
   /**
    * Creates a step to cache SBT build artifacts (target directories). This
    * caches compiled classes across workflow runs to speed up CI builds.
-   *
-   * @param javaVersion
-   *   The Java version to include in the cache key (e.g., "17" or "${{
-   *   matrix.java }}")
    */
   def CacheSbtBuild(javaVersion: String): Step.SingleStep = Step.SingleStep(
     name = "Cache SBT Build",
