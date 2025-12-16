@@ -187,46 +187,46 @@ object ZioSbtCiPlugin extends AutoPlugin {
             CacheDependencies,
             checkout
           ) ++
-          (if (cacheSbtBuild) Seq(CacheSbtBuild("${{ matrix.java }}")) else Seq.empty) ++
-          (if (javaPlatformMatrix.values.toSet.isEmpty) {
-                  scalaVersionMatrix.values.toSeq.flatten.distinct.map { scalaVersion: String =>
-                    Step.SingleStep(
-                      name = "Test",
-                      condition = Some(Condition.Expression(s"matrix.scala == '$scalaVersion'")),
-                      run = Some(
-                        prefixJobs + "sbt ++${{ matrix.scala }}" + makeTests(
-                          scalaVersion
-                        )
-                      )
-                    )
-                  }
-                } else {
-                  (for {
-                    javaPlatform: String <- Set("11", "17", "21")
-                    scalaVersion: String <- scalaVersionMatrix.values.toSeq.flatten.toSet
-                    projects              =
-                      scalaVersionMatrix.filterKeys { p =>
-                        javaPlatformMatrix.getOrElse(p, javaPlatform).toInt <= javaPlatform.toInt
-                      }.filter { case (_, versions) =>
-                        versions.contains(scalaVersion)
-                      }.keys
-                  } yield
-                    if (projects.nonEmpty)
-                      Seq(
-                        Step.SingleStep(
-                          name = "Test",
-                          condition = Some(
-                            Condition.Expression(s"matrix.java == '$javaPlatform'") && Condition.Expression(
-                              s"matrix.scala == '$scalaVersion'"
-                            )
-                          ),
-                          run = Some(
-                            prefixJobs + "sbt ++${{ matrix.scala }}" ++ s" ${projects.map(_ + "/test ").mkString(" ")}"
-                          )
-                        )
-                      )
-                    else Seq.empty).flatten.toSeq
-                })
+            (if (cacheSbtBuild) Seq(CacheSbtBuild("${{ matrix.java }}")) else Seq.empty) ++
+            (if (javaPlatformMatrix.values.toSet.isEmpty) {
+               scalaVersionMatrix.values.toSeq.flatten.distinct.map { scalaVersion: String =>
+                 Step.SingleStep(
+                   name = "Test",
+                   condition = Some(Condition.Expression(s"matrix.scala == '$scalaVersion'")),
+                   run = Some(
+                     prefixJobs + "sbt ++${{ matrix.scala }}" + makeTests(
+                       scalaVersion
+                     )
+                   )
+                 )
+               }
+             } else {
+               (for {
+                 javaPlatform: String <- Set("11", "17", "21")
+                 scalaVersion: String <- scalaVersionMatrix.values.toSeq.flatten.toSet
+                 projects              =
+                   scalaVersionMatrix.filterKeys { p =>
+                     javaPlatformMatrix.getOrElse(p, javaPlatform).toInt <= javaPlatform.toInt
+                   }.filter { case (_, versions) =>
+                     versions.contains(scalaVersion)
+                   }.keys
+               } yield
+                 if (projects.nonEmpty)
+                   Seq(
+                     Step.SingleStep(
+                       name = "Test",
+                       condition = Some(
+                         Condition.Expression(s"matrix.java == '$javaPlatform'") && Condition.Expression(
+                           s"matrix.scala == '$scalaVersion'"
+                         )
+                       ),
+                       run = Some(
+                         prefixJobs + "sbt ++${{ matrix.scala }}" ++ s" ${projects.map(_ + "/test ").mkString(" ")}"
+                       )
+                     )
+                   )
+                 else Seq.empty).flatten.toSeq
+             })
         }
       )
     }
@@ -505,11 +505,11 @@ object ZioSbtCiPlugin extends AutoPlugin {
                 SetupSBT,
                 CacheDependencies
               ) ++
-              (if (cacheSbtBuild) Seq(CacheSbtBuild(javaVersion)) else Seq.empty) ++
-              Seq(
-                SetupNodeJs,
-                publishToNpmRegistry
-              )
+                (if (cacheSbtBuild) Seq(CacheSbtBuild(javaVersion)) else Seq.empty) ++
+                Seq(
+                  SetupNodeJs,
+                  publishToNpmRegistry
+                )
             )
           )
       ),
@@ -722,10 +722,12 @@ object ZioSbtCiPlugin extends AutoPlugin {
   )
 
   /**
-   * Creates a step to cache SBT build artifacts (target directories).
-   * This caches compiled classes across workflow runs to speed up CI builds.
+   * Creates a step to cache SBT build artifacts (target directories). This
+   * caches compiled classes across workflow runs to speed up CI builds.
    *
-   * @param javaVersion The Java version to include in the cache key (e.g., "17" or "${{ matrix.java }}")
+   * @param javaVersion
+   *   The Java version to include in the cache key (e.g., "17" or "${{
+   *   matrix.java }}")
    */
   def CacheSbtBuild(javaVersion: String): Step.SingleStep = Step.SingleStep(
     name = "Cache SBT Build",
