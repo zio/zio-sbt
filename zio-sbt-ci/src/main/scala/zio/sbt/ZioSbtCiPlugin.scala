@@ -58,6 +58,10 @@ object ZioSbtCiPlugin extends AutoPlugin {
       settingKey[String](
         "The default Java version which is used in CI, especially for releasing artifacts, defaults to 17. Note that this is just JDK version used for compilation. Artefact will be compiled with -target and -source flags specified by 'javaPlatform' setting or 'javaPlatform' parameter in 'stdSettings'"
       )
+    val ciCacheSbtBuild: SettingKey[Boolean] =
+      settingKey[Boolean](
+        "Enable caching of SBT build artifacts (target directories) to speed up CI builds across workflow runs, default is true"
+      )
     val ciCheckGithubWorkflow: TaskKey[Unit]              = taskKey[Unit]("Make sure if the ci.yml file is up-to-date")
     val ciCheckArtifactsBuildSteps: SettingKey[Seq[Step]] =
       settingKey[Seq[Step]]("Workflow steps for checking artifact build process")
@@ -98,6 +102,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
     val checkAllCodeCompiles      = ciCheckArtifactsCompilationSteps.value
     val checkArtifactBuildProcess = ciCheckArtifactsBuildSteps.value
     val checkWebsiteBuildProcess  = ciCheckWebsiteBuildProcess.value
+    val cacheSbtBuild             = ciCacheSbtBuild.value
 
     Seq(
       Job(
@@ -112,7 +117,9 @@ object ZioSbtCiPlugin extends AutoPlugin {
               SetupJava(javaVersion),
               SetupSBT,
               CacheDependencies
-            ) ++ checkAllCodeCompiles ++ checkArtifactBuildProcess ++ checkWebsiteBuildProcess
+            ) ++
+            (if (cacheSbtBuild) Seq(CacheSbtBuild(javaVersion)) else Seq.empty) ++
+            checkAllCodeCompiles ++ checkArtifactBuildProcess ++ checkWebsiteBuildProcess
         }
       )
     )
@@ -125,15 +132,16 @@ object ZioSbtCiPlugin extends AutoPlugin {
     val javaVersion         = ciDefaultJavaVersion.value
     val checkGithubWorkflow = ciCheckGithubWorkflowSteps.value
     val lint                = Lint.value
+    val cacheSbtBuild       = ciCacheSbtBuild.value
 
     Seq(
       Job(
         id = "lint",
         name = "Lint",
         steps = (if (swapSizeGB > 0) Seq(setSwapSpace) else Seq.empty) ++
-          Seq(checkout, SetupLibuv, SetupJava(javaVersion), SetupSBT, CacheDependencies) ++ checkGithubWorkflow ++ Seq(
-            lint
-          )
+          Seq(checkout, SetupLibuv, SetupJava(javaVersion), SetupSBT, CacheDependencies) ++
+          (if (cacheSbtBuild) Seq(CacheSbtBuild(javaVersion)) else Seq.empty) ++
+          checkGithubWorkflow ++ Seq(lint)
       )
     )
   }
@@ -148,6 +156,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
     val setSwapSpace       = SetSwapSpace.value
     val checkout           = Checkout.value
     val backgroundJobs     = ciBackgroundJobs.value
+    val cacheSbtBuild      = ciCacheSbtBuild.value
 
     val prefixJobs = makePrefixJobs(backgroundJobs)
 
@@ -177,7 +186,9 @@ object ZioSbtCiPlugin extends AutoPlugin {
             SetupSBT,
             CacheDependencies,
             checkout
-          ) ++ (if (javaPlatformMatrix.values.toSet.isEmpty) {
+          ) ++
+          (if (cacheSbtBuild) Seq(CacheSbtBuild("${{ matrix.java }}")) else Seq.empty) ++
+          (if (javaPlatformMatrix.values.toSet.isEmpty) {
                   scalaVersionMatrix.values.toSeq.flatten.distinct.map { scalaVersion: String =>
                     Step.SingleStep(
                       name = "Test",
@@ -257,7 +268,10 @@ object ZioSbtCiPlugin extends AutoPlugin {
             SetupJava("${{ matrix.java }}"),
             SetupSBT,
             CacheDependencies,
-            checkout,
+            checkout
+          ) ++
+          (if (cacheSbtBuild) Seq(CacheSbtBuild("${{ matrix.java }}")) else Seq.empty) ++
+          Seq(
             if (javaPlatformMatrix.values.toSet.isEmpty) {
               Step.SingleStep(
                 name = "Test",
@@ -311,7 +325,10 @@ object ZioSbtCiPlugin extends AutoPlugin {
             SetupJava("${{ matrix.java }}"),
             SetupSBT,
             CacheDependencies,
-            checkout,
+            checkout
+          ) ++
+          (if (cacheSbtBuild) Seq(CacheSbtBuild("${{ matrix.java }}")) else Seq.empty) ++
+          Seq(
             Step.SingleStep(
               name = "Test",
               run = Some(prefixJobs + "sbt +test")
@@ -350,6 +367,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
     val javaVersion           = ciDefaultJavaVersion.value
     val updateReadmeCondition = autoImport.ciUpdateReadmeCondition.value
     val generateReadme        = GenerateReadme.value
+    val cacheSbtBuild         = ciCacheSbtBuild.value
 
     Seq(
       Job(
@@ -364,7 +382,10 @@ object ZioSbtCiPlugin extends AutoPlugin {
             SetupLibuv,
             SetupJava(javaVersion),
             SetupSBT,
-            CacheDependencies,
+            CacheDependencies
+          ) ++
+          (if (cacheSbtBuild) Seq(CacheSbtBuild(javaVersion)) else Seq.empty) ++
+          Seq(
             generateReadme,
             Step.SingleStep(
               name = "Commit Changes",
@@ -427,12 +448,13 @@ object ZioSbtCiPlugin extends AutoPlugin {
   }
 
   lazy val releaseJobs: Def.Initialize[Seq[Job]] = Def.setting {
-    val swapSizeGB   = ciSwapSizeGB.value
-    val setSwapSpace = SetSwapSpace.value
-    val checkout     = Checkout.value
-    val javaVersion  = ciDefaultJavaVersion.value
-    val release      = Release.value
-    val jobs         = ciReleaseApprovalJobs.value
+    val swapSizeGB    = ciSwapSizeGB.value
+    val setSwapSpace  = SetSwapSpace.value
+    val checkout      = Checkout.value
+    val javaVersion   = ciDefaultJavaVersion.value
+    val release       = Release.value
+    val jobs          = ciReleaseApprovalJobs.value
+    val cacheSbtBuild = ciCacheSbtBuild.value
 
     Seq(
       Job(
@@ -446,9 +468,10 @@ object ZioSbtCiPlugin extends AutoPlugin {
             SetupLibuv,
             SetupJava(javaVersion),
             SetupSBT,
-            CacheDependencies,
-            release
-          )
+            CacheDependencies
+          ) ++
+          (if (cacheSbtBuild) Seq(CacheSbtBuild(javaVersion)) else Seq.empty) ++
+          Seq(release)
       )
     )
   }
@@ -459,6 +482,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
     val checkout             = Checkout.value
     val javaVersion          = ciDefaultJavaVersion.value
     val publishToNpmRegistry = PublishToNpmRegistry.value
+    val cacheSbtBuild        = ciCacheSbtBuild.value
 
     Seq(
       Job(
@@ -479,7 +503,10 @@ object ZioSbtCiPlugin extends AutoPlugin {
                 SetupLibuv,
                 SetupJava(javaVersion),
                 SetupSBT,
-                CacheDependencies,
+                CacheDependencies
+              ) ++
+              (if (cacheSbtBuild) Seq(CacheSbtBuild(javaVersion)) else Seq.empty) ++
+              Seq(
                 SetupNodeJs,
                 publishToNpmRegistry
               )
@@ -586,6 +613,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
       ciUpdateReadmeCondition    := None,
       ciGroupSimilarTests        := false,
       ciSwapSizeGB               := 0,
+      ciCacheSbtBuild            := true,
       ciTargetJavaVersions       := Seq("11", "17", "21"),
       ciCheckArtifactsBuildSteps :=
         Seq(
@@ -691,6 +719,32 @@ object ZioSbtCiPlugin extends AutoPlugin {
   lazy val CacheDependencies: Step.SingleStep = Step.SingleStep(
     name = "Cache Dependencies",
     uses = Some(ActionRef(V("coursier/cache-action")))
+  )
+
+  /**
+   * Creates a step to cache SBT build artifacts (target directories).
+   * This caches compiled classes across workflow runs to speed up CI builds.
+   *
+   * @param javaVersion The Java version to include in the cache key (e.g., "17" or "${{ matrix.java }}")
+   */
+  def CacheSbtBuild(javaVersion: String): Step.SingleStep = Step.SingleStep(
+    name = "Cache SBT Build",
+    uses = Some(ActionRef(V("actions/cache"))),
+    parameters = Map(
+      "path" -> Json.Str(
+        """|target
+           |project/target
+           |project/project/target
+           |**/target""".stripMargin
+      ),
+      "key" -> Json.Str(
+        s"sbt-build-$${{ runner.os }}-jdk$javaVersion-$${{ hashFiles('**/*.sbt', 'project/build.properties', 'project/*.scala', 'project/*.sbt') }}-$${{ hashFiles('**/*.scala') }}"
+      ),
+      "restore-keys" -> Json.Str(
+        s"""|sbt-build-$${{ runner.os }}-jdk$javaVersion-$${{ hashFiles('**/*.sbt', 'project/build.properties', 'project/*.scala', 'project/*.sbt') }}-
+            |sbt-build-$${{ runner.os }}-jdk$javaVersion-""".stripMargin
+      )
+    )
   )
 
   lazy val CheckWebsiteBuildProcess: Def.Initialize[Seq[Step.SingleStep]] =
