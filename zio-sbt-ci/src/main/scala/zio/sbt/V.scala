@@ -3,7 +3,7 @@ package zio.sbt
 object V {
   def apply(packageName: String): String =
     Map(
-      "peter-evans/create-pull-request" -> "v7",
+      "peter-evans/create-pull-request" -> "v8",
       "zio/generate-github-app-token"   -> "v1.0.0",
       "pierotofy/set-swap-space"        -> "master",
       "actions/checkout"                -> "v6",
