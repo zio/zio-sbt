@@ -24,5 +24,5 @@ addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.4.8")
 
 libraryDependencies += "org.snakeyaml" % "snakeyaml-engine" % "3.0.1"
 libraryDependencies += "dev.zio"      %% "zio"              % "2.1.23"
-libraryDependencies += "dev.zio"      %% "zio-json"         % "0.7.45"
-libraryDependencies += "dev.zio"      %% "zio-json-yaml"    % "0.7.45"
+libraryDependencies += "dev.zio"      %% "zio-json"         % "0.8.0"
+libraryDependencies += "dev.zio"      %% "zio-json-yaml"    % "0.8.0"
