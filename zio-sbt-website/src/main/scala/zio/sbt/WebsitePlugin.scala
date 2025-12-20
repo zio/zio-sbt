@@ -264,36 +264,37 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
   lazy val publishHashverToNpmTask: Def.Initialize[Task[Unit]] =
     Def.task {
-      val _ = compileDocs.toTask("").value
+      val _             = compileDocs.toTask("").value
+      val docsDir: File = new File(websiteDir.value.toString, "docs")
 
-      exit(
-        Process(
-          s"npm version --new-version $hashVersion --no-git-tag-version",
-          new File(s"${websiteDir.value.toString}/docs/")
-        ).!
-      )
+      // Get repository URL from scmInfo
+      val repoUrl: String = scmInfo.value
+        .map(_.browseUrl.toString)
+        .getOrElse(sys.error("scmInfo must be set for npm provenance verification"))
 
+      exit(Process(s"npm version $hashVersion --no-git-tag-version", docsDir).!)
+      exit(Process(s"npm pkg set repository.url=$repoUrl", docsDir).!)
       exit("npm config set access public".!)
-
-      exit(Process("npm publish", new File(s"${websiteDir.value.toString}/docs/")).!)
+      exit(Process("npm publish --tag hash", docsDir).!)
     }
 
   lazy val publishSnapshotToNpmTask: Def.Initialize[Task[Unit]] =
     Def.task {
-      val _ = compileDocs.toTask("").value
+      val _             = compileDocs.toTask("").value
+      val docsDir: File = new File(websiteDir.value.toString, "docs")
 
+      // Get repository URL from scmInfo
+      val repoUrl: String = scmInfo.value
+        .map(_.browseUrl.toString)
+        .getOrElse(sys.error("scmInfo must be set for npm provenance verification"))
+
+      // Replace + with -- for npm compatibility, snapshot versions contain hyphens
       val refinedVersion = version.value.replace("+", "--")
 
-      exit(
-        Process(
-          s"npm version --new-version $refinedVersion --no-git-tag-version",
-          new File(s"${websiteDir.value.toString}/docs/")
-        ).!
-      )
-
+      exit(Process(s"npm version $refinedVersion --no-git-tag-version", docsDir).!)
+      exit(Process(s"npm pkg set repository.url=$repoUrl", docsDir).!)
       exit("npm config set access public".!)
-
-      exit(Process("npm publish", new File(s"${websiteDir.value.toString}/docs/")).!)
+      exit(Process("npm publish --tag snapshot", docsDir).!)
     }
 
   private def prefixUrlsWith(markdown: String, prefix: String): String = {
