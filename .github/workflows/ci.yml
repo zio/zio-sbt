@@ -43,6 +43,18 @@ jobs:
       uses: sbt/setup-sbt@v1
     - name: Cache Dependencies
       uses: coursier/cache-action@v7
+    - name: Cache SBT Build
+      uses: actions/cache@v4
+      with:
+        path: |-
+          target
+          project/target
+          project/project/target
+          **/target
+        key: sbt-build-${{ runner.os }}-jdk17-${{ hashFiles('**/*.sbt', 'project/build.properties', 'project/*.scala', 'project/*.sbt') }}-${{ hashFiles('**/*.scala') }}
+        restore-keys: |-
+          sbt-build-${{ runner.os }}-jdk17-${{ hashFiles('**/*.sbt', 'project/build.properties', 'project/*.scala', 'project/*.sbt') }}-
+          sbt-build-${{ runner.os }}-jdk17-
     - name: Check all code compiles
       run: sbt +Test/compile
     - name: Check artifacts build process
@@ -70,6 +82,18 @@ jobs:
       uses: sbt/setup-sbt@v1
     - name: Cache Dependencies
       uses: coursier/cache-action@v7
+    - name: Cache SBT Build
+      uses: actions/cache@v4
+      with:
+        path: |-
+          target
+          project/target
+          project/project/target
+          **/target
+        key: sbt-build-${{ runner.os }}-jdk17-${{ hashFiles('**/*.sbt', 'project/build.properties', 'project/*.scala', 'project/*.sbt') }}-${{ hashFiles('**/*.scala') }}
+        restore-keys: |-
+          sbt-build-${{ runner.os }}-jdk17-${{ hashFiles('**/*.sbt', 'project/build.properties', 'project/*.scala', 'project/*.sbt') }}-
+          sbt-build-${{ runner.os }}-jdk17-
     - name: Check if the site workflow is up to date
       run: sbt ciCheckGithubWorkflow
     - name: Lint
@@ -102,6 +126,18 @@ jobs:
       uses: actions/checkout@v6
       with:
         fetch-depth: '0'
+    - name: Cache SBT Build
+      uses: actions/cache@v4
+      with:
+        path: |-
+          target
+          project/target
+          project/project/target
+          **/target
+        key: sbt-build-${{ runner.os }}-jdk${{ matrix.java }}-${{ hashFiles('**/*.sbt', 'project/build.properties', 'project/*.scala', 'project/*.sbt') }}-${{ hashFiles('**/*.scala') }}
+        restore-keys: |-
+          sbt-build-${{ runner.os }}-jdk${{ matrix.java }}-${{ hashFiles('**/*.sbt', 'project/build.properties', 'project/*.scala', 'project/*.sbt') }}-
+          sbt-build-${{ runner.os }}-jdk${{ matrix.java }}-
     - name: Test
       run: sbt +test
   update-readme:
@@ -126,6 +162,18 @@ jobs:
       uses: sbt/setup-sbt@v1
     - name: Cache Dependencies
       uses: coursier/cache-action@v7
+    - name: Cache SBT Build
+      uses: actions/cache@v4
+      with:
+        path: |-
+          target
+          project/target
+          project/project/target
+          **/target
+        key: sbt-build-${{ runner.os }}-jdk17-${{ hashFiles('**/*.sbt', 'project/build.properties', 'project/*.scala', 'project/*.sbt') }}-${{ hashFiles('**/*.scala') }}
+        restore-keys: |-
+          sbt-build-${{ runner.os }}-jdk17-${{ hashFiles('**/*.sbt', 'project/build.properties', 'project/*.scala', 'project/*.sbt') }}-
+          sbt-build-${{ runner.os }}-jdk17-
     - name: Generate Readme
       run: sbt docs/generateReadme
     - name: Commit Changes
@@ -202,6 +250,18 @@ jobs:
       uses: sbt/setup-sbt@v1
     - name: Cache Dependencies
       uses: coursier/cache-action@v7
+    - name: Cache SBT Build
+      uses: actions/cache@v4
+      with:
+        path: |-
+          target
+          project/target
+          project/project/target
+          **/target
+        key: sbt-build-${{ runner.os }}-jdk17-${{ hashFiles('**/*.sbt', 'project/build.properties', 'project/*.scala', 'project/*.sbt') }}-${{ hashFiles('**/*.scala') }}
+        restore-keys: |-
+          sbt-build-${{ runner.os }}-jdk17-${{ hashFiles('**/*.sbt', 'project/build.properties', 'project/*.scala', 'project/*.sbt') }}-
+          sbt-build-${{ runner.os }}-jdk17-
     - name: Release
       run: sbt ci-release
       env:
@@ -233,6 +293,18 @@ jobs:
       uses: sbt/setup-sbt@v1
     - name: Cache Dependencies
       uses: coursier/cache-action@v7
+    - name: Cache SBT Build
+      uses: actions/cache@v4
+      with:
+        path: |-
+          target
+          project/target
+          project/project/target
+          **/target
+        key: sbt-build-${{ runner.os }}-jdk17-${{ hashFiles('**/*.sbt', 'project/build.properties', 'project/*.scala', 'project/*.sbt') }}-${{ hashFiles('**/*.scala') }}
+        restore-keys: |-
+          sbt-build-${{ runner.os }}-jdk17-${{ hashFiles('**/*.sbt', 'project/build.properties', 'project/*.scala', 'project/*.sbt') }}-
+          sbt-build-${{ runner.os }}-jdk17-
     - name: Setup NodeJs
       uses: actions/setup-node@v6
       with:
