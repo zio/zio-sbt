@@ -28,6 +28,10 @@ enablePlugins(
 )
 ```
 
+:::note
+Always try to keep the SBT version specified in the `project/build.properties` file up to date to ensure compatibility with the ZIO SBT plugins.
+:::
+
 ## ZIO SBT Ecosystem
 
 ZIO SBT Ecosystem plugin is an sbt plugin that provides a set of sbt settings and tasks that are very common and useful for configuring and managing ZIO projects. It is designed help developers to quickly set up a new ZIO project with a minimal amount of effort.
