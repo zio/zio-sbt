@@ -59,6 +59,8 @@ object WebsitePlugin extends sbt.AutoPlugin {
     val docsVersioningScheme: SettingKey[VersioningScheme] =
       settingKey[VersioningScheme]("Versioning scheme used for docs package")
     val docsVersion: SettingKey[String] = settingKey[String]("Docs package version")
+    val createZioWebsiteVersion: SettingKey[String] =
+      settingKey[String]("Pinned version of @zio.dev/create-zio-website npm package")
 
     val ProjectStage = zio.sbt.WebsiteUtils.ProjectStage
     type ProjectStage = zio.sbt.WebsiteUtils.ProjectStage
@@ -123,7 +125,8 @@ object WebsitePlugin extends sbt.AutoPlugin {
       readmeMaintainers     := "",
       ciWorkflowName        := "CI",
       docsVersioningScheme  := VersioningScheme.SemanticVersioning,
-      docsVersion           := docsVersionTask.value
+      docsVersion           := docsVersionTask.value,
+      createZioWebsiteVersion := "0.0.1-alpha.14"
     )
 
   private def exit(exitCode: Int, errorMessage: String = "") = if (exitCode != 0) sys.error(errorMessage: String)
@@ -184,7 +187,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
         exit(Process(s"rm $siteTarget -Rvf").!)
 
       val task: String =
-        s"""|npx @zio.dev/create-zio-website@latest ${normalizedName.value}-website \\
+        s"""|npx @zio.dev/create-zio-website@${createZioWebsiteVersion.value} ${normalizedName.value}-website \\
             |  --description="${name.value}" \\
             |  --author="ZIO Contributors" \\
             |  --email="email@zio.dev" \\
