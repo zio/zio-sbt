@@ -58,7 +58,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
     val readmeMaintainers: SettingKey[String]              = settingKey[String]("Maintainers section")
     val docsVersioningScheme: SettingKey[VersioningScheme] =
       settingKey[VersioningScheme]("Versioning scheme used for docs package")
-    val docsVersion: SettingKey[String] = settingKey[String]("Docs package version")
+    val docsVersion: SettingKey[String]             = settingKey[String]("Docs package version")
     val createZioWebsiteVersion: SettingKey[String] =
       settingKey[String]("Pinned version of @zio.dev/create-zio-website npm package")
 
@@ -114,18 +114,18 @@ object WebsitePlugin extends sbt.AutoPlugin {
         projectName.value,
         homepage.value.getOrElse(url(s"https://zio.dev/ecosystem/"))
       ),
-      readmeContribution    := readmeContributionSection,
-      readmeSupport         := readmeSupportSection,
-      readmeLicense         := readmeLicenseSection,
-      readmeAcknowledgement := "",
-      readmeContribution    := readmeContributionSection,
-      readmeCodeOfConduct   := readmeCodeOfConductSection,
-      readmeCredits         := "",
-      readmeBanner          := "",
-      readmeMaintainers     := "",
-      ciWorkflowName        := "CI",
-      docsVersioningScheme  := VersioningScheme.SemanticVersioning,
-      docsVersion           := docsVersionTask.value,
+      readmeContribution      := readmeContributionSection,
+      readmeSupport           := readmeSupportSection,
+      readmeLicense           := readmeLicenseSection,
+      readmeAcknowledgement   := "",
+      readmeContribution      := readmeContributionSection,
+      readmeCodeOfConduct     := readmeCodeOfConductSection,
+      readmeCredits           := "",
+      readmeBanner            := "",
+      readmeMaintainers       := "",
+      ciWorkflowName          := "CI",
+      docsVersioningScheme    := VersioningScheme.SemanticVersioning,
+      docsVersion             := docsVersionTask.value,
       createZioWebsiteVersion := "0.0.1-alpha.14"
     )
 
