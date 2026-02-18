@@ -168,6 +168,16 @@ object WebsitePlugin extends sbt.AutoPlugin {
     Def.task {
       val logger = streams.value.log
 
+      val websiteDirPath = websiteDir.value
+
+      // Always remove existing websiteDir to ensure a clean install.
+      // Without this, `mv` would move the new directory *into* the existing one
+      // as a subdirectory instead of replacing it.
+      if (Files.exists(websiteDirPath)) {
+        logger.info(s"Removing existing website directory: $websiteDirPath")
+        exit(Process(s"rm ${websiteDirPath} -Rvf").!)
+      }
+
       val siteTarget = s"${target.value}/${normalizedName.value}-website"
 
       if (Files.exists(Paths.get(siteTarget)))
@@ -185,9 +195,9 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
       exit(Process(task, target.value).!)
 
-      exit(Process(s"mv ${target.value}/${normalizedName.value}-website ${websiteDir.value}").!)
+      exit(Process(s"mv ${target.value}/${normalizedName.value}-website ${websiteDirPath}").!)
 
-      exit(s"rm -rvf ${websiteDir.value.toString}/.git/".!)
+      exit(s"rm -rvf ${websiteDirPath.toString}/.git/".!)
     }
 
   lazy val buildWebsiteTask: Def.Initialize[Task[Unit]] =

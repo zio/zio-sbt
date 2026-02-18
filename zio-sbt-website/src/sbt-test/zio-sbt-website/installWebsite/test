@@ -3,3 +3,9 @@
 $ exists target/website/src 
 $ exists target/website/static 
 $ exists target/website/LICENSE 
+
+# Running installWebsite again should succeed (idempotent — removes and reinstalls)
+> installWebsite
+$ exists target/website/src 
+$ exists target/website/static 
+$ exists target/website/LICENSE 
