@@ -58,7 +58,9 @@ object WebsitePlugin extends sbt.AutoPlugin {
     val readmeMaintainers: SettingKey[String]              = settingKey[String]("Maintainers section")
     val docsVersioningScheme: SettingKey[VersioningScheme] =
       settingKey[VersioningScheme]("Versioning scheme used for docs package")
-    val docsVersion: SettingKey[String] = settingKey[String]("Docs package version")
+    val docsVersion: SettingKey[String]             = settingKey[String]("Docs package version")
+    val createZioWebsiteVersion: SettingKey[String] =
+      settingKey[String]("Pinned version of @zio.dev/create-zio-website npm package")
 
     val ProjectStage = zio.sbt.WebsiteUtils.ProjectStage
     type ProjectStage = zio.sbt.WebsiteUtils.ProjectStage
@@ -112,18 +114,19 @@ object WebsitePlugin extends sbt.AutoPlugin {
         projectName.value,
         homepage.value.getOrElse(url(s"https://zio.dev/ecosystem/"))
       ),
-      readmeContribution    := readmeContributionSection,
-      readmeSupport         := readmeSupportSection,
-      readmeLicense         := readmeLicenseSection,
-      readmeAcknowledgement := "",
-      readmeContribution    := readmeContributionSection,
-      readmeCodeOfConduct   := readmeCodeOfConductSection,
-      readmeCredits         := "",
-      readmeBanner          := "",
-      readmeMaintainers     := "",
-      ciWorkflowName        := "CI",
-      docsVersioningScheme  := VersioningScheme.SemanticVersioning,
-      docsVersion           := docsVersionTask.value
+      readmeContribution      := readmeContributionSection,
+      readmeSupport           := readmeSupportSection,
+      readmeLicense           := readmeLicenseSection,
+      readmeAcknowledgement   := "",
+      readmeContribution      := readmeContributionSection,
+      readmeCodeOfConduct     := readmeCodeOfConductSection,
+      readmeCredits           := "",
+      readmeBanner            := "",
+      readmeMaintainers       := "",
+      ciWorkflowName          := "CI",
+      docsVersioningScheme    := VersioningScheme.SemanticVersioning,
+      docsVersion             := docsVersionTask.value,
+      createZioWebsiteVersion := "0.0.1-alpha.14"
     )
 
   private def exit(exitCode: Int, errorMessage: String = "") = if (exitCode != 0) sys.error(errorMessage: String)
@@ -168,13 +171,23 @@ object WebsitePlugin extends sbt.AutoPlugin {
     Def.task {
       val logger = streams.value.log
 
+      val websiteDirPath = websiteDir.value
+
+      // Always remove existing websiteDir to ensure a clean install.
+      // Without this, `mv` would move the new directory *into* the existing one
+      // as a subdirectory instead of replacing it.
+      if (Files.exists(websiteDirPath)) {
+        logger.info(s"Removing existing website directory: $websiteDirPath")
+        exit(Process(s"rm ${websiteDirPath} -Rvf").!)
+      }
+
       val siteTarget = s"${target.value}/${normalizedName.value}-website"
 
       if (Files.exists(Paths.get(siteTarget)))
         exit(Process(s"rm $siteTarget -Rvf").!)
 
       val task: String =
-        s"""|npx @zio.dev/create-zio-website@latest ${normalizedName.value}-website \\
+        s"""|npx @zio.dev/create-zio-website@${createZioWebsiteVersion.value} ${normalizedName.value}-website \\
             |  --description="${name.value}" \\
             |  --author="ZIO Contributors" \\
             |  --email="email@zio.dev" \\
@@ -185,9 +198,9 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
       exit(Process(task, target.value).!)
 
-      exit(Process(s"mv ${target.value}/${normalizedName.value}-website ${websiteDir.value}").!)
+      exit(Process(s"mv ${target.value}/${normalizedName.value}-website ${websiteDirPath}").!)
 
-      exit(s"rm -rvf ${websiteDir.value.toString}/.git/".!)
+      exit(s"rm -rvf ${websiteDirPath.toString}/.git/".!)
     }
 
   lazy val buildWebsiteTask: Def.Initialize[Task[Unit]] =
