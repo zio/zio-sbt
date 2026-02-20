@@ -91,6 +91,19 @@ lazy val `zio-sbt-githubactions` =
       headerEndYear := Some(2023)
     )
 
+lazy val `zio-sbt-gh-query` =
+  project
+    .settings(stdSettings())
+    .settings(
+      headerEndYear      := Some(2026),
+      scriptedLaunchOpts := {
+        scriptedLaunchOpts.value ++
+          Seq("-Xmx1024M", "-Dplugin.version=" + version.value)
+      },
+      scriptedBufferLog := false
+    )
+    .enablePlugins(SbtPlugin)
+
 lazy val docs = project
   .in(file("zio-sbt-docs"))
   .settings(
