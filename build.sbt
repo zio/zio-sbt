@@ -23,7 +23,7 @@ inThisBuild(
 lazy val root = project
   .in(file("."))
   .settings(
-    headerEndYear  := Some(2023),
+    headerEndYear  := Some(2026),
     publish / skip := true
   )
   .aggregate(
@@ -31,7 +31,8 @@ lazy val root = project
     `zio-sbt-website`,
     `zio-sbt-ecosystem`,
     `zio-sbt-ci`,
-    `zio-sbt-tests`
+    `zio-sbt-tests`,
+    `zio-sbt-gh-query`
   )
   .enablePlugins(ZioSbtCiPlugin)
 

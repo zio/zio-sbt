@@ -1,0 +1,55 @@
+#!/bin/bash
+# =============================================================================
+# Update GitHub Issues and PRs - Fetch only new/updated items since last fetch
+# Usage: ./update-github-data.sh
+# =============================================================================
+
+set -e
+
+REPO="zio/zio-blocks"
+OUTPUT_DIR="github-data"
+LAST_FETCH_FILE="$OUTPUT_DIR/.last_fetch"
+
+mkdir -p "$OUTPUT_DIR"
+
+if [ -f "$LAST_FETCH_FILE" ]; then
+    SINCE=$(cat "$LAST_FETCH_FILE")
+    echo "Fetching issues/PRs updated since: $SINCE"
+else
+    SINCE="1970-01-01T00:00:00Z"
+    echo "First fetch - getting all issues/PRs"
+fi
+
+TEMP_ISSUES="$OUTPUT_DIR/issues_new.json"
+TEMP_PRS="$OUTPUT_DIR/prs_new.json"
+TEMP_COMMENTS="$OUTPUT_DIR/comments_new.json"
+
+echo "Fetching updated issues..."
+gh api "repos/$REPO/issues?state=all&per_page=100&since=$SINCE" --paginate -q '.[] | select(.pull_request == null) | {number: .number, title: .title, state: .state, author: .user.login, created: .created_at, updated: .updated_at, body: .body, comments: .comments}' > "$TEMP_ISSUES"
+
+echo "Fetching updated PRs..."
+gh api "repos/$REPO/pulls?state=all&per_page=100&since=$SINCE" --paginate -q '.[] | {number: .number, title: .title, state: .state, author: .user.login, created: .created_at, updated: .updated_at, body: .body, merged: .merged_at}' > "$TEMP_PRS"
+
+ISSUE_COUNT=$(wc -l < "$TEMP_ISSUES")
+PR_COUNT=$(wc -l < "$TEMP_PRS")
+
+echo "Found $ISSUE_COUNT updated issues, $PR_COUNT updated PRs"
+
+if [ "$ISSUE_COUNT" -gt 0 ] || [ "$PR_COUNT" -gt 0 ]; then
+    echo "Updating database..."
+    python3 scripts/update_search_db.py "$TEMP_ISSUES" "$TEMP_PRS" "$TEMP_COMMENTS"
+    
+    cat "$TEMP_ISSUES" >> "$OUTPUT_DIR/issues.json"
+    cat "$TEMP_PRS" >> "$OUTPUT_DIR/prs.json"
+    
+    echo "Cleaning up temp files..."
+    rm -f "$TEMP_ISSUES" "$TEMP_PRS" "$TEMP_COMMENTS"
+else
+    echo "No new items to update"
+    rm -f "$TEMP_ISSUES" "$TEMP_PRS" "$TEMP_COMMENTS"
+fi
+
+echo "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" > "$LAST_FETCH_FILE"
+
+echo ""
+echo "Update complete!"
