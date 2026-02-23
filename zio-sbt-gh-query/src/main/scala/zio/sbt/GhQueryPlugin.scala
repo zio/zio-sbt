@@ -16,12 +16,14 @@
 
 package zio.sbt
 
-import sbt._
-import Keys._
-import scala.sys.process._
 import java.io.{BufferedInputStream, ByteArrayOutputStream, File}
 import java.nio.file.Files
 import java.security.MessageDigest
+
+import scala.sys.process._
+
+import sbt.Keys._
+import sbt._
 
 object GhQueryPlugin extends AutoPlugin {
 
@@ -31,8 +33,8 @@ object GhQueryPlugin extends AutoPlugin {
   val autoImport = GhQueryKeys
 
   object GhQueryKeys {
-    val ghRepo = settingKey[String]("GitHub repository (owner/repo)")
-    val ghDir  = settingKey[File]("Base directory for plugin data")
+    val ghRepo: SettingKey[String] = settingKey[String]("GitHub repository (owner/repo)")
+    val ghDir: SettingKey[File]    = settingKey[File]("Base directory for plugin data")
   }
 
   import GhQueryKeys._
