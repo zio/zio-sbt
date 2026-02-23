@@ -32,12 +32,6 @@ retry() {
     done
 }
 
-echo "Fetching issues list for $REPO..."
-retry gh issue list --repo "$REPO" --state all --limit 1000 > "$OUTPUT_DIR/issues.csv"
-
-echo "Fetching PRs list for $REPO..."
-retry gh pr list --repo "$REPO" --state all --limit 1000 > "$OUTPUT_DIR/prs.csv"
-
 echo "Fetching full issue details..."
 retry gh api "repos/$REPO/issues?state=all&per_page=100" --paginate -q '.[] | select(.pull_request == null) | {number: .number, title: .title, state: .state, author: .user.login, created: .created_at, updated: .updated_at, body: .body, comments: .comments}' > "$OUTPUT_DIR/issues.json"
 
@@ -70,7 +64,10 @@ echo "Fetching PR review comments (this may take a few minutes)..."
 > "$OUTPUT_DIR/pr_comments.json"
 count=0
 failed=0
-pr_numbers=$(cut -f1 < "$OUTPUT_DIR/prs.csv" | head -100)
+TEMP_PRS=$(mktemp "${TMPDIR:-/tmp}/gh_query_prs_XXXXXX.json")
+retry gh pr list --repo "$REPO" --state all --limit 1000 --json number > "$TEMP_PRS"
+pr_numbers=$(jq -r '.[].number' < "$TEMP_PRS")
+rm -f "$TEMP_PRS"
 for num in $pr_numbers; do
     comments=$(retry gh api "repos/$REPO/pulls/$num/comments" --paginate -q '.[] | {pr_number: '$num', author: .user.login, created: .created_at, body: .body}' 2>/dev/null) || true
     if [ -n "$comments" ]; then
@@ -85,8 +82,6 @@ echo "  Fetched review comments for $count PRs"
 
 echo ""
 echo "Done! Data saved to $OUTPUT_DIR/"
-echo "  - issues.csv: $(wc -l < "$OUTPUT_DIR/issues.csv") issues"
-echo "  - prs.csv: $(wc -l < "$OUTPUT_DIR/prs.csv") PRs"
 echo "  - issues.json: $(wc -l < "$OUTPUT_DIR/issues.json") issue details"
 echo "  - prs.json: $(wc -l < "$OUTPUT_DIR/prs.json") PR details"
 echo "  - comments.json: $(wc -l < "$OUTPUT_DIR/comments.json") issue comments"
