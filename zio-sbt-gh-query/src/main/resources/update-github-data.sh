@@ -52,7 +52,19 @@ echo "Fetching updated issues for $REPO..."
 retry gh api "repos/$REPO/issues?state=all&per_page=100&since=$SINCE" --paginate -q '.[] | select(.pull_request == null) | {number: .number, title: .title, state: .state, author: .user.login, created: .created_at, updated: .updated_at, body: .body, comments: .comments}' > "$TEMP_ISSUES"
 
 echo "Fetching updated PRs for $REPO..."
-retry gh api "repos/$REPO/pulls?state=all&per_page=100&since=$SINCE" --paginate -q '.[] | {number: .number, title: .title, state: .state, author: .user.login, created: .created_at, updated: .updated_at, body: .body, merged: .merged_at}' > "$TEMP_PRS"
+# The Pulls API does not support the 'since' parameter, so we use the
+# Issues API (which includes PRs) to discover updated PR numbers, then
+# fetch full details from the Pulls API for each one.
+TEMP_PR_NUMBERS=$(mktemp "${TMPDIR:-/tmp}/gh_query_pr_nums_XXXXXX.json")
+trap "rm -f '$TEMP_PR_NUMBERS'" EXIT
+retry gh api "repos/$REPO/issues?state=all&per_page=100&since=$SINCE" --paginate \
+    -q '.[] | select(.pull_request != null) | .number' > "$TEMP_PR_NUMBERS"
+> "$TEMP_PRS"
+while read -r pr_num; do
+    retry gh api "repos/$REPO/pulls/$pr_num" \
+        -q '{number: .number, title: .title, state: .state, author: .user.login, created: .created_at, updated: .updated_at, body: .body, merged: .merged_at}' >> "$TEMP_PRS"
+done < "$TEMP_PR_NUMBERS"
+rm -f "$TEMP_PR_NUMBERS"
 
 ISSUE_COUNT=$(wc -l < "$TEMP_ISSUES")
 PR_COUNT=$(wc -l < "$TEMP_PRS")
