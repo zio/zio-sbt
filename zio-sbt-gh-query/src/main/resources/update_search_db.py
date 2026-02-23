@@ -8,11 +8,12 @@ Configuration via environment variables:
     GH_QUERY_DB_PATH  - Path to the SQLite database file
 
 Usage:
-    python3 update_search_db.py [issues.json] [prs.json] [comments.json]
+    python3 update_search_db.py [issues.json] [prs.json] [comments.json] [pr_comments.json]
 
 This script:
-- Reads new/updated issues and PRs from JSON Lines files
+- Reads new/updated issues, PRs, and comments from JSON Lines files
 - Uses INSERT ... ON CONFLICT to update existing records or insert new ones
+- Repopulates the denormalized comment_text column for affected issues/PRs
 - Rebuilds the FTS index after updates
 """
 
@@ -156,6 +157,91 @@ def update_prs(conn, filepath):
     return count
 
 
+def update_comments(conn, filepath, is_pr_comment=False):
+    """Update comments from JSON Lines file.
+
+    For incremental updates, we delete existing comments for each issue/PR
+    number found in the file, then re-insert all comments for that number.
+    This handles new, edited, and deleted comments correctly.
+    """
+    cursor = conn.cursor()
+
+    if not filepath.exists() or filepath.stat().st_size == 0:
+        label = "PR review comments" if is_pr_comment else "issue comments"
+        print(f"No {label} file to update")
+        return set()
+
+    # Group comments by issue/PR number
+    comments_by_number = {}
+    with open(filepath) as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                item = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            number = item.get('issue_number') or item.get('pr_number') or 0
+            if number not in comments_by_number:
+                comments_by_number[number] = []
+            comments_by_number[number].append(item)
+
+    # For each issue/PR number, delete old comments and insert new ones
+    affected_numbers = set()
+    count = 0
+    for number, items in comments_by_number.items():
+        cursor.execute(
+            "DELETE FROM comments WHERE issue_pr_number = ? AND is_pr_comment = ?",
+            (number, 1 if is_pr_comment else 0)
+        )
+        for item in items:
+            author = item.get('author', '') or 'unknown'
+            created = item.get('created', '')
+            body = item.get('body', '') or ''
+            cursor.execute("""
+                INSERT INTO comments (issue_pr_number, is_pr_comment, author, created_at, body, fetched_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (number, 1 if is_pr_comment else 0, author, created, body, datetime.now().isoformat()))
+            count += 1
+        affected_numbers.add(number)
+
+    conn.commit()
+    label = "PR review comments" if is_pr_comment else "issue comments"
+    print(f"Updated {count} {label} for {len(affected_numbers)} items")
+    return affected_numbers
+
+
+def populate_comment_text(conn, numbers=None):
+    """Repopulate denormalized comment_text for given issue/PR numbers.
+
+    If numbers is None, repopulate for all issues/PRs.
+    """
+    cursor = conn.cursor()
+    if numbers is None:
+        cursor.execute("""
+            UPDATE issues SET comment_text = (
+                SELECT GROUP_CONCAT(c.body, char(10) || char(10))
+                FROM comments c
+                WHERE c.issue_pr_number = issues.number
+                ORDER BY c.created_at
+            )
+        """)
+    else:
+        for num in numbers:
+            cursor.execute("""
+                UPDATE issues SET comment_text = (
+                    SELECT GROUP_CONCAT(c.body, char(10) || char(10))
+                    FROM comments c
+                    WHERE c.issue_pr_number = ?
+                    ORDER BY c.created_at
+                ) WHERE number = ?
+            """, (num, num))
+    conn.commit()
+    count = len(numbers) if numbers else "all"
+    print(f"Repopulated comment_text for {count} issues/PRs")
+
+
 def rebuild_fts(conn):
     """Rebuild full-text search index"""
     cursor = conn.cursor()
@@ -187,6 +273,8 @@ def get_status(conn):
 def main():
     issues_file = Path(sys.argv[1]) if len(sys.argv) > 1 else DATA_DIR / "issues_new.json"
     prs_file = Path(sys.argv[2]) if len(sys.argv) > 2 else DATA_DIR / "prs_new.json"
+    comments_file = Path(sys.argv[3]) if len(sys.argv) > 3 else DATA_DIR / "comments_new.json"
+    pr_comments_file = Path(sys.argv[4]) if len(sys.argv) > 4 else DATA_DIR / "pr_comments_new.json"
 
     print("=" * 60)
     print(f"Updating GitHub Issues/PRs Search Database for {REPO}")
@@ -199,6 +287,17 @@ def main():
 
     print("\nUpdating PRs...")
     update_prs(conn, prs_file)
+
+    print("\nUpdating comments...")
+    affected = set()
+    affected |= update_comments(conn, comments_file, is_pr_comment=False)
+    affected |= update_comments(conn, pr_comments_file, is_pr_comment=True)
+
+    if affected:
+        print(f"\nRepopulating comment_text for {len(affected)} affected items...")
+        populate_comment_text(conn, affected)
+    else:
+        print("\nNo comment changes, skipping comment_text repopulation")
 
     print("\nRebuilding search index...")
     rebuild_fts(conn)
