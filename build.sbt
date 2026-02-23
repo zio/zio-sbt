@@ -23,7 +23,7 @@ inThisBuild(
 lazy val root = project
   .in(file("."))
   .settings(
-    headerEndYear  := Some(2023),
+    headerEndYear  := Some(2026),
     publish / skip := true
   )
   .aggregate(
@@ -31,7 +31,8 @@ lazy val root = project
     `zio-sbt-website`,
     `zio-sbt-ecosystem`,
     `zio-sbt-ci`,
-    `zio-sbt-tests`
+    `zio-sbt-tests`,
+    `zio-sbt-gh-query`
   )
   .enablePlugins(ZioSbtCiPlugin)
 
@@ -89,6 +90,19 @@ lazy val `zio-sbt-githubactions` =
       stdSettings(),
       headerEndYear := Some(2023)
     )
+
+lazy val `zio-sbt-gh-query` =
+  project
+    .settings(stdSettings())
+    .settings(
+      headerEndYear      := Some(2026),
+      scriptedLaunchOpts := {
+        scriptedLaunchOpts.value ++
+          Seq("-Xmx1024M", "-Dplugin.version=" + version.value)
+      },
+      scriptedBufferLog := false
+    )
+    .enablePlugins(SbtPlugin)
 
 lazy val docs = project
   .in(file("zio-sbt-docs"))

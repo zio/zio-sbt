@@ -1,0 +1,2 @@
+{"number": 3, "title": "Implement Into trait for conversions", "state": "MERGED", "author": "alice", "created": "2025-01-05T00:00:00Z", "updated": "2025-01-06T00:00:00Z", "body": "This PR implements the Into trait for type conversions", "merged": "2025-01-06T00:00:00Z"}
+{"number": 4, "title": "Fix typo in README", "state": "MERGED", "author": "dave", "created": "2025-01-07T00:00:00Z", "updated": "2025-01-08T00:00:00Z", "body": "Minor typo fix", "merged": "2025-01-08T00:00:00Z"}
