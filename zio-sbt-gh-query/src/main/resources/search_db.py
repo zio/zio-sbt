@@ -21,12 +21,16 @@ include_body = sys.argv[3] == "True"
 conn = sqlite3.connect(db_path)
 cursor = conn.cursor()
 try:
+    # Use bm25() with per-column weights for relevance ranking.
+    # Column order: type, number, title, body, author, comment_text
+    # Higher weight = more important for ranking. bm25() returns negative
+    # values (more negative = more relevant), so ORDER BY rank ASC is correct.
     cursor.execute('''
         SELECT i.type, i.number, i.title, i.state, i.author, i.url, i.body
         FROM search_index s
         JOIN issues i ON i.id = s.rowid
         WHERE search_index MATCH ?
-        ORDER BY rank
+        ORDER BY bm25(search_index, 0.0, 0.0, 10.0, 5.0, 2.0, 3.0)
         LIMIT 20
     ''', (query,))
     results = cursor.fetchall()
