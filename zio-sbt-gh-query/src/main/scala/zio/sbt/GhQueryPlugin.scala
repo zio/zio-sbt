@@ -253,10 +253,8 @@ object GhQueryPlugin extends AutoPlugin {
    * Run a bash command with environment variables and a working directory.
    * Returns the exit code (issue #1 for error handling).
    */
-  private def runBash(command: String, cwd: File, env: Map[String, String]): Int = {
-    val envSeq = env.toSeq.map { case (k, v) => (k, v) }
-    Process(command, cwd, envSeq: _*).!
-  }
+  private def runBash(command: String, cwd: File, env: Map[String, String]): Int =
+    Process(command, cwd, env.toSeq: _*).!
 
   /**
    * Run a search query via the bundled search_db.py script.
