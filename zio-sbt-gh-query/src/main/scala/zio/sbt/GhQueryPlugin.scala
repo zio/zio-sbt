@@ -192,24 +192,17 @@ object GhQueryPlugin extends AutoPlugin {
     state
   }
 
-  private def ghQueryCommand: Command = Command.single("gh-query") { (state, args) =>
+  private def ghQueryCommand: Command = Command.args("gh-query", "<--verbose> <query>") { (state, args) =>
     val (resolvedDir, _, projectDir) = resolveProjectDir(state)
     val dbPath                       = new File(resolvedDir, "gh.db")
 
-    val trimmed = args.trim
-    val (query, includeBody) = if (trimmed.startsWith("--verbose ")) {
-      (trimmed.stripPrefix("--verbose ").trim, true)
-    } else if (trimmed == "--verbose") {
-      ("", true)
-    } else if (trimmed.isEmpty) {
-      ("", false)
-    } else {
-      (trimmed, false)
-    }
+    val includeBody = args.contains("--verbose")
+    val queryParts  = args.filterNot(_ == "--verbose")
+    val query       = queryParts.mkString(" ").trim
 
     if (query.isEmpty) {
-      println("Usage: gh-query \"query\"")
-      println("       gh-query --verbose \"query\"  (to include full body)")
+      println("Usage: gh-query <query>")
+      println("       gh-query --verbose <query>  (to include full body)")
     } else {
       println(s"Searching for: $query")
       runSearch(dbPath, query, includeBody, projectDir)
