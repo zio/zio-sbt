@@ -63,7 +63,10 @@ object GhQueryPlugin extends AutoPlugin {
     "status_db.py"
   )
 
-  /** Compute a hash of all bundled script contents for cache invalidation (issue #4). */
+  /**
+   * Compute a hash of all bundled script contents for cache invalidation (issue
+   * #4).
+   */
   private lazy val scriptsContentHash: String = {
     val digest = MessageDigest.getInstance("SHA-256")
     scriptNames.foreach { name =>
@@ -80,9 +83,9 @@ object GhQueryPlugin extends AutoPlugin {
   }
 
   /**
-   * Extract bundled scripts to a versioned temp directory (issue #3, #4).
-   * Uses java.nio.file.Files instead of scala.tools.nsc.io.File.
-   * Includes a content hash in the directory name for cache invalidation.
+   * Extract bundled scripts to a versioned temp directory (issue #3, #4). Uses
+   * java.nio.file.Files instead of scala.tools.nsc.io.File. Includes a content
+   * hash in the directory name for cache invalidation.
    */
   private lazy val scriptDir: File = {
     val dir = new File(sys.props("java.io.tmpdir"), s"zio-sbt-gh-query-scripts-$scriptsContentHash")
@@ -108,8 +111,8 @@ object GhQueryPlugin extends AutoPlugin {
     new File(scriptDir, scriptName).getAbsolutePath
 
   /**
-   * Resolve ghDir against the project base directory (issue #6).
-   * Prevents NPE from calling getParentFile on a relative File.
+   * Resolve ghDir against the project base directory (issue #6). Prevents NPE
+   * from calling getParentFile on a relative File.
    */
   private def resolveProjectDir(state: State): (File, String, File) = {
     val extracted  = Project.extract(state)
@@ -122,11 +125,12 @@ object GhQueryPlugin extends AutoPlugin {
   }
 
   /**
-   * Unified sync command: fetches data from GitHub and builds/updates the database.
-   * - --force: full fetch + full DB rebuild (always)
-   * - No DB exists, no data: full fetch + full DB rebuild
-   * - No DB exists, data present: skip fetch, just build the DB
-   * - DB exists: incremental fetch + incremental DB update
+   * Unified sync command: fetches data from GitHub and builds/updates the
+   * database.
+   *   - --force: full fetch + full DB rebuild (always)
+   *   - No DB exists, no data: full fetch + full DB rebuild
+   *   - No DB exists, data present: skip fetch, just build the DB
+   *   - DB exists: incremental fetch + incremental DB update
    */
   private def ghSyncCommand: Command = Command.args("gh-sync", "<--force>") { (state, args) =>
     val force                           = args.contains("--force")
@@ -211,19 +215,20 @@ object GhQueryPlugin extends AutoPlugin {
   }
 
   /**
-   * Extract "owner/repo" from scmInfo's browseUrl.
-   * Expects a URL like https://github.com/owner/repo.
+   * Extract "owner/repo" from scmInfo's browseUrl. Expects a URL like
+   * https://github.com/owner/repo.
    */
   private def repoFromScmInfo: Def.Initialize[String] = Def.setting {
     scmInfo.value match {
       case Some(info) =>
-        val path = info.browseUrl.getPath.stripPrefix("/").stripSuffix("/")
+        val path     = info.browseUrl.getPath.stripPrefix("/").stripSuffix("/")
         val segments = path.split("/")
         if (segments.length >= 2) s"${segments(0)}/${segments(1)}"
-        else sys.error(
-          s"Cannot derive ghRepo from scmInfo browseUrl '${info.browseUrl}': " +
-            "expected path with at least owner/repo segments. Set ghRepo manually."
-        )
+        else
+          sys.error(
+            s"Cannot derive ghRepo from scmInfo browseUrl '${info.browseUrl}': " +
+              "expected path with at least owner/repo segments. Set ghRepo manually."
+          )
       case None =>
         sys.error(
           "ghRepo is not set and scmInfo is not defined. " +
@@ -234,7 +239,7 @@ object GhQueryPlugin extends AutoPlugin {
 
   override lazy val projectSettings: Seq[Setting[_]] = Seq(
     ghRepo := repoFromScmInfo.value,
-    ghDir := file(".zio-sbt"),
+    ghDir  := file(".zio-sbt"),
     commands ++= Seq(
       ghSyncCommand,
       ghStatusCommand,
@@ -250,13 +255,13 @@ object GhQueryPlugin extends AutoPlugin {
     Process(command, cwd, env.toSeq: _*).!
 
   /**
-   * Run a search query via the bundled search_db.py script.
-   * Passes db path, query, and verbose flag as command-line arguments
-   * to prevent SQL injection (issue #1).
+   * Run a search query via the bundled search_db.py script. Passes db path,
+   * query, and verbose flag as command-line arguments to prevent SQL injection
+   * (issue #1).
    */
   private def runSearch(db: File, query: String, includeBody: Boolean, cwd: File): Unit = {
     val verboseStr = if (includeBody) "True" else "False"
-    Process(
+    val _: Int     = Process(
       Seq("python3", scriptPath("search_db.py"), db.getAbsolutePath, query, verboseStr),
       cwd
     ).!
@@ -266,6 +271,6 @@ object GhQueryPlugin extends AutoPlugin {
    * Show database status via the bundled status_db.py script.
    */
   private def showStatus(db: File, cwd: File): Unit = {
-    Process(Seq("python3", scriptPath("status_db.py"), db.getAbsolutePath), cwd).!
+    val _: Int = Process(Seq("python3", scriptPath("status_db.py"), db.getAbsolutePath), cwd).!
   }
 }
