@@ -4,3 +4,5 @@
 > checkDbContents
 > gh-status
 > gh-query codec
+> gh-query reproduce
+> gh-query --verbose reproduce
