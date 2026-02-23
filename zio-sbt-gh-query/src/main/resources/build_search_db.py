@@ -119,6 +119,15 @@ def load_jsonl_issues(conn, filepath):
         cursor.execute("""
             INSERT INTO issues (type, number, title, state, author, created_at, updated_at, body, url, fetched_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(type, number) DO UPDATE SET
+                title=excluded.title,
+                state=excluded.state,
+                author=excluded.author,
+                created_at=excluded.created_at,
+                updated_at=excluded.updated_at,
+                body=excluded.body,
+                url=excluded.url,
+                fetched_at=excluded.fetched_at
         """, ("issue", number, title, state, author, created, updated, body, url, datetime.now().isoformat()))
         count += 1
 
@@ -162,6 +171,15 @@ def load_jsonl_prs(conn, filepath):
         cursor.execute("""
             INSERT INTO issues (type, number, title, state, author, created_at, updated_at, body, url, fetched_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(type, number) DO UPDATE SET
+                title=excluded.title,
+                state=excluded.state,
+                author=excluded.author,
+                created_at=excluded.created_at,
+                updated_at=excluded.updated_at,
+                body=excluded.body,
+                url=excluded.url,
+                fetched_at=excluded.fetched_at
         """, ("pr", number, title, state, author, created, updated, body, url, datetime.now().isoformat()))
         count += 1
 
