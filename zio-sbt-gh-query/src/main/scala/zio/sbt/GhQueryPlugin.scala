@@ -200,7 +200,30 @@ object GhQueryPlugin extends AutoPlugin {
     state
   }
 
+  /**
+   * Extract "owner/repo" from scmInfo's browseUrl.
+   * Expects a URL like https://github.com/owner/repo.
+   */
+  private def repoFromScmInfo: Def.Initialize[String] = Def.setting {
+    scmInfo.value match {
+      case Some(info) =>
+        val path = info.browseUrl.getPath.stripPrefix("/").stripSuffix("/")
+        val segments = path.split("/")
+        if (segments.length >= 2) s"${segments(0)}/${segments(1)}"
+        else sys.error(
+          s"Cannot derive ghRepo from scmInfo browseUrl '${info.browseUrl}': " +
+            "expected path with at least owner/repo segments. Set ghRepo manually."
+        )
+      case None =>
+        sys.error(
+          "ghRepo is not set and scmInfo is not defined. " +
+            "Please set ghRepo := \"owner/repo\" or configure scmInfo."
+        )
+    }
+  }
+
   override lazy val projectSettings: Seq[Setting[_]] = Seq(
+    ghRepo := repoFromScmInfo.value,
     ghDir := file(".zio-sbt"),
     commands ++= Seq(
       ghSyncCommand,
