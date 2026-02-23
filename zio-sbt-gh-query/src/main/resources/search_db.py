@@ -8,7 +8,7 @@ Usage:
 Arguments:
     db_path      - Path to the SQLite database file
     query        - FTS5 search query string
-    include_body - "True" to include full body text in results, "False" otherwise
+    include_body - "True" for verbose output (full body + comments), "False" for compact
 """
 
 import sqlite3
@@ -33,13 +33,47 @@ try:
     if not results:
         print('No results found')
     else:
-        for row in results:
-            print(f"{row[0]:5} #{row[1]}: {row[2][:60]}")
-            print(f"       Author: {row[4]} | State: {row[3]}")
-            print(f"       {row[5]}")
-            if include_body and row[6]:
-                print(f"       Body: {row[6]}")
-            print()
+        for idx, row in enumerate(results):
+            item_type, number, title, state, author, url, body = row
+
+            if include_body:
+                # Verbose: full title, body, and all comments
+                if idx > 0:
+                    print("-" * 72)
+                    print()
+                label = "PR" if item_type == "pr" else "Issue"
+                print(f"{label} #{number}: {title}")
+                print(f"  Author: {author} | State: {state}")
+                print(f"  {url}")
+                if body:
+                    print()
+                    print(body)
+
+                # Fetch and display all comments for this issue/PR
+                cursor.execute('''
+                    SELECT author, created_at, body
+                    FROM comments
+                    WHERE issue_pr_number = ?
+                    ORDER BY created_at
+                ''', (number,))
+                comments = cursor.fetchall()
+                if comments:
+                    print()
+                    for c_author, c_date, c_body in comments:
+                        date_display = c_date[:10] if c_date else "unknown"
+                        print(f"  --- Comment by {c_author} on {date_display} ---")
+                        if c_body:
+                            # Indent comment body for readability
+                            for line in c_body.splitlines():
+                                print(f"  {line}")
+                        print()
+            else:
+                # Compact: full title, author, state, URL
+                label = "PR" if item_type == "pr" else "Issue"
+                print(f"{label:5} #{number}: {title}")
+                print(f"       Author: {author} | State: {state}")
+                print(f"       {url}")
+                print()
 except Exception as e:
     print(f'Search error: {e}')
 finally:
