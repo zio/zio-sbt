@@ -1,0 +1,6 @@
+> compile
+> gh-rebuild-db
+> checkDbExists
+> checkDbContents
+> gh-status
+> gh-query codec

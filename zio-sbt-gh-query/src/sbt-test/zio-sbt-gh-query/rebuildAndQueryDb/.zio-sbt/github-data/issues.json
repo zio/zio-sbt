@@ -1,0 +1,3 @@
+{"number": 1, "title": "Add support for custom codecs", "state": "OPEN", "author": "alice", "created": "2025-01-01T00:00:00Z", "updated": "2025-01-02T00:00:00Z", "body": "We need custom codec support for binary formats", "comments": 1}
+{"number": 2, "title": "Bug in schema derivation", "state": "CLOSED", "author": "bob", "created": "2025-01-03T00:00:00Z", "updated": "2025-01-04T00:00:00Z", "body": "Schema derivation fails for sealed traits", "comments": 0}
+{"number": 5, "title": "Performance regression in parser", "state": "OPEN", "author": "charlie", "created": "2025-02-01T00:00:00Z", "updated": "2025-02-02T00:00:00Z", "body": "Parser performance dropped after v0.3 release", "comments": 2}

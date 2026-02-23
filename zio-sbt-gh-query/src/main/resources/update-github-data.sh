@@ -1,13 +1,17 @@
 #!/bin/bash
 # =============================================================================
 # Update GitHub Issues and PRs - Fetch only new/updated items since last fetch
-# Usage: ./update-github-data.sh
+# Usage: GH_QUERY_REPO=owner/repo GH_QUERY_DATA_DIR=/path/to/data \
+#        GH_QUERY_DB_PATH=/path/to/db GH_QUERY_SCRIPTS=/path/to/scripts \
+#        ./update-github-data.sh
 # =============================================================================
 
 set -e
 
-REPO="zio/zio-blocks"
-OUTPUT_DIR="github-data"
+REPO="${GH_QUERY_REPO:?GH_QUERY_REPO environment variable must be set (e.g. zio/zio-sbt)}"
+OUTPUT_DIR="${GH_QUERY_DATA_DIR:?GH_QUERY_DATA_DIR environment variable must be set}"
+DB_PATH="${GH_QUERY_DB_PATH:?GH_QUERY_DB_PATH environment variable must be set}"
+SCRIPTS_DIR="${GH_QUERY_SCRIPTS:?GH_QUERY_SCRIPTS environment variable must be set}"
 LAST_FETCH_FILE="$OUTPUT_DIR/.last_fetch"
 
 mkdir -p "$OUTPUT_DIR"
@@ -24,10 +28,10 @@ TEMP_ISSUES="$OUTPUT_DIR/issues_new.json"
 TEMP_PRS="$OUTPUT_DIR/prs_new.json"
 TEMP_COMMENTS="$OUTPUT_DIR/comments_new.json"
 
-echo "Fetching updated issues..."
+echo "Fetching updated issues for $REPO..."
 gh api "repos/$REPO/issues?state=all&per_page=100&since=$SINCE" --paginate -q '.[] | select(.pull_request == null) | {number: .number, title: .title, state: .state, author: .user.login, created: .created_at, updated: .updated_at, body: .body, comments: .comments}' > "$TEMP_ISSUES"
 
-echo "Fetching updated PRs..."
+echo "Fetching updated PRs for $REPO..."
 gh api "repos/$REPO/pulls?state=all&per_page=100&since=$SINCE" --paginate -q '.[] | {number: .number, title: .title, state: .state, author: .user.login, created: .created_at, updated: .updated_at, body: .body, merged: .merged_at}' > "$TEMP_PRS"
 
 ISSUE_COUNT=$(wc -l < "$TEMP_ISSUES")
@@ -37,11 +41,12 @@ echo "Found $ISSUE_COUNT updated issues, $PR_COUNT updated PRs"
 
 if [ "$ISSUE_COUNT" -gt 0 ] || [ "$PR_COUNT" -gt 0 ]; then
     echo "Updating database..."
-    python3 scripts/update_search_db.py "$TEMP_ISSUES" "$TEMP_PRS" "$TEMP_COMMENTS"
-    
+    GH_QUERY_REPO="$REPO" GH_QUERY_DATA_DIR="$OUTPUT_DIR" GH_QUERY_DB_PATH="$DB_PATH" \
+        python3 "$SCRIPTS_DIR/update_search_db.py" "$TEMP_ISSUES" "$TEMP_PRS" "$TEMP_COMMENTS"
+
     cat "$TEMP_ISSUES" >> "$OUTPUT_DIR/issues.json"
     cat "$TEMP_PRS" >> "$OUTPUT_DIR/prs.json"
-    
+
     echo "Cleaning up temp files..."
     rm -f "$TEMP_ISSUES" "$TEMP_PRS" "$TEMP_COMMENTS"
 else

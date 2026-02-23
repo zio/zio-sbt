@@ -10,10 +10,13 @@ Add to `project/plugins.sbt`:
 addSbtPlugin("dev.zio" % "zio-sbt-gh-query" % "0.1.0")
 ```
 
-The plugin is auto-enabled. Optionally configure in `build.sbt`:
+The plugin is auto-enabled. Configure in `build.sbt`:
 
 ```scala
-ghRepo := "zio/zio-blocks"
+// Required: specify your GitHub repository
+ghRepo := "your-org/your-repo"
+
+// Optional: override the default data directory (defaults to .zio-sbt)
 ghDir := file(".zio-sbt")
 ```
 
