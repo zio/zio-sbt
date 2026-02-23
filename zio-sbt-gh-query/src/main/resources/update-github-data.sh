@@ -13,8 +13,29 @@ OUTPUT_DIR="${GH_QUERY_DATA_DIR:?GH_QUERY_DATA_DIR environment variable must be 
 DB_PATH="${GH_QUERY_DB_PATH:?GH_QUERY_DB_PATH environment variable must be set}"
 SCRIPTS_DIR="${GH_QUERY_SCRIPTS:?GH_QUERY_SCRIPTS environment variable must be set}"
 LAST_FETCH_FILE="$OUTPUT_DIR/.last_fetch"
+MAX_RETRIES=3
+RETRY_DELAY=5
 
 mkdir -p "$OUTPUT_DIR"
+
+# Retry wrapper: runs a command up to MAX_RETRIES times with exponential backoff.
+# Usage: retry <command...>
+retry() {
+    local attempt=1
+    while true; do
+        if "$@"; then
+            return 0
+        fi
+        if [ "$attempt" -ge "$MAX_RETRIES" ]; then
+            echo "  [error] Failed after $MAX_RETRIES attempts: $*" >&2
+            return 1
+        fi
+        local delay=$((RETRY_DELAY * attempt))
+        echo "  [warn] Attempt $attempt failed, retrying in ${delay}s..."
+        sleep "$delay"
+        attempt=$((attempt + 1))
+    done
+}
 
 if [ -f "$LAST_FETCH_FILE" ]; then
     SINCE=$(cat "$LAST_FETCH_FILE")
@@ -29,10 +50,10 @@ TEMP_PRS="$OUTPUT_DIR/prs_new.json"
 TEMP_COMMENTS="$OUTPUT_DIR/comments_new.json"
 
 echo "Fetching updated issues for $REPO..."
-gh api "repos/$REPO/issues?state=all&per_page=100&since=$SINCE" --paginate -q '.[] | select(.pull_request == null) | {number: .number, title: .title, state: .state, author: .user.login, created: .created_at, updated: .updated_at, body: .body, comments: .comments}' > "$TEMP_ISSUES"
+retry gh api "repos/$REPO/issues?state=all&per_page=100&since=$SINCE" --paginate -q '.[] | select(.pull_request == null) | {number: .number, title: .title, state: .state, author: .user.login, created: .created_at, updated: .updated_at, body: .body, comments: .comments}' > "$TEMP_ISSUES"
 
 echo "Fetching updated PRs for $REPO..."
-gh api "repos/$REPO/pulls?state=all&per_page=100&since=$SINCE" --paginate -q '.[] | {number: .number, title: .title, state: .state, author: .user.login, created: .created_at, updated: .updated_at, body: .body, merged: .merged_at}' > "$TEMP_PRS"
+retry gh api "repos/$REPO/pulls?state=all&per_page=100&since=$SINCE" --paginate -q '.[] | {number: .number, title: .title, state: .state, author: .user.login, created: .created_at, updated: .updated_at, body: .body, merged: .merged_at}' > "$TEMP_PRS"
 
 ISSUE_COUNT=$(wc -l < "$TEMP_ISSUES")
 PR_COUNT=$(wc -l < "$TEMP_PRS")
