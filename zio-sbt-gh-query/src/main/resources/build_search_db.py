@@ -46,6 +46,7 @@ def init_db():
             updated_at TEXT,
             body TEXT,
             url TEXT,
+            comment_text TEXT,
             fetched_at TEXT,
             UNIQUE(type, number)
         )
@@ -70,6 +71,7 @@ def init_db():
             title,
             body,
             author,
+            comment_text,
             content='issues',
             content_rowid='id'
         )
@@ -224,6 +226,22 @@ def load_comments(conn, filepath, is_pr_comment=False):
     return count
 
 
+def populate_comment_text(conn):
+    """Denormalize comment bodies into the issues table for FTS indexing."""
+    cursor = conn.cursor()
+    cursor.execute("""
+        UPDATE issues SET comment_text = (
+            SELECT GROUP_CONCAT(c.body, char(10) || char(10))
+            FROM comments c
+            WHERE c.issue_pr_number = issues.number
+            ORDER BY c.created_at
+        )
+    """)
+    conn.commit()
+    updated = cursor.rowcount
+    print(f"Populated comment_text for {updated} issues/PRs")
+
+
 def rebuild_fts(conn):
     """Rebuild full-text search index"""
     cursor = conn.cursor()
@@ -279,6 +297,9 @@ def main():
     load_jsonl_prs(conn, DATA_DIR / "prs.json")
     load_comments(conn, DATA_DIR / "comments.json", is_pr_comment=False)
     load_comments(conn, DATA_DIR / "pr_comments.json", is_pr_comment=True)
+
+    print("\nPopulating comment text for search index...")
+    populate_comment_text(conn)
 
     print("\nBuilding search index...")
     rebuild_fts(conn)
