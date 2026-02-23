@@ -19,7 +19,7 @@ package zio.sbt
 import sbt._
 import Keys._
 import scala.sys.process._
-import java.io.File
+import java.io.{BufferedInputStream, ByteArrayOutputStream, File}
 import java.nio.file.Files
 import java.security.MessageDigest
 
@@ -37,6 +37,23 @@ object GhQueryPlugin extends AutoPlugin {
 
   import GhQueryKeys._
 
+  /** Read all bytes from an InputStream using a buffered approach. */
+  private def readAllBytes(stream: java.io.InputStream): Array[Byte] = {
+    val bis = new BufferedInputStream(stream)
+    val bos = new ByteArrayOutputStream()
+    try {
+      val buf = new Array[Byte](8192)
+      var n   = bis.read(buf)
+      while (n != -1) {
+        bos.write(buf, 0, n)
+        n = bis.read(buf)
+      }
+      bos.toByteArray
+    } finally {
+      bis.close()
+    }
+  }
+
   private val scriptNames: List[String] = List(
     "fetch-github-data.sh",
     "update-github-data.sh",
@@ -51,8 +68,7 @@ object GhQueryPlugin extends AutoPlugin {
       val stream = getClass.getResourceAsStream(s"/$name")
       if (stream != null) {
         try {
-          val bytes = Iterator.continually(stream.read()).takeWhile(_ != -1).map(_.toByte).toArray
-          digest.update(bytes)
+          digest.update(readAllBytes(stream))
         } finally {
           stream.close()
         }
@@ -75,8 +91,7 @@ object GhQueryPlugin extends AutoPlugin {
         if (stream != null) {
           try {
             val targetFile = new File(dir, name)
-            val bytes      = Iterator.continually(stream.read()).takeWhile(_ != -1).map(_.toByte).toArray
-            Files.write(targetFile.toPath, bytes)
+            Files.write(targetFile.toPath, readAllBytes(stream))
             targetFile.setExecutable(true)
           } finally {
             stream.close()
