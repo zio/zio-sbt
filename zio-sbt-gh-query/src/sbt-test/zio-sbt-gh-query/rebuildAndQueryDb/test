@@ -1,5 +1,5 @@
 > compile
-> gh-rebuild-db
+> gh-sync
 > checkDbExists
 > checkDbContents
 > gh-status

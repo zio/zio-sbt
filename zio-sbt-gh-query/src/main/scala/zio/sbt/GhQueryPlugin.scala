@@ -104,70 +104,67 @@ object GhQueryPlugin extends AutoPlugin {
     (resolved, repo, baseDir)
   }
 
-  private def ghFetchCommand: Command = Command.command("gh-fetch") { state =>
-    val (resolvedDir, repo, projectDir) = resolveProjectDir(state)
-    val dataDir                         = new File(resolvedDir, "github-data")
-    println(s"Fetching all issues and PRs for $repo...")
-    val exitCode = runBash(
-      s"bash ${scriptPath("fetch-github-data.sh")}",
-      projectDir,
-      Map("GH_QUERY_REPO" -> repo, "GH_QUERY_DATA_DIR" -> dataDir.getAbsolutePath)
-    )
-    if (exitCode != 0) println(s"[warn] gh-fetch exited with code $exitCode")
-    state
-  }
-
-  private def ghUpdateCommand: Command = Command.command("gh-update") { state =>
-    val (resolvedDir, repo, projectDir) = resolveProjectDir(state)
-    val dataDir                         = new File(resolvedDir, "github-data")
-    println("Updating GitHub data (incremental)...")
-    val exitCode = runBash(
-      s"bash ${scriptPath("update-github-data.sh")}",
-      projectDir,
-      Map(
-        "GH_QUERY_REPO"     -> repo,
-        "GH_QUERY_DATA_DIR" -> dataDir.getAbsolutePath,
-        "GH_QUERY_DB_PATH"  -> new File(resolvedDir, "gh.db").getAbsolutePath,
-        "GH_QUERY_SCRIPTS"  -> scriptDir.getAbsolutePath
-      )
-    )
-    if (exitCode != 0) println(s"[warn] gh-update exited with code $exitCode")
-    state
-  }
-
-  private def ghUpdateDbCommand: Command = Command.command("gh-update-db") { state =>
+  /**
+   * Unified sync command: fetches data from GitHub and builds/updates the database.
+   * - --force: full fetch + full DB rebuild (always)
+   * - No DB exists, no data: full fetch + full DB rebuild
+   * - No DB exists, data present: skip fetch, just build the DB
+   * - DB exists: incremental fetch + incremental DB update
+   */
+  private def ghSyncCommand: Command = Command.args("gh-sync", "<--force>") { (state, args) =>
+    val force                           = args.contains("--force")
     val (resolvedDir, repo, projectDir) = resolveProjectDir(state)
     val dataDir                         = new File(resolvedDir, "github-data")
     val dbPath                          = new File(resolvedDir, "gh.db")
-    println("Updating search database...")
-    val exitCode = runBash(
-      s"python3 ${scriptPath("update_search_db.py")}",
-      projectDir,
-      Map(
-        "GH_QUERY_REPO"     -> repo,
-        "GH_QUERY_DATA_DIR" -> dataDir.getAbsolutePath,
-        "GH_QUERY_DB_PATH"  -> dbPath.getAbsolutePath
-      )
-    )
-    if (exitCode != 0) println(s"[warn] gh-update-db exited with code $exitCode")
-    state
-  }
+    val hasData                         = new File(dataDir, "issues.json").exists()
 
-  private def ghRebuildDbCommand: Command = Command.command("gh-rebuild-db") { state =>
-    val (resolvedDir, repo, projectDir) = resolveProjectDir(state)
-    val dataDir                         = new File(resolvedDir, "github-data")
-    val dbPath                          = new File(resolvedDir, "gh.db")
-    println("Rebuilding search database from scratch...")
-    val exitCode = runBash(
-      s"python3 ${scriptPath("build_search_db.py")}",
-      projectDir,
-      Map(
-        "GH_QUERY_REPO"     -> repo,
-        "GH_QUERY_DATA_DIR" -> dataDir.getAbsolutePath,
-        "GH_QUERY_DB_PATH"  -> dbPath.getAbsolutePath
+    if (force || !dbPath.exists()) {
+      // Fetch from GitHub unless data files already exist (and not --force)
+      val fetchOk = if (force || !hasData) {
+        if (force) println(s"Force sync: fetching all issues and PRs for $repo...")
+        else println(s"First sync: fetching all issues and PRs for $repo...")
+
+        val fetchExit = runBash(
+          s"bash ${scriptPath("fetch-github-data.sh")}",
+          projectDir,
+          Map("GH_QUERY_REPO" -> repo, "GH_QUERY_DATA_DIR" -> dataDir.getAbsolutePath)
+        )
+        if (fetchExit != 0) {
+          println(s"[error] gh-sync fetch exited with code $fetchExit")
+          false
+        } else true
+      } else {
+        println(s"Data files found in ${dataDir.getPath}, skipping fetch...")
+        true
+      }
+
+      if (fetchOk) {
+        println("Building search database...")
+        val buildExit = runBash(
+          s"python3 ${scriptPath("build_search_db.py")}",
+          projectDir,
+          Map(
+            "GH_QUERY_REPO"     -> repo,
+            "GH_QUERY_DATA_DIR" -> dataDir.getAbsolutePath,
+            "GH_QUERY_DB_PATH"  -> dbPath.getAbsolutePath
+          )
+        )
+        if (buildExit != 0) println(s"[warn] gh-sync db build exited with code $buildExit")
+      }
+    } else {
+      println(s"Incremental sync: fetching updated issues and PRs for $repo...")
+      val updateExit = runBash(
+        s"bash ${scriptPath("update-github-data.sh")}",
+        projectDir,
+        Map(
+          "GH_QUERY_REPO"     -> repo,
+          "GH_QUERY_DATA_DIR" -> dataDir.getAbsolutePath,
+          "GH_QUERY_DB_PATH"  -> dbPath.getAbsolutePath,
+          "GH_QUERY_SCRIPTS"  -> scriptDir.getAbsolutePath
+        )
       )
-    )
-    if (exitCode != 0) println(s"[warn] gh-rebuild-db exited with code $exitCode")
+      if (updateExit != 0) println(s"[warn] gh-sync update exited with code $updateExit")
+    }
     state
   }
 
@@ -206,10 +203,7 @@ object GhQueryPlugin extends AutoPlugin {
   override lazy val projectSettings: Seq[Setting[_]] = Seq(
     ghDir := file(".zio-sbt"),
     commands ++= Seq(
-      ghFetchCommand,
-      ghUpdateCommand,
-      ghUpdateDbCommand,
-      ghRebuildDbCommand,
+      ghSyncCommand,
       ghStatusCommand,
       ghQueryCommand
     )

@@ -22,41 +22,43 @@ ghDir := file(".zio-sbt")
 
 ## Commands
 
-All commands start with `gh-` prefix:
-
 | Command | Description |
 |---------|-------------|
-| `gh-fetch` | Fetch all issues and PRs from GitHub (full fetch) |
-| `gh-update` | Incrementally update only new/updated issues/PRs since last fetch |
-| `gh-update-db` | Incrementally update database with new/updated data |
-| `gh-rebuild-db` | Rebuild database from scratch (drops and recreates all data) |
-| `gh-query <query>` | Query the GitHub database |
-| `gh-status` | Show database statistics |
+| `gh-sync` | Fetch data from GitHub and build/update the search database. On first run (or with `--force`), does a full fetch and rebuild. On subsequent runs, fetches only new/updated items incrementally. |
+| `gh-query <query>` | Full-text search across issues and PRs. Supports `--verbose` flag to include body text. |
+| `gh-status` | Show database statistics (issue/PR/comment counts, last fetch time). |
 
-## Usage Examples
+## Usage
 
 ### Initial Setup
 
 ```bash
-# Fetch all issues and PRs, then build the database
-sbt gh-fetch gh-rebuild-db
+# Fetch all issues/PRs and build the database
+sbt gh-sync
 ```
 
 ### Regular Updates
 
 ```bash
-# Update with new issues/PRs since last fetch
-sbt gh-update gh-update-db
+# Incrementally fetch new/updated items and update the database
+sbt gh-sync
 ```
 
-### Query
+### Force Full Refresh
+
+```bash
+# Re-fetch everything and rebuild the database from scratch
+sbt "gh-sync --force"
+```
+
+### Search
 
 ```bash
 # Basic query
-sbt "gh-query Into"
+sbt "gh-query codec"
 
-# Query with full body content (--verbose flag)
-sbt "gh-query --verbose Into"
+# Query with full body content
+sbt "gh-query --verbose codec"
 ```
 
 ### Check Status
@@ -85,10 +87,11 @@ your-project/
 ├── build.sbt
 ├── project/
 │   └── plugins.sbt          # Add plugin here
-├── github-data/              # Fetched JSON files (auto-created)
-│   ├── issues.json
-│   ├── prs.json
-│   ├── comments.json
-│   └── pr_comments.json
-└── github-search.db          # SQLite database (auto-created)
+└── .zio-sbt/                # Plugin data directory (auto-created)
+    ├── github-data/          # Fetched JSON files
+    │   ├── issues.json
+    │   ├── prs.json
+    │   ├── comments.json
+    │   └── pr_comments.json
+    └── gh.db                 # SQLite database
 ```
