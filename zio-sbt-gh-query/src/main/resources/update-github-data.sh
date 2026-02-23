@@ -47,7 +47,6 @@ fi
 
 TEMP_ISSUES="$OUTPUT_DIR/issues_new.json"
 TEMP_PRS="$OUTPUT_DIR/prs_new.json"
-TEMP_COMMENTS="$OUTPUT_DIR/comments_new.json"
 
 echo "Fetching updated issues for $REPO..."
 retry gh api "repos/$REPO/issues?state=all&per_page=100&since=$SINCE" --paginate -q '.[] | select(.pull_request == null) | {number: .number, title: .title, state: .state, author: .user.login, created: .created_at, updated: .updated_at, body: .body, comments: .comments}' > "$TEMP_ISSUES"
@@ -63,16 +62,16 @@ echo "Found $ISSUE_COUNT updated issues, $PR_COUNT updated PRs"
 if [ "$ISSUE_COUNT" -gt 0 ] || [ "$PR_COUNT" -gt 0 ]; then
     echo "Updating database..."
     GH_QUERY_REPO="$REPO" GH_QUERY_DATA_DIR="$OUTPUT_DIR" GH_QUERY_DB_PATH="$DB_PATH" \
-        python3 "$SCRIPTS_DIR/update_search_db.py" "$TEMP_ISSUES" "$TEMP_PRS" "$TEMP_COMMENTS"
+        python3 "$SCRIPTS_DIR/update_search_db.py" "$TEMP_ISSUES" "$TEMP_PRS"
 
     cat "$TEMP_ISSUES" >> "$OUTPUT_DIR/issues.json"
     cat "$TEMP_PRS" >> "$OUTPUT_DIR/prs.json"
 
     echo "Cleaning up temp files..."
-    rm -f "$TEMP_ISSUES" "$TEMP_PRS" "$TEMP_COMMENTS"
+    rm -f "$TEMP_ISSUES" "$TEMP_PRS"
 else
     echo "No new items to update"
-    rm -f "$TEMP_ISSUES" "$TEMP_PRS" "$TEMP_COMMENTS"
+    rm -f "$TEMP_ISSUES" "$TEMP_PRS"
 fi
 
 echo "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" > "$LAST_FETCH_FILE"
