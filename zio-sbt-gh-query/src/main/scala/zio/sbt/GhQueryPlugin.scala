@@ -260,12 +260,15 @@ object GhQueryPlugin extends AutoPlugin {
         |    conn.close()
         |""".stripMargin
     IO.write(tempFile, code)
-    val verboseStr = if (includeBody) "True" else "False"
-    Process(
-      Seq("python3", tempFile.getAbsolutePath, db.getAbsolutePath, query, verboseStr),
-      cwd
-    ).!
-    val _ = tempFile.delete()
+    try {
+      val verboseStr = if (includeBody) "True" else "False"
+      Process(
+        Seq("python3", tempFile.getAbsolutePath, db.getAbsolutePath, query, verboseStr),
+        cwd
+      ).!
+    } finally {
+      val _ = tempFile.delete()
+    }
   }
 
   /**
@@ -307,7 +310,10 @@ object GhQueryPlugin extends AutoPlugin {
         |conn.close()
         |""".stripMargin
     IO.write(tempFile, code)
-    Process(Seq("python3", tempFile.getAbsolutePath, db.getAbsolutePath), cwd).!
-    val _ = tempFile.delete()
+    try {
+      Process(Seq("python3", tempFile.getAbsolutePath, db.getAbsolutePath), cwd).!
+    } finally {
+      val _ = tempFile.delete()
+    }
   }
 }
