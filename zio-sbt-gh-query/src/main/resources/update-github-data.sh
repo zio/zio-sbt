@@ -45,10 +45,10 @@ else
     echo "First fetch - getting all issues/PRs"
 fi
 
-TEMP_ISSUES="$OUTPUT_DIR/issues_new.json"
-TEMP_PRS="$OUTPUT_DIR/prs_new.json"
-TEMP_COMMENTS="$OUTPUT_DIR/comments_new.json"
-TEMP_PR_COMMENTS="$OUTPUT_DIR/pr_comments_new.json"
+TEMP_ISSUES=$(mktemp "${TMPDIR:-/tmp}/gh_query_issues_XXXXXX.json")
+TEMP_PRS=$(mktemp "${TMPDIR:-/tmp}/gh_query_prs_XXXXXX.json")
+TEMP_COMMENTS=$(mktemp "${TMPDIR:-/tmp}/gh_query_comments_XXXXXX.json")
+TEMP_PR_COMMENTS=$(mktemp "${TMPDIR:-/tmp}/gh_query_pr_comments_XXXXXX.json")
 TEMP_PR_NUMBERS=$(mktemp "${TMPDIR:-/tmp}/gh_query_pr_nums_XXXXXX.json")
 
 trap "rm -f '$TEMP_PR_NUMBERS' '$TEMP_ISSUES' '$TEMP_PRS' '$TEMP_COMMENTS' '$TEMP_PR_COMMENTS'" EXIT
@@ -110,7 +110,7 @@ if [ "$ISSUE_COUNT" -gt 0 ] || [ "$PR_COUNT" -gt 0 ]; then
 
     # Merge updated issues into snapshot, de-duplicating by issue number.
     if [ -s "$TEMP_ISSUES" ]; then
-        python3 - "$OUTPUT_DIR/issues.json" "$TEMP_ISSUES" <<'PY_MERGE_ISSUES'
+        python3 - "$OUTPUT_DIR/issues.json" "$TEMP_ISSUES" <<'PY_MERGE_ISSUES' || { echo "[error] Failed to merge issues snapshot" >&2; exit 1; }
 import sys, json, os
 
 out_path, new_path = sys.argv[1:3]
@@ -143,7 +143,7 @@ PY_MERGE_ISSUES
 
     # Merge updated PRs into snapshot, de-duplicating by PR number.
     if [ -s "$TEMP_PRS" ]; then
-        python3 - "$OUTPUT_DIR/prs.json" "$TEMP_PRS" <<'PY_MERGE_PRS'
+        python3 - "$OUTPUT_DIR/prs.json" "$TEMP_PRS" <<'PY_MERGE_PRS' || { echo "[error] Failed to merge PRs snapshot" >&2; exit 1; }
 import sys, json, os
 
 out_path, new_path = sys.argv[1:3]
@@ -174,12 +174,72 @@ with open(out_path, "w", encoding="utf-8") as out:
 PY_MERGE_PRS
     fi
 
-    # Persist comments snapshots so later DB rebuilds from JSON snapshots see them.
+    # Merge comment snapshots, deduplicating by (issue_number/pr_number, author, created).
     if [ -s "$TEMP_COMMENTS" ]; then
-        cat "$TEMP_COMMENTS" >> "$OUTPUT_DIR/comments.json"
+        python3 - "$OUTPUT_DIR/comments.json" "$TEMP_COMMENTS" <<'PY_MERGE_COMMENTS' || { echo "[error] Failed to merge comments snapshot" >&2; exit 1; }
+import sys, json, os
+
+out_path, new_path = sys.argv[1:3]
+items = {}
+
+def comment_key(obj):
+    num = obj.get("issue_number") or obj.get("pr_number") or 0
+    return (num, obj.get("author", ""), obj.get("created", ""))
+
+def load(path):
+    if not os.path.exists(path):
+        return
+    with open(path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                obj = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            items[comment_key(obj)] = obj
+
+load(out_path)
+load(new_path)
+
+with open(out_path, "w", encoding="utf-8") as out:
+    for obj in items.values():
+        out.write(json.dumps(obj, ensure_ascii=False) + "\n")
+PY_MERGE_COMMENTS
     fi
     if [ -s "$TEMP_PR_COMMENTS" ]; then
-        cat "$TEMP_PR_COMMENTS" >> "$OUTPUT_DIR/pr_comments.json"
+        python3 - "$OUTPUT_DIR/pr_comments.json" "$TEMP_PR_COMMENTS" <<'PY_MERGE_PR_COMMENTS' || { echo "[error] Failed to merge PR comments snapshot" >&2; exit 1; }
+import sys, json, os
+
+out_path, new_path = sys.argv[1:3]
+items = {}
+
+def comment_key(obj):
+    num = obj.get("pr_number") or obj.get("issue_number") or 0
+    return (num, obj.get("author", ""), obj.get("created", ""))
+
+def load(path):
+    if not os.path.exists(path):
+        return
+    with open(path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                obj = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            items[comment_key(obj)] = obj
+
+load(out_path)
+load(new_path)
+
+with open(out_path, "w", encoding="utf-8") as out:
+    for obj in items.values():
+        out.write(json.dumps(obj, ensure_ascii=False) + "\n")
+PY_MERGE_PR_COMMENTS
     fi
 
     echo "Cleaning up temp files..."
