@@ -108,8 +108,79 @@ if [ "$ISSUE_COUNT" -gt 0 ] || [ "$PR_COUNT" -gt 0 ]; then
     GH_QUERY_REPO="$REPO" GH_QUERY_DATA_DIR="$OUTPUT_DIR" GH_QUERY_DB_PATH="$DB_PATH" \
         python3 "$SCRIPTS_DIR/update_search_db.py" "$TEMP_ISSUES" "$TEMP_PRS" "$TEMP_COMMENTS" "$TEMP_PR_COMMENTS"
 
-    cat "$TEMP_ISSUES" >> "$OUTPUT_DIR/issues.json"
-    cat "$TEMP_PRS" >> "$OUTPUT_DIR/prs.json"
+    # Merge updated issues into snapshot, de-duplicating by issue number.
+    if [ -s "$TEMP_ISSUES" ]; then
+        python3 - "$OUTPUT_DIR/issues.json" "$TEMP_ISSUES" <<'PY_MERGE_ISSUES'
+import sys, json, os
+
+out_path, new_path = sys.argv[1:3]
+items = {}
+
+def load(path):
+    if not os.path.exists(path):
+        return
+    with open(path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                obj = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            num = obj.get("number")
+            if num is not None:
+                items[num] = obj
+
+load(out_path)
+load(new_path)
+
+with open(out_path, "w", encoding="utf-8") as out:
+    for obj in items.values():
+        out.write(json.dumps(obj, ensure_ascii=False) + "\n")
+PY_MERGE_ISSUES
+    fi
+
+    # Merge updated PRs into snapshot, de-duplicating by PR number.
+    if [ -s "$TEMP_PRS" ]; then
+        python3 - "$OUTPUT_DIR/prs.json" "$TEMP_PRS" <<'PY_MERGE_PRS'
+import sys, json, os
+
+out_path, new_path = sys.argv[1:3]
+items = {}
+
+def load(path):
+    if not os.path.exists(path):
+        return
+    with open(path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                obj = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            num = obj.get("number")
+            if num is not None:
+                items[num] = obj
+
+load(out_path)
+load(new_path)
+
+with open(out_path, "w", encoding="utf-8") as out:
+    for obj in items.values():
+        out.write(json.dumps(obj, ensure_ascii=False) + "\n")
+PY_MERGE_PRS
+    fi
+
+    # Persist comments snapshots so later DB rebuilds from JSON snapshots see them.
+    if [ -s "$TEMP_COMMENTS" ]; then
+        cat "$TEMP_COMMENTS" >> "$OUTPUT_DIR/comments.json"
+    fi
+    if [ -s "$TEMP_PR_COMMENTS" ]; then
+        cat "$TEMP_PR_COMMENTS" >> "$OUTPUT_DIR/pr_comments.json"
+    fi
 
     echo "Cleaning up temp files..."
 else

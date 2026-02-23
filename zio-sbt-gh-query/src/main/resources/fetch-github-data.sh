@@ -13,11 +13,6 @@ RETRY_DELAY=5
 
 mkdir -p "$OUTPUT_DIR"
 
-# Temp files for issue/PR number lists; cleaned up on exit.
-TEMP_ISSUES=$(mktemp "${TMPDIR:-/tmp}/gh_query_issues_XXXXXX.json")
-TEMP_PRS=$(mktemp "${TMPDIR:-/tmp}/gh_query_prs_XXXXXX.json")
-trap "rm -f '$TEMP_ISSUES' '$TEMP_PRS'" EXIT
-
 # Retry wrapper: runs a command up to MAX_RETRIES times with exponential backoff.
 # Usage: retry <command...>
 retry() {
@@ -45,8 +40,9 @@ retry gh api "repos/$REPO/pulls?state=all&per_page=100" --paginate -q '.[] | {nu
 
 echo "Fetching issue comments (this may take a few minutes)..."
 > "$OUTPUT_DIR/comments.json"
-retry gh issue list --repo "$REPO" --state all --limit 1000 --json number > "$TEMP_ISSUES"
-numbers=$(jq -r '.[].number' < "$TEMP_ISSUES")
+# Extract issue numbers from the already-fetched issues.json (which uses paginated API)
+# instead of gh issue list --limit 1000 which may miss issues in large repos.
+numbers=$(jq -r '.number' < "$OUTPUT_DIR/issues.json")
 count=0
 failed=0
 for num in $numbers; do
@@ -67,8 +63,9 @@ echo "Fetching PR review comments (this may take a few minutes)..."
 > "$OUTPUT_DIR/pr_comments.json"
 count=0
 failed=0
-retry gh pr list --repo "$REPO" --state all --limit 1000 --json number > "$TEMP_PRS"
-pr_numbers=$(jq -r '.[].number' < "$TEMP_PRS")
+# Extract PR numbers from the already-fetched prs.json (which uses paginated API)
+# instead of gh pr list --limit 1000 which may miss PRs in large repos.
+pr_numbers=$(jq -r '.number' < "$OUTPUT_DIR/prs.json")
 for num in $pr_numbers; do
     comments=$(retry gh api "repos/$REPO/pulls/$num/comments" --paginate -q '.[] | {pr_number: '$num', author: .user.login, created: .created_at, body: .body}' 2>/dev/null) || true
     if [ -n "$comments" ]; then

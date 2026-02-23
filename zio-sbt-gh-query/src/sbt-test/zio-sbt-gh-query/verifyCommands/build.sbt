@@ -1,5 +1,4 @@
 import GhQueryPlugin.autoImport._
-import sbt.Command
 
 lazy val root = (project in file("."))
   .settings(

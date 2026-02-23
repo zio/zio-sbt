@@ -67,43 +67,46 @@ object GhQueryPlugin extends AutoPlugin {
 
   /**
    * Compute a hash of all bundled script contents for cache invalidation (issue
-   * #4).
+   * #4). Fails fast if any script resource is missing.
    */
   private lazy val scriptsContentHash: String = {
     val digest = MessageDigest.getInstance("SHA-256")
     scriptNames.foreach { name =>
       val stream = getClass.getResourceAsStream(s"/$name")
-      if (stream != null) {
-        try {
-          digest.update(readAllBytes(stream))
-        } finally {
-          stream.close()
-        }
+      if (stream == null) {
+        sys.error(s"Bundled script resource '/$name' not found. The plugin may be incorrectly packaged.")
+      }
+      try {
+        digest.update(readAllBytes(stream))
+      } finally {
+        stream.close()
       }
     }
     digest.digest().map("%02x".format(_)).mkString.take(12)
   }
 
   /**
-   * Extract bundled scripts to a versioned temp directory (issue #3, #4). Uses
-   * java.nio.file.Files instead of scala.tools.nsc.io.File. Includes a content
-   * hash in the directory name for cache invalidation.
+   * Extract bundled scripts to a securely created temp directory (issue #3,
+   * #4). Uses Files.createTempDirectory to avoid reusing attacker-controlled
+   * paths in a shared temp location. Fails fast if any script resource is
+   * missing.
    */
   private lazy val scriptDir: File = {
-    val dir = new File(sys.props("java.io.tmpdir"), s"zio-sbt-gh-query-scripts-$scriptsContentHash")
-    if (!dir.exists()) {
-      dir.mkdirs()
-      scriptNames.foreach { name =>
-        val stream = getClass.getResourceAsStream(s"/$name")
-        if (stream != null) {
-          try {
-            val targetFile = new File(dir, name)
-            Files.write(targetFile.toPath, readAllBytes(stream))
-            targetFile.setExecutable(true)
-          } finally {
-            stream.close()
-          }
-        }
+    val dir = Files
+      .createTempDirectory(s"zio-sbt-gh-query-scripts-$scriptsContentHash-")
+      .toFile
+
+    scriptNames.foreach { name =>
+      val stream = getClass.getResourceAsStream(s"/$name")
+      if (stream == null) {
+        sys.error(s"Bundled script resource '/$name' not found. The plugin may be incorrectly packaged.")
+      }
+      try {
+        val targetFile = new File(dir, name)
+        Files.write(targetFile.toPath, readAllBytes(stream))
+        targetFile.setExecutable(true)
+      } finally {
+        stream.close()
       }
     }
     dir
@@ -153,9 +156,9 @@ object GhQueryPlugin extends AutoPlugin {
           Map("GH_QUERY_REPO" -> repo, "GH_QUERY_DATA_DIR" -> dataDir.getAbsolutePath)
         )
         if (fetchExit != 0) {
-          println(s"[error] gh-sync fetch exited with code $fetchExit")
-          false
-        } else true
+          sys.error(s"gh-sync fetch failed with exit code $fetchExit")
+        }
+        true
       } else {
         println(s"Data files found in ${dataDir.getPath}, skipping fetch...")
         true
@@ -172,7 +175,7 @@ object GhQueryPlugin extends AutoPlugin {
             "GH_QUERY_DB_PATH"  -> dbPath.getAbsolutePath
           )
         )
-        if (buildExit != 0) println(s"[warn] gh-sync db build exited with code $buildExit")
+        if (buildExit != 0) sys.error(s"gh-sync db build failed with exit code $buildExit")
       }
     } else {
       println(s"Incremental sync: fetching updated issues and PRs for $repo...")
@@ -186,7 +189,7 @@ object GhQueryPlugin extends AutoPlugin {
           "GH_QUERY_SCRIPTS"  -> scriptDir.getAbsolutePath
         )
       )
-      if (updateExit != 0) println(s"[warn] gh-sync update exited with code $updateExit")
+      if (updateExit != 0) sys.error(s"gh-sync update failed with exit code $updateExit")
     }
     state
   }

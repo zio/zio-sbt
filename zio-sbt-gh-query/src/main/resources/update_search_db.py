@@ -56,43 +56,41 @@ def update_issues(conn, filepath):
         print("No issues file to update")
         return 0
 
-    with open(filepath) as f:
-        lines = f.readlines()
-
     count = 0
-    for line in lines:
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            item = json.loads(line)
-        except json.JSONDecodeError:
-            continue
+    with open(filepath) as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                item = json.loads(line)
+            except json.JSONDecodeError:
+                continue
 
-        number = item.get('number', 0)
-        title = item.get('title', '')
-        state = item.get('state', 'UNKNOWN')
-        author = item.get('author', '') or 'unknown'
-        created = item.get('created', '')
-        updated = item.get('updated', '')
-        body = item.get('body', '') or ''
-        url = make_url("issue", number)
-        now = datetime.now().isoformat()
+            number = item.get('number', 0)
+            title = item.get('title', '')
+            state = item.get('state', 'UNKNOWN')
+            author = item.get('author', '') or 'unknown'
+            created = item.get('created', '')
+            updated = item.get('updated', '')
+            body = item.get('body', '') or ''
+            url = make_url("issue", number)
+            now = datetime.now().isoformat()
 
-        cursor.execute("""
-            INSERT INTO issues (type, number, title, state, author, created_at, updated_at, body, url, fetched_at)
-            VALUES ('issue', ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(type, number) DO UPDATE SET
-                title=excluded.title,
-                state=excluded.state,
-                author=excluded.author,
-                created_at=excluded.created_at,
-                updated_at=excluded.updated_at,
-                body=excluded.body,
-                url=excluded.url,
-                fetched_at=excluded.fetched_at
-        """, (number, title, state, author, created, updated, body, url, now))
-        count += 1
+            cursor.execute("""
+                INSERT INTO issues (type, number, title, state, author, created_at, updated_at, body, url, fetched_at)
+                VALUES ('issue', ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(type, number) DO UPDATE SET
+                    title=excluded.title,
+                    state=excluded.state,
+                    author=excluded.author,
+                    created_at=excluded.created_at,
+                    updated_at=excluded.updated_at,
+                    body=excluded.body,
+                    url=excluded.url,
+                    fetched_at=excluded.fetched_at
+            """, (number, title, state, author, created, updated, body, url, now))
+            count += 1
 
     conn.commit()
     print(f"Updated {count} issues")
@@ -112,45 +110,43 @@ def update_prs(conn, filepath):
         print("No PRs file to update")
         return 0
 
-    with open(filepath) as f:
-        lines = f.readlines()
-
     count = 0
-    for line in lines:
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            item = json.loads(line)
-        except json.JSONDecodeError:
-            continue
+    with open(filepath) as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                item = json.loads(line)
+            except json.JSONDecodeError:
+                continue
 
-        number = item.get('number', 0)
-        title = item.get('title', '')
-        state = item.get('state', 'UNKNOWN')
-        if item.get('merged'):
-            state = 'MERGED'
-        author = item.get('author', '') or 'unknown'
-        created = item.get('created', '')
-        updated = item.get('updated', '')
-        body = item.get('body', '') or ''
-        url = make_url("pr", number)
-        now = datetime.now().isoformat()
+            number = item.get('number', 0)
+            title = item.get('title', '')
+            state = item.get('state', 'UNKNOWN')
+            if item.get('merged'):
+                state = 'MERGED'
+            author = item.get('author', '') or 'unknown'
+            created = item.get('created', '')
+            updated = item.get('updated', '')
+            body = item.get('body', '') or ''
+            url = make_url("pr", number)
+            now = datetime.now().isoformat()
 
-        cursor.execute("""
-            INSERT INTO issues (type, number, title, state, author, created_at, updated_at, body, url, fetched_at)
-            VALUES ('pr', ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(type, number) DO UPDATE SET
-                title=excluded.title,
-                state=excluded.state,
-                author=excluded.author,
-                created_at=excluded.created_at,
-                updated_at=excluded.updated_at,
-                body=excluded.body,
-                url=excluded.url,
-                fetched_at=excluded.fetched_at
-        """, (number, title, state, author, created, updated, body, url, now))
-        count += 1
+            cursor.execute("""
+                INSERT INTO issues (type, number, title, state, author, created_at, updated_at, body, url, fetched_at)
+                VALUES ('pr', ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(type, number) DO UPDATE SET
+                    title=excluded.title,
+                    state=excluded.state,
+                    author=excluded.author,
+                    created_at=excluded.created_at,
+                    updated_at=excluded.updated_at,
+                    body=excluded.body,
+                    url=excluded.url,
+                    fetched_at=excluded.fetched_at
+            """, (number, title, state, author, created, updated, body, url, now))
+            count += 1
 
     conn.commit()
     print(f"Updated {count} PRs")
