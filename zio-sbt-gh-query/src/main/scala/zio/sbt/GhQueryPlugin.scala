@@ -58,7 +58,9 @@ object GhQueryPlugin extends AutoPlugin {
     "fetch-github-data.sh",
     "update-github-data.sh",
     "build_search_db.py",
-    "update_search_db.py"
+    "update_search_db.py",
+    "search_db.py",
+    "status_db.py"
   )
 
   /** Compute a hash of all bundled script contents for cache invalidation (issue #4). */
@@ -257,101 +259,22 @@ object GhQueryPlugin extends AutoPlugin {
   }
 
   /**
-   * Run a search query by passing db path and query as command-line arguments
-   * to a standalone Python script (issue #1 - prevents SQL injection).
+   * Run a search query via the bundled search_db.py script.
+   * Passes db path, query, and verbose flag as command-line arguments
+   * to prevent SQL injection (issue #1).
    */
   private def runSearch(db: File, query: String, includeBody: Boolean, cwd: File): Unit = {
-    val tempFile = File.createTempFile("search_", ".py")
-    val code =
-      """import sqlite3
-        |import sys
-        |
-        |db_path = sys.argv[1]
-        |query = sys.argv[2]
-        |include_body = sys.argv[3] == "True"
-        |
-        |conn = sqlite3.connect(db_path)
-        |cursor = conn.cursor()
-        |try:
-        |    cursor.execute('''
-        |        SELECT i.type, i.number, i.title, i.state, i.author, i.url, i.body
-        |        FROM search_index s
-        |        JOIN issues i ON i.id = s.rowid
-        |        WHERE search_index MATCH ?
-        |        ORDER BY rank
-        |        LIMIT 20
-        |    ''', (query,))
-        |    results = cursor.fetchall()
-        |    if not results:
-        |        print('No results found')
-        |    else:
-        |        for row in results:
-        |            print(f"{row[0]:5} #{row[1]}: {row[2][:60]}")
-        |            print(f"       Author: {row[4]} | State: {row[3]}")
-        |            print(f"       {row[5]}")
-        |            if include_body and row[6]:
-        |                print(f"       Body: {row[6]}")
-        |            print()
-        |except Exception as e:
-        |    print(f'Search error: {e}')
-        |finally:
-        |    conn.close()
-        |""".stripMargin
-    IO.write(tempFile, code)
-    try {
-      val verboseStr = if (includeBody) "True" else "False"
-      Process(
-        Seq("python3", tempFile.getAbsolutePath, db.getAbsolutePath, query, verboseStr),
-        cwd
-      ).!
-    } finally {
-      val _ = tempFile.delete()
-    }
+    val verboseStr = if (includeBody) "True" else "False"
+    Process(
+      Seq("python3", scriptPath("search_db.py"), db.getAbsolutePath, query, verboseStr),
+      cwd
+    ).!
   }
 
   /**
-   * Show database status by passing db path as a command-line argument (issue #1).
+   * Show database status via the bundled status_db.py script.
    */
   private def showStatus(db: File, cwd: File): Unit = {
-    val tempFile = File.createTempFile("status_", ".py")
-    val code =
-      """import sqlite3
-        |import sys
-        |from pathlib import Path
-        |
-        |db_path = sys.argv[1]
-        |if not Path(db_path).exists():
-        |    print('Database not found. Run gh-rebuild-db first.')
-        |    sys.exit(1)
-        |conn = sqlite3.connect(db_path)
-        |cursor = conn.cursor()
-        |cursor.execute("SELECT COUNT(*) FROM issues WHERE type = 'issue'")
-        |issues = cursor.fetchone()[0]
-        |cursor.execute("SELECT COUNT(*) FROM issues WHERE type = 'pr'")
-        |prs = cursor.fetchone()[0]
-        |cursor.execute("SELECT COUNT(*) FROM comments WHERE is_pr_comment = 0")
-        |issue_comments = cursor.fetchone()[0]
-        |cursor.execute("SELECT COUNT(*) FROM comments WHERE is_pr_comment = 1")
-        |pr_comments = cursor.fetchone()[0]
-        |cursor.execute("SELECT fetched_at FROM issues ORDER BY fetched_at DESC LIMIT 1")
-        |row = cursor.fetchone()
-        |fetched = row[0] if row else "unknown"
-        |print('=' * 50)
-        |print('GitHub Query Database Status')
-        |print('=' * 50)
-        |print(f'Issues:         {issues}')
-        |print(f'PRs:            {prs}')
-        |print(f'Issue Comments: {issue_comments}')
-        |print(f'PR Comments:    {pr_comments}')
-        |print(f'Last fetched:   {fetched}')
-        |print('=' * 50)
-        |conn.close()
-        |""".stripMargin
-    IO.write(tempFile, code)
-    try {
-      Process(Seq("python3", tempFile.getAbsolutePath, db.getAbsolutePath), cwd).!
-    } finally {
-      val _ = tempFile.delete()
-    }
+    Process(Seq("python3", scriptPath("status_db.py"), db.getAbsolutePath), cwd).!
   }
 }
