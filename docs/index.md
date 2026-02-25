@@ -129,6 +129,76 @@ This will generate a GitHub workflow file inside the `.github/workflows` directo
 > 
 > To use this plugin, we also need to install [ZIO Assistant](https://github.com/apps/zio-assistant) bot.
 
+## ZIO SBT GitHub Query Plugin
+
+ZIO SBT GitHub Query is an sbt plugin for fetching GitHub issues/PRs and building a searchable SQLite database with full-text search.
+
+### Installation
+
+Add to `plugins.sbt`:
+
+```scala
+addSbtPlugin("dev.zio" % "zio-sbt-gh-query" % "@VERSION@")
+```
+
+The plugin is auto-enabled. Configure in `build.sbt`:
+
+```scala
+// Required: specify your GitHub repository
+ghRepo := "your-org/your-repo"
+
+// Optional: override the default data directory (defaults to .zio-sbt)
+ghDir := file(".zio-sbt")
+```
+
+### Commands
+
+| Command | Description |
+|---------|-------------|
+| `gh-sync` | Fetch data from GitHub and build/update the search database. On first run (or with `--force`), does a full fetch and rebuild. On subsequent runs, fetches only new/updated items incrementally. |
+| `gh-query <query>` | Full-text search across issues and PRs. Supports `--verbose` flag to include body text. |
+| `gh-status` | Show database statistics (issue/PR/comment counts, last fetch time). |
+
+### Usage
+
+```bash
+# Fetch all issues/PRs and build the database
+sbt gh-sync
+
+# Incrementally fetch new/updated items
+sbt gh-sync
+
+# Re-fetch everything and rebuild from scratch
+sbt "gh-sync --force"
+
+# Basic search query
+sbt "gh-query codec"
+
+# Search with full body content
+sbt "gh-query --verbose codec"
+
+# Check database statistics
+sbt gh-status
+```
+
+### Dependencies
+
+- `gh` CLI (GitHub CLI) - for fetching data. You must also authenticate by running `gh auth login`
+  and ensure the authenticated account has permission to read the target repository, otherwise
+  `gh-sync` and related tasks will fail even if the `gh` binary is installed.
+- Python 3 with sqlite3 (with FTS5 enabled) - for database operations. The `sqlite3` module must
+  be linked against a SQLite build that has the [FTS5 extension](https://www.sqlite.org/fts5.html)
+  enabled, otherwise full-text search will not work. If your environment lacks FTS5 support,
+  install a newer Python/SQLite distribution that includes FTS5.
+
+### Database Schema
+
+The plugin creates a SQLite database with:
+
+- `issues` table - stores issues and PRs
+- `comments` table - stores issue and PR comments
+- `search_index` - FTS5 full-text search index (requires SQLite built with FTS5 enabled)
+
 ## Testing Strategies
 
 ### Default Testing Strategy
