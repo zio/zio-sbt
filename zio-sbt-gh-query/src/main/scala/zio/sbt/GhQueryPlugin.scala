@@ -115,6 +115,24 @@ object GhQueryPlugin extends AutoPlugin {
   private def scriptPath(scriptName: String): String =
     new File(scriptDir, scriptName).getAbsolutePath
 
+  private def checkBinary(name: String): Boolean =
+    Process(Seq("which", name)).!(ProcessLogger(_ => ())) == 0
+
+  private def checkPythonSqliteFts5(): Boolean =
+    Process(
+      Seq(
+        "python3",
+        "-c",
+        "import sqlite3; sqlite3.connect(':memory:').execute('CREATE VIRTUAL TABLE t USING fts5(x)')"
+      )
+    ).!(ProcessLogger(_ => ())) == 0
+
+  private def verifyDependencies(checks: (String, Boolean, String)*): Unit = {
+    val missing = checks.collect { case (name, false, hint) => s"  - $name: $hint" }
+    if (missing.nonEmpty)
+      sys.error("zio-sbt-gh-query: missing or unavailable dependencies:\n" + missing.mkString("\n"))
+  }
+
   /**
    * Resolve ghDir against the project base directory (issue #6). Prevents NPE
    * from calling getParentFile on a relative File.
@@ -138,6 +156,13 @@ object GhQueryPlugin extends AutoPlugin {
    *   - DB exists: incremental fetch + incremental DB update
    */
   private def ghSyncCommand: Command = Command.args("gh-sync", "<--force>") { (state, args) =>
+    verifyDependencies(
+      ("bash",               checkBinary("bash"),       "Install bash: https://www.gnu.org/software/bash/"),
+      ("gh (GitHub CLI)",    checkBinary("gh"),         "Install GitHub CLI: https://cli.github.com"),
+      ("jq",                 checkBinary("jq"),         "Install jq: https://jqlang.github.io/jq/download/"),
+      ("python3",            checkBinary("python3"),    "Install Python 3: https://www.python.org/downloads/"),
+      ("sqlite3 with FTS5",  checkPythonSqliteFts5(),  "Ensure your Python's sqlite3 module is built with FTS5 support: https://www.sqlite.org/fts5.html")
+    )
     val force                           = args.contains("--force")
     val (resolvedDir, repo, projectDir) = resolveProjectDir(state)
     val dataDir                         = new File(resolvedDir, "github-data")
@@ -195,6 +220,9 @@ object GhQueryPlugin extends AutoPlugin {
   }
 
   private def ghStatusCommand: Command = Command.command("gh-status") { state =>
+    verifyDependencies(
+      ("python3", checkBinary("python3"), "Install Python 3: https://www.python.org/downloads/")
+    )
     val (resolvedDir, _, projectDir) = resolveProjectDir(state)
     val dbPath                       = new File(resolvedDir, "gh.db")
     showStatus(dbPath, projectDir)
@@ -202,6 +230,10 @@ object GhQueryPlugin extends AutoPlugin {
   }
 
   private def ghQueryCommand: Command = Command.args("gh-query", "<--verbose> <query>") { (state, args) =>
+    verifyDependencies(
+      ("python3",           checkBinary("python3"),   "Install Python 3: https://www.python.org/downloads/"),
+      ("sqlite3 with FTS5", checkPythonSqliteFts5(), "Ensure your Python's sqlite3 module is built with FTS5 support: https://www.sqlite.org/fts5.html")
+    )
     val (resolvedDir, _, projectDir) = resolveProjectDir(state)
     val dbPath                       = new File(resolvedDir, "gh.db")
 
