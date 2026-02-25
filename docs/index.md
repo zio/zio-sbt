@@ -135,7 +135,7 @@ ZIO SBT GitHub Query is an sbt plugin for fetching GitHub issues/PRs and buildin
 
 ### Installation
 
-Add to `project/plugins.sbt`:
+Add to `plugins.sbt`:
 
 ```scala
 addSbtPlugin("dev.zio" % "zio-sbt-gh-query" % "@VERSION@")
@@ -183,8 +183,13 @@ sbt gh-status
 
 ### Dependencies
 
-- `gh` CLI (GitHub CLI) - for fetching data
-- Python 3 with sqlite3 - for database operations
+- `gh` CLI (GitHub CLI) - for fetching data. You must also authenticate by running `gh auth login`
+  and ensure the authenticated account has permission to read the target repository, otherwise
+  `gh-sync` and related tasks will fail even if the `gh` binary is installed.
+- Python 3 with sqlite3 (with FTS5 enabled) - for database operations. The `sqlite3` module must
+  be linked against a SQLite build that has the [FTS5 extension](https://www.sqlite.org/fts5.html)
+  enabled, otherwise full-text search will not work. If your environment lacks FTS5 support,
+  install a newer Python/SQLite distribution that includes FTS5.
 
 ### Database Schema
 
@@ -192,7 +197,7 @@ The plugin creates a SQLite database with:
 
 - `issues` table - stores issues and PRs
 - `comments` table - stores issue and PR comments
-- `search_index` - FTS5 full-text search index
+- `search_index` - FTS5 full-text search index (requires SQLite built with FTS5 enabled)
 
 ## Testing Strategies
 
