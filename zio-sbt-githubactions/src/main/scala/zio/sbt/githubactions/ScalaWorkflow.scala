@@ -230,6 +230,7 @@ object ScalaWorkflow {
     val JDK11: JavaVersion = CorrettoJDK("11")
     val JDK17: JavaVersion = CorrettoJDK("17")
     val JDK21: JavaVersion = CorrettoJDK("21")
+    val JDK25: JavaVersion = CorrettoJDK("25")
   }
 
   implicit class JobOps(job: Job) {
