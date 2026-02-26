@@ -130,6 +130,87 @@ This will generate a GitHub workflow file inside the `.github/workflows` directo
 > 
 > To use this plugin, we also need to install [ZIO Assistant](https://github.com/apps/zio-assistant) bot.
 
+## ZIO SBT GitHub Query Plugin
+
+ZIO SBT GitHub Query is an sbt plugin for fetching GitHub issues/PRs and building a searchable SQLite database with full-text search.
+
+### Installation
+
+Add to `plugins.sbt`:
+
+```scala
+addSbtPlugin("dev.zio" % "zio-sbt-gh-query" % "0.4.11")
+```
+
+The plugin is auto-enabled. Configure in `build.sbt`:
+
+```scala
+// Required: specify your GitHub repository
+ghRepo := "your-org/your-repo"
+
+// Optional: override the default data directory (defaults to .zio-sbt)
+ghDir := file(".zio-sbt")
+```
+
+### Commands
+
+| Command | Description |
+|---------|-------------|
+| `gh-sync` | Fetch data from GitHub and build/update the search database. On first run (or with `--force`), does a full fetch and rebuild. On subsequent runs, fetches only new/updated items incrementally. |
+| `gh-query <query>` | Full-text search across issues and PRs. Supports `--verbose` flag to include body text. |
+| `gh-status` | Show database statistics (issue/PR/comment counts, last fetch time). |
+
+### Usage
+
+```bash
+# Fetch all issues/PRs and build the database
+sbt gh-sync
+
+# Incrementally fetch new/updated items
+sbt gh-sync
+
+# Re-fetch everything and rebuild from scratch
+sbt "gh-sync --force"
+
+# Basic search query
+sbt "gh-query codec"
+
+# Search with full body content
+sbt "gh-query --verbose codec"
+
+# Check database statistics
+sbt gh-status
+```
+
+### Dependencies
+
+The plugin checks for all required dependencies before running any command and reports clear
+error messages with install instructions if anything is missing.
+
+| Dependency | Required by | Install |
+|---|---|---|
+| `bash` | `gh-sync` | https://www.gnu.org/software/bash/ |
+| `gh` (GitHub CLI) | `gh-sync` | https://cli.github.com |
+| `jq` | `gh-sync` | https://jqlang.github.io/jq/download/ |
+| `python3` | all commands | https://www.python.org/downloads/ |
+| `sqlite3` with [FTS5](https://www.sqlite.org/fts5.html) | `gh-sync`, `gh-query` | Ensure your Python's sqlite3 is built with FTS5 support |
+
+Before running `gh-sync` for the first time, authenticate the GitHub CLI:
+
+```bash
+gh auth login
+```
+
+The authenticated account must have read access to the target repository.
+
+### Database Schema
+
+The plugin creates a SQLite database with:
+
+- `issues` table - stores issues and PRs
+- `comments` table - stores issue and PR comments
+- `search_index` - FTS5 full-text search index (requires SQLite built with FTS5 enabled)
+
 ## Testing Strategies
 
 ### Default Testing Strategy
