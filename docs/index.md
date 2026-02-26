@@ -183,13 +183,24 @@ sbt gh-status
 
 ### Dependencies
 
-- `gh` CLI (GitHub CLI) - for fetching data. You must also authenticate by running `gh auth login`
-  and ensure the authenticated account has permission to read the target repository, otherwise
-  `gh-sync` and related tasks will fail even if the `gh` binary is installed.
-- Python 3 with sqlite3 (with FTS5 enabled) - for database operations. The `sqlite3` module must
-  be linked against a SQLite build that has the [FTS5 extension](https://www.sqlite.org/fts5.html)
-  enabled, otherwise full-text search will not work. If your environment lacks FTS5 support,
-  install a newer Python/SQLite distribution that includes FTS5.
+The plugin checks for all required dependencies before running any command and reports clear
+error messages with install instructions if anything is missing.
+
+| Dependency | Required by | Install |
+|---|---|---|
+| `bash` | `gh-sync` | https://www.gnu.org/software/bash/ |
+| `gh` (GitHub CLI) | `gh-sync` | https://cli.github.com |
+| `jq` | `gh-sync` | https://jqlang.github.io/jq/download/ |
+| `python3` | all commands | https://www.python.org/downloads/ |
+| `sqlite3` with [FTS5](https://www.sqlite.org/fts5.html) | `gh-sync`, `gh-query` | Ensure your Python's sqlite3 is built with FTS5 support |
+
+Before running `gh-sync` for the first time, authenticate the GitHub CLI:
+
+```bash
+gh auth login
+```
+
+The authenticated account must have read access to the target repository.
 
 ### Database Schema
 
