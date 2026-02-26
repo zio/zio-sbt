@@ -45,7 +45,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
     val ciUpdateReadmeCondition: SettingKey[Option[Condition]] =
       settingKey[Option[Condition]]("condition to update readme")
     val ciTargetJavaVersions: SettingKey[Seq[String]] =
-      settingKey[Seq[String]]("The default target Java versions for all modules, default is 11, 17, 21")
+      settingKey[Seq[String]]("The default target Java versions for all modules, default is 17, 21, 25")
     val ciTargetMinJavaVersions: SettingKey[Map[String, String]] =
       SettingKey[Map[String, String]](
         "minimum target Java version for each module, default is an empty map which makes CI to use `ciAllTargetJavaVersions` to determine the minimum target Java version for all modules"
@@ -191,7 +191,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
                   }
                 } else {
                   (for {
-                    javaPlatform: String <- Set("11", "17", "21")
+                    javaPlatform: String <- Set("17", "21", "25")
                     scalaVersion: String <- scalaVersionMatrix.values.toSeq.flatten.toSet
                     projects              =
                       scalaVersionMatrix.filterKeys { p =>
@@ -267,13 +267,6 @@ object ZioSbtCiPlugin extends AutoPlugin {
               Step.StepSequence(
                 Seq(
                   Step.SingleStep(
-                    name = "Java 11 Tests",
-                    condition = Some(Condition.Expression("matrix.java == '11'")),
-                    run = Some(
-                      prefixJobs + "sbt ${{ matrix.scala-project-java11 }}/test"
-                    )
-                  ),
-                  Step.SingleStep(
                     name = "Java 17 Tests",
                     condition = Some(Condition.Expression("matrix.java == '17'")),
                     run = Some(
@@ -285,6 +278,13 @@ object ZioSbtCiPlugin extends AutoPlugin {
                     condition = Some(Condition.Expression("matrix.java == '21'")),
                     run = Some(
                       prefixJobs + "sbt ${{ matrix.scala-project-java21 }}/test"
+                    )
+                  ),
+                  Step.SingleStep(
+                    name = "Java 25 Tests",
+                    condition = Some(Condition.Expression("matrix.java == '25'")),
+                    run = Some(
+                      prefixJobs + "sbt ${{ matrix.scala-project-java25 }}/test"
                     )
                   )
                 )
@@ -586,7 +586,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
       ciUpdateReadmeCondition    := None,
       ciGroupSimilarTests        := false,
       ciSwapSizeGB               := 0,
-      ciTargetJavaVersions       := Seq("11", "17", "21"),
+      ciTargetJavaVersions       := Seq("17", "21", "25"),
       ciCheckArtifactsBuildSteps :=
         Seq(
           Step.SingleStep(
