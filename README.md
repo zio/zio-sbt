@@ -13,9 +13,9 @@ _ZIO SBT_ contains multiple sbt plugins that are useful for ZIO projects. It pro
 Add the following lines to your `plugin.sbt` file:
 
 ```scala
-addSbtPlugin("dev.zio" % "zio-sbt-ecosystem" % "0.4.11")
-addSbtPlugin("dev.zio" % "zio-sbt-ci"        % "0.4.11")
-addSbtPlugin("dev.zio" % "zio-sbt-website"   % "0.4.11")
+addSbtPlugin("dev.zio" % "zio-sbt-ecosystem" % "0.5.0")
+addSbtPlugin("dev.zio" % "zio-sbt-ci"        % "0.5.0")
+addSbtPlugin("dev.zio" % "zio-sbt-website"   % "0.5.0")
 ```
 
 Then you can enable them by using the following code in your `build.sbt` file:
@@ -102,7 +102,7 @@ ZIO SBT CI plugin generates a default GitHub workflow that includes common CI ta
 To use ZIO SBT CI plugin, add the following lines to your `plugins.sbt` file:
 
 ```scala
-addSbtPlugin("dev.zio" % "zio-sbt-ci" % "0.4.11")
+addSbtPlugin("dev.zio" % "zio-sbt-ci" % "0.5.0")
 
 resolvers ++= Resolver.sonatypeOssRepos("public")
 ```
@@ -139,7 +139,7 @@ ZIO SBT GitHub Query is an sbt plugin for fetching GitHub issues/PRs and buildin
 Add to `plugins.sbt`:
 
 ```scala
-addSbtPlugin("dev.zio" % "zio-sbt-gh-query" % "0.4.11")
+addSbtPlugin("dev.zio" % "zio-sbt-gh-query" % "0.5.0")
 ```
 
 The plugin is auto-enabled. Configure in `build.sbt`:
