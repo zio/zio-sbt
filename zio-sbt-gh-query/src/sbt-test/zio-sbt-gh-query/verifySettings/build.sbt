@@ -2,8 +2,8 @@ import GhQueryPlugin.autoImport._
 
 lazy val root = (project in file("."))
   .settings(
-    version := "0.1",
-    ghRepo  := "zio/zio-sbt",
+    version                := "0.1",
+    ghRepo                 := "zio/zio-sbt",
     TaskKey[Unit]("check") := {
       val repo = ghRepo.value
       assert(repo == "zio/zio-sbt", s"Expected ghRepo to be zio/zio-sbt, got $repo")

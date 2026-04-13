@@ -2,9 +2,9 @@ import GhQueryPlugin.autoImport._
 
 lazy val root = (project in file("."))
   .settings(
-    version := "0.1",
-    ghRepo  := "test-org/test-repo",
-    ghDir   := file(".zio-sbt"),
+    version                        := "0.1",
+    ghRepo                         := "test-org/test-repo",
+    ghDir                          := file(".zio-sbt"),
     TaskKey[Unit]("checkDbExists") := {
       val dbFile = file(".zio-sbt") / "gh.db"
       assert(dbFile.exists(), s"Database file should exist at ${dbFile.getAbsolutePath}")
@@ -16,7 +16,7 @@ lazy val root = (project in file("."))
       Class.forName("org.sqlite.JDBC")
       import java.sql.DriverManager
       val dbFile = file(".zio-sbt") / "gh.db"
-      val conn = DriverManager.getConnection(s"jdbc:sqlite:${dbFile.getAbsolutePath}")
+      val conn   = DriverManager.getConnection(s"jdbc:sqlite:${dbFile.getAbsolutePath}")
       try {
         val stmt = conn.createStatement()
 
@@ -67,22 +67,37 @@ lazy val root = (project in file("."))
         assert(ctRs.next(), "Issue #5 should exist")
         val commentText = ctRs.getString(1)
         assert(commentText != null && commentText.nonEmpty, "comment_text should be populated for issue #5")
-        assert(commentText.contains("reproduce"), s"comment_text for issue #5 should contain 'reproduce', got: $commentText")
-        assert(commentText.contains("root cause"), s"comment_text for issue #5 should contain 'root cause', got: $commentText")
+        assert(
+          commentText.contains("reproduce"),
+          s"comment_text for issue #5 should contain 'reproduce', got: $commentText"
+        )
+        assert(
+          commentText.contains("root cause"),
+          s"comment_text for issue #5 should contain 'root cause', got: $commentText"
+        )
 
         // Check comment_text is NULL for issues with no comments
         val ctNullRs = stmt.executeQuery("SELECT comment_text FROM issues WHERE number = 2 AND type = 'issue'")
         assert(ctNullRs.next(), "Issue #2 should exist")
         val emptyCommentText = ctNullRs.getString(1)
-        assert(emptyCommentText == null, s"comment_text should be NULL for issue #2 (no comments), got: $emptyCommentText")
+        assert(
+          emptyCommentText == null,
+          s"comment_text should be NULL for issue #2 (no comments), got: $emptyCommentText"
+        )
 
         // Check FTS search finds issues via comment text (comment-only search)
         val commentSearchRs = stmt.executeQuery(
           "SELECT i.number FROM search_index s JOIN issues i ON i.id = s.rowid WHERE search_index MATCH 'reproduce' LIMIT 5"
         )
-        assert(commentSearchRs.next(), "FTS search for 'reproduce' (comment-only term) should return at least one result")
+        assert(
+          commentSearchRs.next(),
+          "FTS search for 'reproduce' (comment-only term) should return at least one result"
+        )
         val commentMatchedNumber = commentSearchRs.getInt(1)
-        assert(commentMatchedNumber == 5, s"FTS search for 'reproduce' should match issue #5, got #$commentMatchedNumber")
+        assert(
+          commentMatchedNumber == 5,
+          s"FTS search for 'reproduce' should match issue #5, got #$commentMatchedNumber"
+        )
 
         // Check FTS search for 'root cause' also matches via comment text
         val rootCauseRs = stmt.executeQuery(
