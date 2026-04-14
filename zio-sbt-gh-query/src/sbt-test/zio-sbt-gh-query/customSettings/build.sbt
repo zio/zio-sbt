@@ -2,9 +2,9 @@ import GhQueryPlugin.autoImport._
 
 lazy val root = (project in file("."))
   .settings(
-    version := "0.1",
-    ghRepo  := "my-org/my-repo",
-    ghDir   := file("custom-data-dir"),
+    version                := "0.1",
+    ghRepo                 := "my-org/my-repo",
+    ghDir                  := file("custom-data-dir"),
     TaskKey[Unit]("check") := {
       val repo = ghRepo.value
       assert(repo == "my-org/my-repo", s"Expected ghRepo to be my-org/my-repo, got $repo")
