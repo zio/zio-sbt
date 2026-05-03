@@ -25,6 +25,9 @@ import mdoc.MdocPlugin.autoImport._
 import sbt.Keys._
 import sbt.{Def, _}
 
+import zio.Chunk
+import zio.json._
+import zio.json.ast.Json
 import zio.sbt.WebsiteUtils.{readFile, removeYamlHeader}
 
 object WebsitePlugin extends sbt.AutoPlugin {
@@ -201,6 +204,18 @@ object WebsitePlugin extends sbt.AutoPlugin {
       exit(Process(s"mv ${target.value}/${normalizedName.value}-website ${websiteDirPath}").!)
 
       exit(s"rm -rvf ${websiteDirPath.toString}/.git/".!)
+
+      // Docusaurus 2.1.0 uses ProgressPlugin options removed in webpack >=5.76.
+      // Pin webpack to 5.75.0 via npm overrides and reinstall until Docusaurus is upgraded.
+      val pkgJsonFile    = new File(s"${websiteDirPath}/package.json")
+      val pkgJsonContent = IO.read(pkgJsonFile)
+      val patched        = pkgJsonContent.fromJson[Json.Obj] match {
+        case Right(obj) =>
+          Json.Obj(obj.fields :+ ("overrides" -> Json.Obj(Chunk("webpack" -> Json.Str("5.75.0"))))).toJsonPretty + "\n"
+        case Left(err) => sys.error(s"Failed to parse package.json: $err")
+      }
+      IO.write(pkgJsonFile, patched)
+      exit(Process("npm install", new File(s"${websiteDirPath}")).!)
     }
 
   lazy val buildWebsiteTask: Def.Initialize[Task[Unit]] =
