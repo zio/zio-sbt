@@ -210,6 +210,74 @@ The plugin creates a SQLite database with:
 - `comments` table - stores issue and PR comments
 - `search_index` - FTS5 full-text search index (requires SQLite built with FTS5 enabled)
 
+## ZIO SBT Source
+
+ZIO SBT Source is a Scala 2.13 + Scala 3 cross-compiled library that provides utilities for self-documenting example code. It includes the `ExprEval` macro, which captures the source text of expressions at compile time and prints them alongside their evaluated results at runtime.
+
+### Installation
+
+Add the following line to your `libraryDependencies` in `build.sbt`:
+
+```scala
+libraryDependencies += "dev.zio" %% "zio-sbt-source" % "@VERSION@"
+```
+
+### Features
+
+The `ExprEval.show` macro provides an intuitive way to write self-documenting example code:
+
+```scala
+import zio.sbt.ExprEval.show
+
+// Print expression source and result
+show(
+  42 + 8,
+  "Hello, " + "World!"
+)
+```
+
+Output:
+```
+42 + 8
+// 50
+"Hello, " + "World!"
+// Hello, World!
+```
+
+### Comment Labels
+
+Add `//` comments above your `show` call to add context labels to the output:
+
+```scala
+// Calculate the answer to life, the universe, and everything
+show(6 * 7)
+```
+
+Output:
+```
+// Calculate the answer to life, the universe, and everything
+6 * 7
+// 42
+```
+
+### Block Form
+
+For multiple expressions, use the block form:
+
+```scala
+show {
+  1 + 2
+  3 * 4
+  "hello"
+}
+```
+
+### Implementation Details
+
+- **Scala 3**: Uses `scala.quoted.*` with `inline def` for compile-time source capture
+- **Scala 2.13**: Uses `scala.reflect.macros.whitebox` to achieve the same behavior
+- **Runtime Helper**: `SourceReader` utility reads comment lines from source files
+
 ## Testing Strategies
 
 ### Default Testing Strategy
