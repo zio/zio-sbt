@@ -29,9 +29,9 @@ object ExprEvalMacro {
     val line     = pos.line
 
     def extractSourceText(tree: Tree): String = {
-      val source      = pos.source.content
-      val start       = tree.pos.start
-      val end         = tree.pos.end
+      val source = pos.source.content
+      val start  = tree.pos.start
+      val end    = tree.pos.end
       new String(source.slice(start, end)).trim
     }
 
@@ -49,7 +49,7 @@ object ExprEvalMacro {
     def isSyntheticBinding(tree: Tree): Boolean = tree match {
       case _: ValDef => true
       case _: DefDef => true
-      case _ => false
+      case _         => false
     }
 
     // Handle varargs: if single block argument, try to unpack statements
@@ -57,14 +57,14 @@ object ExprEvalMacro {
       val arg = exprs(0).tree
       arg match {
         case Block(_, _) => extractStmts(arg)
-        case _ => List(arg)
+        case _           => List(arg)
       }
     } else {
       exprs.map(_.tree).toList
     }
 
     val printStatements: List[Tree] = trees.map { tree =>
-      val src = extractSourceText(tree)
+      val src      = extractSourceText(tree)
       val exprTree = tree
       q"""
         println($src)
@@ -76,11 +76,11 @@ object ExprEvalMacro {
     val allPrints: Tree = if (printStatements.isEmpty) {
       q"()"
     } else {
-      printStatements.reduce { (a: Tree, b: Tree) => q"$a; $b" }
+      printStatements.reduce((a: Tree, b: Tree) => q"$a; $b")
     }
 
     val filePath_lit = Literal(Constant(filePath))
-    val line_lit = Literal(Constant(line))
+    val line_lit     = Literal(Constant(line))
 
     c.Expr[Unit](q"""
       zio.sbt.SourceReader.commentsAbove($filePath_lit, $line_lit).foreach(println)
