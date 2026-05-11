@@ -17,6 +17,7 @@
 package zio.sbt
 
 import java.io.{File => JFile}
+import java.nio.charset.StandardCharsets
 
 import scala.io.Source
 
@@ -29,7 +30,7 @@ object SourceReader {
   def commentsAbove(filePath: String, lineNum: Int): List[String] = {
     val f = new JFile(filePath)
     if (!f.exists()) return Nil
-    val source = Source.fromFile(f)
+    val source = Source.fromFile(f, StandardCharsets.UTF_8.name())
     try {
       val lines  = source.getLines().take(lineNum).toList
       var idx    = Math.min(lineNum - 2, lines.length - 1)

@@ -36,7 +36,7 @@ object ExprEvalMacro {
 
     def extractStmts(tree: Tree): List[Tree] = tree match {
       case Block(stmts, last) =>
-        // Only unpack if no synthetic bindings
+        // Only unpack if all statements are expression-like (no definitions/imports/etc)
         val onlyTerms = stmts.forall(t => !isSyntheticBinding(t))
         if (onlyTerms)
           stmts.flatMap(extractStmts) ::: extractStmts(last)
@@ -45,6 +45,7 @@ object ExprEvalMacro {
       case other => List(other)
     }
 
+    // Check if tree is a non-expression statement (definition, import, etc) that shouldn't be unpacked
     def isSyntheticBinding(tree: Tree): Boolean = tree match {
       case _: ValDef    => true
       case _: DefDef    => true
