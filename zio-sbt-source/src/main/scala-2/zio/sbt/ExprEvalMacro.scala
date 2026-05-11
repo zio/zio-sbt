@@ -46,9 +46,13 @@ object ExprEvalMacro {
     }
 
     def isSyntheticBinding(tree: Tree): Boolean = tree match {
-      case _: ValDef => true
-      case _: DefDef => true
-      case _         => false
+      case _: ValDef    => true
+      case _: DefDef    => true
+      case _: Import    => true
+      case _: TypeDef   => true
+      case _: ClassDef  => true
+      case _: ModuleDef => true
+      case _            => false
     }
 
     // Handle varargs: if single block argument, try to unpack statements
