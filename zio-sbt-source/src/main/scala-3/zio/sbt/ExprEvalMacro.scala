@@ -35,11 +35,16 @@ object ExprEvalMacro {
     def extractCommentsAbove(): List[String] = {
       val lineNum = pos.startLine
       if (lineNum <= 0) return Nil
-      val sourceLines = pos.sourceFile.jfile.map { file =>
-        scala.util.Using(scala.io.Source.fromFile(file, "UTF-8")) { source =>
+      val sourceLines: Vector[String] = try {
+        val sourceContent = scala.util.Using(
+          scala.io.Source.fromFile(pos.sourceFile.path, "UTF-8")
+        ) { source =>
           source.getLines().toVector
         }.get
-      }.getOrElse(Vector())
+        sourceContent
+      } catch {
+        case _: Exception => Vector()
+      }
       val commentLines = scala.collection.mutable.ListBuffer[String]()
       var idx = lineNum - 1 // Start from line before current (0-indexed)
       while (idx >= 0 && idx < sourceLines.length && sourceLines(idx).trim.startsWith("//")) {
