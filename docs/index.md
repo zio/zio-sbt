@@ -98,7 +98,7 @@ ZIO SBT CI plugin generates a default GitHub workflow that includes common CI ta
 
 ### Getting Started
 
-To use ZIO SBT CI plugin, add the following lines to your `plugins.sbt` file:
+To use ZIO SBT CI plugin, add the following lines to your `project/plugins.sbt` file:
 
 ```scala
 addSbtPlugin("dev.zio" % "zio-sbt-ci" % "@VERSION@")
@@ -135,7 +135,7 @@ ZIO SBT GitHub Query is an sbt plugin for fetching GitHub issues/PRs and buildin
 
 ### Installation
 
-Add to `plugins.sbt`:
+Add to `project/plugins.sbt`:
 
 ```scala
 addSbtPlugin("dev.zio" % "zio-sbt-gh-query" % "@VERSION@")
@@ -274,9 +274,9 @@ show {
 
 ### Implementation Details
 
-- **Scala 3**: Uses `scala.quoted.*` with `inline def` for compile-time source capture
+- **Scala 3**: Uses `scala.quoted.*` with `inline def` for compile-time source capture and comment extraction
 - **Scala 2.13**: Uses `scala.reflect.macros.whitebox` to achieve the same behavior
-- **Runtime Helper**: `SourceReader` utility reads comment lines from source files
+- **Comment Labels**: Comment lines above the `show` call are extracted and embedded at compile time, with no runtime filesystem access required
 
 ## Testing Strategies
 
