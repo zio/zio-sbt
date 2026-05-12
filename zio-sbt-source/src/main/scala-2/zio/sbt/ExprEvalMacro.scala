@@ -24,8 +24,23 @@ object ExprEvalMacro {
     import c.universe._
 
     val pos      = c.enclosingPosition
-    val filePath = pos.source.file.path
     val line     = pos.line
+
+    // Extract comments at compile time to avoid leaking source paths
+    def extractCommentsAbove(sourceLine: Int): List[String] = {
+      if (sourceLine <= 1) return Nil
+      val content = pos.source.content
+      val lines   = content.linesWithSeparators
+      val commentLines = scala.collection.mutable.ListBuffer[String]()
+      var idx = sourceLine - 2 // Start from line before (0-indexed)
+      while (idx >= 0 && lines(idx).trim.startsWith("//")) {
+        commentLines.prepend(lines(idx).trim)
+        idx -= 1
+      }
+      commentLines.toList
+    }
+
+    val comments = extractCommentsAbove(line)
 
     def extractSourceText(tree: Tree): String = {
       // Prefer using tree's own source if available and has valid range position
@@ -45,7 +60,7 @@ object ExprEvalMacro {
     def extractStmts(tree: Tree): List[Tree] = tree match {
       case Block(stmts, last) =>
         // Only unpack if all statements are expression-like (no definitions/imports/etc)
-        val onlyTerms = stmts.forall(t => !isSyntheticBinding(t))
+        val onlyTerms = stmts.forall(t => !isNonTermStatement(t))
         if (onlyTerms)
           stmts.flatMap(extractStmts) ::: extractStmts(last)
         else
@@ -54,7 +69,7 @@ object ExprEvalMacro {
     }
 
     // Check if tree is a non-expression statement (definition, import, etc) that shouldn't be unpacked
-    def isSyntheticBinding(tree: Tree): Boolean = tree match {
+    def isNonTermStatement(tree: Tree): Boolean = tree match {
       case _: ValDef    => true
       case _: DefDef    => true
       case _: Import    => true
@@ -91,11 +106,8 @@ object ExprEvalMacro {
       printStatements.reduce((a: Tree, b: Tree) => q"$a; $b")
     }
 
-    val filePath_lit = Literal(Constant(filePath))
-    val line_lit     = Literal(Constant(line))
-
     c.Expr[Unit](q"""
-      zio.sbt.SourceReader.commentsAbove($filePath_lit, $line_lit).foreach(println)
+      ${Literal(Constant(comments))}.foreach(println)
       $allPrints
       println()
     """)

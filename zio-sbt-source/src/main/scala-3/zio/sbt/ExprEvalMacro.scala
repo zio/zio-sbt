@@ -28,9 +28,27 @@ object ExprEvalMacro {
   def showImpl(exprs: Expr[Seq[Any]])(using Quotes): Expr[Unit] = {
     import quotes.reflect.*
 
-    val pos      = Position.ofMacroExpansion
-    val filePath = pos.sourceFile.path
-    val line     = pos.startLine + 1
+    val pos  = Position.ofMacroExpansion
+    val line = pos.startLine + 1
+
+    // Extract comments at compile time to avoid leaking source paths
+    def extractCommentsAbove(): List[String] = {
+      val lineNum = pos.startLine
+      if (lineNum <= 0) return Nil
+      val sourceContent = pos.sourceFile.jfile.map { file =>
+        scala.io.Source.fromFile(file, "UTF-8").mkString
+      }.getOrElse("")
+      val lines = sourceContent.linesWithSeparators
+      val commentLines = scala.collection.mutable.ListBuffer[String]()
+      var idx = lineNum - 1 // Start from line before current (0-indexed)
+      while (idx >= 0 && idx < lines.length && lines(idx).trim.startsWith("//")) {
+        commentLines.prepend(lines(idx).trim)
+        idx -= 1
+      }
+      commentLines.toList
+    }
+
+    val comments = extractCommentsAbove()
 
     def extractStmts(term: Term): List[Term] = term match {
       case Block(stmts, last) =>
@@ -73,7 +91,7 @@ object ExprEvalMacro {
     val printAll = printExprs.foldLeft('{ () }: Expr[Unit])((acc, e) => '{ $acc; $e })
 
     '{
-      zio.sbt.SourceReader.commentsAbove(${ Expr(filePath) }, ${ Expr(line) }).foreach(println)
+      ${ Expr(comments) }.foreach(println)
       $printAll
       println()
     }

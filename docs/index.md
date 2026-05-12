@@ -9,7 +9,7 @@ _ZIO SBT_ contains multiple sbt plugins that are useful for ZIO projects. It pro
 
 ## Installation
 
-Add the following lines to your `plugins.sbt` file:
+Add the following lines to your `project/plugins.sbt` file:
 
 ```scala
 addSbtPlugin("dev.zio" % "zio-sbt-ecosystem" % "@VERSION@")
