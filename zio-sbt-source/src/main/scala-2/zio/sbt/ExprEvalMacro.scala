@@ -28,10 +28,18 @@ object ExprEvalMacro {
     val line     = pos.line
 
     def extractSourceText(tree: Tree): String = {
-      val source = pos.source.content
-      val start  = tree.pos.start
-      val end    = tree.pos.end
-      new String(source.slice(start, end)).trim
+      // Prefer using tree's own source if available and has valid range position
+      if (tree.pos != NoPosition && tree.pos.isRange) {
+        val source = tree.pos.source.content
+        val start  = tree.pos.start
+        val end    = tree.pos.end
+        // Guard against out-of-bounds access
+        if (start >= 0 && end <= source.length && start <= end) {
+          return new String(source.slice(start, end)).trim
+        }
+      }
+      // Fallback: use showCode if tree position is invalid
+      showCode(tree).trim
     }
 
     def extractStmts(tree: Tree): List[Tree] = tree match {
