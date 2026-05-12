@@ -29,8 +29,8 @@ object ExprEvalMacro {
     // Extract comments at compile time to avoid leaking source paths
     def extractCommentsAbove(sourceLine: Int): List[String] = {
       if (sourceLine <= 1) return Nil
-      val content = pos.source.content
-      val lines   = content.linesWithSeparators
+      val contentStr = new String(pos.source.content)
+      val lines   = contentStr.linesWithSeparators
       val commentLines = scala.collection.mutable.ListBuffer[String]()
       var idx = sourceLine - 2 // Start from line before (0-indexed)
       while (idx >= 0 && lines(idx).trim.startsWith("//")) {
