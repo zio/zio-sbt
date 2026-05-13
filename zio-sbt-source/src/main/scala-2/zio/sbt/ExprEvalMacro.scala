@@ -30,10 +30,10 @@ object ExprEvalMacro {
     def extractCommentsAbove(sourceLine: Int): List[String] = {
       if (sourceLine <= 1) return Nil
       val contentStr = new String(pos.source.content)
-      val lines   = contentStr.linesWithSeparators
+      val lines   = contentStr.linesWithSeparators.toVector
       val commentLines = scala.collection.mutable.ListBuffer[String]()
       var idx = sourceLine - 2 // Start from line before (0-indexed)
-      while (idx >= 0 && lines(idx).trim.startsWith("//")) {
+      while (idx >= 0 && idx < lines.length && lines(idx).trim.startsWith("//")) {
         commentLines.prepend(lines(idx).trim)
         idx -= 1
       }
