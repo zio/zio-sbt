@@ -1,3 +1,5 @@
+import zio.sbt.ExprEval
+
 object ExprEvalExample {
   def main(args: Array[String]): Unit = {
     // Test basic expression evaluation

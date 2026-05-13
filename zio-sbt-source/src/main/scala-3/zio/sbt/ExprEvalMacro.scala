@@ -30,7 +30,6 @@ object ExprEvalMacro {
 
     val pos      = Position.ofMacroExpansion
     val filePath = pos.sourceFile.path
-    val line     = pos.startLine + 1
 
     def extractStmts(term: Term): List[Term] = term match {
       case Block(stmts, last) =>
