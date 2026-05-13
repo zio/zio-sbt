@@ -24,23 +24,8 @@ object ExprEvalMacro {
     import c.universe._
 
     val pos      = c.enclosingPosition
+    val filePath = pos.source.file.path
     val line     = pos.line
-
-    // Extract comments at compile time to avoid leaking source paths
-    def extractCommentsAbove(sourceLine: Int): List[String] = {
-      if (sourceLine <= 1) return Nil
-      val contentStr = new String(pos.source.content)
-      val lines   = contentStr.linesWithSeparators.toVector
-      val commentLines = scala.collection.mutable.ListBuffer[String]()
-      var idx = sourceLine - 2 // Start from line before (0-indexed)
-      while (idx >= 0 && idx < lines.length && lines(idx).trim.startsWith("//")) {
-        commentLines.prepend(lines(idx).trim)
-        idx -= 1
-      }
-      commentLines.toList
-    }
-
-    val comments = extractCommentsAbove(line)
 
     def extractSourceText(tree: Tree): String = {
       // Prefer using tree's own source if available and has valid range position
@@ -106,8 +91,11 @@ object ExprEvalMacro {
       printStatements.reduce((a: Tree, b: Tree) => q"$a; $b")
     }
 
+    val filePath_lit = Literal(Constant(filePath))
+    val line_lit     = Literal(Constant(line))
+
     c.Expr[Unit](q"""
-      ${Literal(Constant(comments))}.foreach(println)
+      zio.sbt.SourceReader.commentsAbove($filePath_lit, $line_lit).foreach(println)
       $allPrints
       println()
     """)
