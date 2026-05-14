@@ -19,11 +19,11 @@ package zio.sbt
 /**
  * Test to verify ExprEval macro correctly extracts comment labels.
  *
- * The ExprEval.show macro should extract preceding // comments from the
- * source file. The line number passed to SourceReader.commentsAbove must
- * be 1-based (as expected by SourceReader), but Scala 3's Position.startLine
- * is 0-based. Therefore, Scala 3 must use pos.startLine + 1 to match Scala 2's
- * pos.line behavior (which is already 1-based).
+ * The ExprEval.show macro should extract preceding // comments from the source
+ * file. The line number passed to SourceReader.commentsAbove must be 1-based
+ * (as expected by SourceReader), but Scala 3's Position.startLine is 0-based.
+ * Therefore, Scala 3 must use pos.startLine + 1 to match Scala 2's pos.line
+ * behavior (which is already 1-based).
  *
  * Example (correct behavior):
  * {{{
@@ -39,8 +39,8 @@ package zio.sbt
  * }}}
  *
  * If the line number is off by one, the output would show:
- * - Nothing (if pos.startLine directly passed, looking at wrong line)
- * - Or a comment from 2 lines above (if not adjusted correctly)
+ *   - Nothing (if pos.startLine directly passed, looking at wrong line)
+ *   - Or a comment from 2 lines above (if not adjusted correctly)
  */
 object ExprEvalCommentLabelTest {
   def main(args: Array[String]): Unit = {
