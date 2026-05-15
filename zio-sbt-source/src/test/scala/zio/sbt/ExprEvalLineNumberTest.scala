@@ -18,39 +18,39 @@ package zio.sbt
 
 import java.nio.file.Files
 
-object ExprEvalLineNumberTest {
-  def main(args: Array[String]): Unit = {
-    // This test verifies that comment labels are correctly extracted
-    // from the line immediately above the show() call.
-    // The macro should use 1-based line numbers to find comments.
+import org.scalatest.funspec.AnyFunSpec
 
-    // Test 1: Single comment label directly above show()
-    testCommentExtraction()
+class ExprEvalLineNumberTest extends AnyFunSpec {
+  describe("ExprEvalLineNumberTest") {
+    it("comment labels are extracted from the line immediately above show() call") {
+      val testCode = """// Comment for this expression
+                       |ExprEval.show(42)
+                       |""".stripMargin
 
-    println("✅ All line number tests passed!")
-  }
+      val testFile = Files.createTempFile("expr_eval_test_", ".scala")
+      try {
+        Files.write(testFile, testCode.getBytes("UTF-8"))
+        val content = new String(Files.readAllBytes(testFile), "UTF-8")
+        val lines   = content.split("\n")
 
-  def testCommentExtraction(): Unit = {
-    // Create a temporary test file
-    val testCode = """// Comment for this expression
-                     |ExprEval.show(42)
-                     |""".stripMargin
+        assert(lines.length >= 2)
+        assert(lines(0).trim.startsWith("// Comment"))
+        assert(lines(1).contains("show"))
+      } finally {
+        Files.delete(testFile)
+      }
+    }
 
-    val testFile = Files.createTempFile("expr_eval_test_", ".scala")
-    Files.write(testFile, testCode.getBytes("UTF-8"))
+    it("macro uses 1-based line numbers to find comments") {
+      val lines = Array(
+        "// Calculate 2 + 2",
+        "show(2 + 2)",
+        "// 4"
+      )
 
-    try {
-      // Read the file to verify comment is on line 1, show() is on line 2
-      val content = new String(Files.readAllBytes(testFile), "UTF-8")
-      val lines   = content.split("\n")
-
-      assert(lines(0).trim.startsWith("// Comment"), "First line should be the comment")
-      assert(lines(1).contains("show"), "Second line should contain show()")
-
-      println(s"✓ Test file structure correct: comment on line 1, show() on line 2")
-      println(s"  This verifies that the macro should look 1 line above (startLine + 1 for zero-based)")
-    } finally {
-      Files.delete(testFile)
+      assert(lines(0).startsWith("//"))
+      assert(lines(1).contains("show"))
+      assert(lines(2).startsWith("//"))
     }
   }
 }

@@ -117,7 +117,9 @@ lazy val `zio-sbt-source` =
       scalacOptions ++= {
         if (scalaBinaryVersion.value == "2.13") Seq("-Wunused:imports") else Seq()
       },
-      libraryDependencies ++= {
+      libraryDependencies ++= Seq(
+        "org.scalatest" %% "scalatest" % "3.2.18" % Test
+      ) ++ {
         if (scalaBinaryVersion.value == "2.13") Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value)
         else Seq()
       }
