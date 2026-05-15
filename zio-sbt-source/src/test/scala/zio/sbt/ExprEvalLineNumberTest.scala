@@ -16,9 +16,7 @@
 
 package zio.sbt
 
-import scala.io.Source
 import java.nio.file.Files
-import java.nio.file.Paths
 
 object ExprEvalLineNumberTest {
   def main(args: Array[String]): Unit = {
