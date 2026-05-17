@@ -16,9 +16,8 @@
 
 package zio.sbt
 
-import java.nio.file.Files
-
 import org.scalatest.funspec.AnyFunSpec
+import java.nio.file.Files
 
 class ExprEvalLineNumberTest extends AnyFunSpec {
   describe("ExprEvalLineNumberTest") {
