@@ -32,7 +32,8 @@ lazy val root = project
     `zio-sbt-ecosystem`,
     `zio-sbt-ci`,
     `zio-sbt-tests`,
-    `zio-sbt-gh-query`
+    `zio-sbt-gh-query`,
+    `zio-sbt-source`
   )
   .enablePlugins(ZioSbtCiPlugin)
 
@@ -103,6 +104,28 @@ lazy val `zio-sbt-gh-query` =
       scriptedBufferLog := false
     )
     .enablePlugins(SbtPlugin)
+
+lazy val `zio-sbt-source` =
+  project
+    .settings(
+      crossScalaVersions := Seq(Scala213, Scala3),
+      scalaVersion       := Scala213,
+      sbtPlugin          := false,
+      headerEndYear      := Some(2026),
+      semanticdbEnabled  := true,
+      semanticdbVersion  := scalafixSemanticdb.revision,
+      scalacOptions ++= {
+        if (scalaBinaryVersion.value == "2.13") Seq("-Wunused:imports") else Seq()
+      },
+      libraryDependencies ++= Seq(
+        "dev.zio" %% "zio-test"     % zio % Test,
+        "dev.zio" %% "zio-test-sbt" % zio % Test
+      ) ++ {
+        if (scalaBinaryVersion.value == "2.13") Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value)
+        else Seq()
+      },
+      testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
+    )
 
 lazy val docs = project
   .in(file("zio-sbt-docs"))
