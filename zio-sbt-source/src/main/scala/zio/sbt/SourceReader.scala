@@ -27,7 +27,7 @@ object SourceReader {
    * Returns consecutive `//` comment lines immediately above `lineNum` in the
    * given file.
    */
-  def commentsAbove(filePath: String, lineNum: Int): List[String] = {
+  private[sbt] def commentsAbove(filePath: String, lineNum: Int): List[String] = {
     val f = new JFile(filePath)
     if (!f.exists()) return Nil
     val source = Source.fromFile(f, StandardCharsets.UTF_8.name())
