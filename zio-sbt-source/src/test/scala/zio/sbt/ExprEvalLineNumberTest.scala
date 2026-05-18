@@ -16,40 +16,42 @@
 
 package zio.sbt
 
-import org.scalatest.funspec.AnyFunSpec
 import java.nio.file.Files
 
-class ExprEvalLineNumberTest extends AnyFunSpec {
-  describe("ExprEvalLineNumberTest") {
-    it("comment labels are extracted from the line immediately above show() call") {
-      val testCode = """// Comment for this expression
-                       |ExprEval.show(42)
-                       |""".stripMargin
+import zio.Scope
+import zio.test._
 
-      val testFile = Files.createTempFile("expr_eval_test_", ".scala")
-      try {
-        Files.write(testFile, testCode.getBytes("UTF-8"))
-        val content = new String(Files.readAllBytes(testFile), "UTF-8")
-        val lines   = content.split("\n")
+object ExprEvalLineNumberTest extends ZIOSpecDefault {
+  def spec: Spec[Environment with TestEnvironment with Scope, Any] =
+    suite("ExprEvalLineNumberTest")(
+      test("comment labels are extracted from the line immediately above show() call") {
+        val testCode = """// Comment for this expression
+                         |ExprEval.show(42)
+                         |""".stripMargin
 
-        assert(lines.length >= 2)
-        assert(lines(0).trim.startsWith("// Comment"))
-        assert(lines(1).contains("show"))
-      } finally {
-        Files.delete(testFile)
+        val testFile = Files.createTempFile("expr_eval_test_", ".scala")
+        try {
+          Files.write(testFile, testCode.getBytes("UTF-8"))
+          val content = new String(Files.readAllBytes(testFile), "UTF-8")
+          val lines   = content.split("\n")
+
+          assertTrue(lines.length >= 2) &&
+          assertTrue(lines(0).trim.startsWith("// Comment")) &&
+          assertTrue(lines(1).contains("show"))
+        } finally {
+          Files.delete(testFile)
+        }
+      },
+      test("macro uses 1-based line numbers to find comments") {
+        val lines = Array(
+          "// Calculate 2 + 2",
+          "show(2 + 2)",
+          "// 4"
+        )
+
+        assertTrue(lines(0).startsWith("//")) &&
+        assertTrue(lines(1).contains("show")) &&
+        assertTrue(lines(2).startsWith("//"))
       }
-    }
-
-    it("macro uses 1-based line numbers to find comments") {
-      val lines = Array(
-        "// Calculate 2 + 2",
-        "show(2 + 2)",
-        "// 4"
-      )
-
-      assert(lines(0).startsWith("//"))
-      assert(lines(1).contains("show"))
-      assert(lines(2).startsWith("//"))
-    }
-  }
+    )
 }

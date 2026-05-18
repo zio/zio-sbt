@@ -16,33 +16,33 @@
 
 package zio.sbt
 
-import org.scalatest.funspec.AnyFunSpec
+import zio.Scope
+import zio.test._
 
-class ExprEvalCommentLabelTest extends AnyFunSpec {
-  describe("ExprEvalCommentLabelTest") {
-    it("ExprEval.show macro correctly extracts preceding comment labels") {
-      val commentLine    = "// Calculate 2 + 2"
-      val expressionLine = "show(2 + 2)"
-      val resultLine     = "// 4"
+object ExprEvalCommentLabelTest extends ZIOSpecDefault {
+  def spec: Spec[Environment with TestEnvironment with Scope, Any] =
+    suite("ExprEvalCommentLabelTest")(
+      test("ExprEval.show macro correctly extracts preceding comment labels") {
+        val commentLine    = "// Calculate 2 + 2"
+        val expressionLine = "show(2 + 2)"
+        val resultLine     = "// 4"
 
-      assert(commentLine.startsWith("//"))
-      assert(expressionLine.contains("show"))
-      assert(resultLine.startsWith("//"))
-    }
+        assertTrue(commentLine.startsWith("//")) &&
+        assertTrue(expressionLine.contains("show")) &&
+        assertTrue(resultLine.startsWith("//"))
+      },
+      test("Position API differences between Scala 2 and Scala 3 are handled correctly") {
+        val scala2LineNumber   = 2
+        val scala3StartLine    = 1
+        val scala3AdjustedLine = scala3StartLine + 1
 
-    it("Position API differences between Scala 2 and Scala 3 are handled correctly") {
-      val scala2LineNumber   = 2
-      val scala3StartLine    = 1
-      val scala3AdjustedLine = scala3StartLine + 1
+        assertTrue(scala2LineNumber == scala3AdjustedLine)
+      },
+      test("comment extraction handles edge cases") {
+        val wrongLineNumber   = 0
+        val correctLineNumber = 1
 
-      assert(scala2LineNumber == scala3AdjustedLine)
-    }
-
-    it("comment extraction handles edge cases") {
-      val wrongLineNumber   = 0
-      val correctLineNumber = 1
-
-      assert(wrongLineNumber != correctLineNumber)
-    }
-  }
+        assertTrue(wrongLineNumber != correctLineNumber)
+      }
+    )
 }

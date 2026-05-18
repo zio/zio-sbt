@@ -118,11 +118,13 @@ lazy val `zio-sbt-source` =
         if (scalaBinaryVersion.value == "2.13") Seq("-Wunused:imports") else Seq()
       },
       libraryDependencies ++= Seq(
-        "org.scalatest" %% "scalatest" % "3.2.18" % Test
+        "dev.zio" %% "zio-test"     % zio % Test,
+        "dev.zio" %% "zio-test-sbt" % zio % Test
       ) ++ {
         if (scalaBinaryVersion.value == "2.13") Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value)
         else Seq()
-      }
+      },
+      testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
     )
 
 lazy val docs = project
