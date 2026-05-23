@@ -147,7 +147,7 @@ lazy val docs = project
          |```
          |sbt prepare
          |
-         |sbt testPlugin
+         |sbt +test
          |```
          |""".stripMargin
   )
