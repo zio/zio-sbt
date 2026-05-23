@@ -426,6 +426,13 @@ object ZioSbtCiPlugin extends AutoPlugin {
     )
   }
 
+  private val releaseCondition = Some(
+    Condition.Expression("github.event_name == 'release'") &&
+      Condition.Expression("github.event.action == 'published'") || Condition.Expression(
+        "github.event_name == 'workflow_dispatch'"
+      )
+  )
+
   lazy val releaseJobs: Def.Initialize[Seq[Job]] = Def.setting {
     val swapSizeGB   = ciSwapSizeGB.value
     val setSwapSpace = SetSwapSpace.value
@@ -439,7 +446,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
         id = "release",
         name = "Release",
         need = jobs,
-        condition = Some(Condition.Expression("github.event_name != 'pull_request'")),
+        condition = releaseCondition,
         steps = (if (swapSizeGB > 0) Seq(setSwapSpace) else Seq.empty) ++
           Seq(
             checkout,
@@ -465,12 +472,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
         id = "release-docs",
         name = "Release Docs",
         need = Seq("release"),
-        condition = Some(
-          Condition.Expression("github.event_name == 'release'") &&
-            Condition.Expression("github.event.action == 'published'") || Condition.Expression(
-              "github.event_name == 'workflow_dispatch'"
-            )
-        ),
+        condition = releaseCondition,
         steps = (if (swapSizeGB > 0) Seq(setSwapSpace) else Seq.empty) ++
           Seq(
             Step.StepSequence(
@@ -490,10 +492,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
         id = "notify-docs-release",
         name = "Notify Docs Release",
         need = Seq("release-docs"),
-        condition = Some(
-          Condition.Expression("github.event_name == 'release'") &&
-            Condition.Expression("github.event.action == 'published'")
-        ),
+        condition = releaseCondition,
         steps = Seq(
           checkout,
           SingleStep(
