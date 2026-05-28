@@ -32,7 +32,6 @@ lazy val root = project
     `zio-sbt-ecosystem`,
     `zio-sbt-ci`,
     `zio-sbt-tests`,
-    `zio-sbt-gh-query`,
     `zio-sbt-source`
   )
   .enablePlugins(ZioSbtCiPlugin)
@@ -91,19 +90,6 @@ lazy val `zio-sbt-githubactions` =
       stdSettings(),
       headerEndYear := Some(2023)
     )
-
-lazy val `zio-sbt-gh-query` =
-  project
-    .settings(stdSettings())
-    .settings(
-      headerEndYear      := Some(2026),
-      scriptedLaunchOpts := {
-        scriptedLaunchOpts.value ++
-          Seq("-Xmx1024M", "-Dplugin.version=" + version.value)
-      },
-      scriptedBufferLog := false
-    )
-    .enablePlugins(SbtPlugin)
 
 lazy val `zio-sbt-source` =
   project
