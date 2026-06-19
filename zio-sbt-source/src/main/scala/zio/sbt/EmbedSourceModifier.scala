@@ -29,12 +29,16 @@ class EmbedSourceModifier extends PostModifier {
     val showLineNums = info.endsWith(":showLineNumbers")
     val pathPart     = if (showLineNums) info.stripSuffix(":showLineNumbers") else info
 
+    // Try to extract quoted path first: ("path/to/file.scala")
     val pathRegex = """"([^"]+)"""".r
-    val path      = pathRegex.findFirstMatchIn(pathPart).map(_.group(1)).getOrElse("")
+    val path = pathRegex
+      .findFirstMatchIn(pathPart)
+      .map(_.group(1))
+      .getOrElse(pathPart) // Fall back to treating whole pathPart as path
 
     if (path.isEmpty) {
       ctx.reporter.error(
-        "embed modifier requires a path argument: mdoc:embed(\"path/to/file.scala\")"
+        "embed modifier requires a path argument: mdoc:embed:path/to/file.scala or mdoc:embed(\"path/to/file.scala\")"
       )
       return ""
     }
