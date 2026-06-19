@@ -19,10 +19,7 @@ package zio.sbt
 import java.io.{ByteArrayOutputStream, PrintStream}
 import java.nio.charset.StandardCharsets
 
-import mdoc.{
-  PostModifier,
-  PostModifierContext
-}
+import mdoc.{PostModifier, PostModifierContext}
 
 class EmbedSourceModifier extends PostModifier {
   override val name = "embed"
