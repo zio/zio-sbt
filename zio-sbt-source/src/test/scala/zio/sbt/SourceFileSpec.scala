@@ -104,13 +104,13 @@ object SourceFileSpec extends ZIOSpecDefault {
             Files.delete(tmp)
           }
         },
-        test("embed modifier without :showLineNumbers flag") {
+        test("SourceFile.printSource without showLineNumbers") {
           val out = withTempFile("val x = 1") { p =>
             capture(SourceFile.printSource(p, comment = false))
           }
           assertTrue(!out.contains("showLineNumbers"))
         },
-        test("embed modifier with :showLineNumbers flag") {
+        test("SourceFile.printSource with showLineNumbers") {
           val out = withTempFile("val x = 1") { p =>
             capture(SourceFile.printSource(p, comment = false, showLineNumbers = true))
           }
@@ -143,6 +143,15 @@ object SourceFileSpec extends ZIOSpecDefault {
         test("handles leading colon in info") {
           val info = "embed::path/to/Example.scala"
           val path = info.stripPrefix("embed:").stripPrefix(":")
+          assertTrue(path == "path/to/Example.scala")
+        },
+        test("strips surrounding quotes from path") {
+          val info   = """embed:"path/to/Example.scala""""
+          val stripped = info.stripPrefix("embed:").stripPrefix(":")
+          val path   = if (stripped.startsWith("\"") && stripped.endsWith("\""))
+            stripped.substring(1, stripped.length - 1)
+          else
+            stripped
           assertTrue(path == "path/to/Example.scala")
         },
         test("detects showLineNumbers flag correctly") {
