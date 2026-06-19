@@ -2,10 +2,10 @@
 
 Basic embed without line numbers:
 
-```scala mdoc:embed:../examples/Example.scala
+```scala mdoc:embed:src/examples/Example.scala
 ```
 
 Embed with line numbers:
 
-```scala mdoc:embed:../examples/Example.scala:showLineNumbers
+```scala mdoc:embed:src/examples/Example.scala:showLineNumbers
 ```
