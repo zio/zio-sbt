@@ -118,34 +118,29 @@ object SourceFileSpec extends ZIOSpecDefault {
         }
       ),
       suite("EmbedSourceModifier parsing")(
-        test("parses embed(\"path\") format") {
-          val info = """embed("path/to/Example.scala")"""
+        test("parses embed:path format") {
+          val info         = "embed:path/to/Example.scala"
           val showLineNums = info.endsWith(":showLineNumbers")
-          val pathPart     = if (showLineNums) info.stripSuffix(":showLineNumbers") else info
-          val pathRegex    = """"([^"]+)"""".r
-          val path         = pathRegex.findFirstMatchIn(pathPart).map(_.group(1)).getOrElse("")
+          val path         = if (showLineNums) info.stripSuffix(":showLineNumbers") else info.stripPrefix("embed:")
           assertTrue(path == "path/to/Example.scala")
         },
-        test("parses embed(\"path\"):showLineNumbers format") {
-          val info = """embed("path/to/Example.scala"):showLineNumbers"""
+        test("parses embed:path:showLineNumbers format") {
+          val info         = "embed:path/to/Example.scala:showLineNumbers"
           val showLineNums = info.endsWith(":showLineNumbers")
-          val pathPart     = if (showLineNums) info.stripSuffix(":showLineNumbers") else info
-          val pathRegex    = """"([^"]+)"""".r
-          val path         = pathRegex.findFirstMatchIn(pathPart).map(_.group(1)).getOrElse("")
+          val path         = if (showLineNums) info.stripPrefix("embed:").stripSuffix(":showLineNumbers") else info.stripPrefix("embed:")
           assertTrue(
             path == "path/to/Example.scala",
             showLineNums == true
           )
         },
         test("handles nested paths with slashes") {
-          val info = """embed("zio-examples/threadlocal-bridge/src/main/scala/Example.scala")"""
-          val pathRegex = """"([^"]+)"""".r
-          val path      = pathRegex.findFirstMatchIn(info).map(_.group(1)).getOrElse("")
+          val info         = "embed:zio-examples/threadlocal-bridge/src/main/scala/Example.scala"
+          val path         = info.stripPrefix("embed:")
           assertTrue(path == "zio-examples/threadlocal-bridge/src/main/scala/Example.scala")
         },
         test("detects showLineNumbers flag correctly") {
-          val info1 = """embed("path.scala")"""
-          val info2 = """embed("path.scala"):showLineNumbers"""
+          val info1 = "embed:path.scala"
+          val info2 = "embed:path.scala:showLineNumbers"
           assertTrue(
             !info1.endsWith(":showLineNumbers"),
             info2.endsWith(":showLineNumbers")
