@@ -121,13 +121,15 @@ object SourceFileSpec extends ZIOSpecDefault {
         test("parses embed:path format") {
           val info         = "embed:path/to/Example.scala"
           val showLineNums = info.endsWith(":showLineNumbers")
-          val path         = if (showLineNums) info.stripPrefix("embed:").stripPrefix(":").stripSuffix(":showLineNumbers") else info.stripPrefix("embed:").stripPrefix(":")
+          val stripped     = info.stripPrefix("embed:").stripPrefix(":")
+          val path         = if (showLineNums) stripped.stripSuffix(":showLineNumbers") else stripped
           assertTrue(path == "path/to/Example.scala")
         },
         test("parses embed:path:showLineNumbers format") {
           val info         = "embed:path/to/Example.scala:showLineNumbers"
           val showLineNums = info.endsWith(":showLineNumbers")
-          val path         = if (showLineNums) info.stripPrefix("embed:").stripPrefix(":").stripSuffix(":showLineNumbers") else info.stripPrefix("embed:").stripPrefix(":")
+          val stripped     = info.stripPrefix("embed:").stripPrefix(":")
+          val path         = if (showLineNums) stripped.stripSuffix(":showLineNumbers") else stripped
           assertTrue(
             path == "path/to/Example.scala",
             showLineNums == true
