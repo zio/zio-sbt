@@ -17,6 +17,7 @@
 package zio.sbt
 
 import java.io.{File => JFile}
+import java.nio.charset.StandardCharsets
 import java.nio.file.Paths
 
 import scala.io.Source
@@ -26,13 +27,16 @@ object SourceFile {
   def readSource(path: String): String = {
     val f          = new JFile(path)
     val actualPath = if (f.exists()) path else "../" + path
-    val src        = Source.fromFile(actualPath)
+    val src        = Source.fromFile(actualPath, StandardCharsets.UTF_8.name())
     try src.getLines().mkString("\n")
     finally src.close()
   }
 
-  def fileExtension(path: String): String =
-    Paths.get(path).getFileName.toString.split('.').lastOption.getOrElse("")
+  def fileExtension(path: String): String = {
+    val fileName = Paths.get(path).getFileName
+    if (fileName == null) ""
+    else fileName.toString.split('.').lastOption.getOrElse("")
+  }
 
   def printSource(
     path: String,

@@ -17,6 +17,7 @@
 package zio.sbt
 
 import java.io.{ByteArrayOutputStream, PrintStream}
+import java.nio.charset.StandardCharsets
 
 import mdoc.PostModifier
 import mdoc.PostModifierContext
@@ -25,12 +26,11 @@ class EmbedSourceModifier extends PostModifier {
   override val name = "embed"
 
   override def process(ctx: PostModifierContext): String = {
-    val parts = ctx.info.split(":")
-    val path  = if (parts.length > 1) parts(1) else ""
+    val path = ctx.info.stripPrefix("embed:").stripPrefix(":")
 
     if (path.isEmpty) {
       ctx.reporter.error(
-        s"embed modifier requires a path argument: ```scala mdoc:embed:path/to/file.scala"
+        "embed modifier requires a path argument: mdoc:embed:path/to/file.scala"
       )
       return ""
     }
@@ -42,7 +42,7 @@ class EmbedSourceModifier extends PostModifier {
         SourceFile.printSource(path)
       }
       ps.flush()
-      baos.toString("UTF-8")
+      baos.toString(StandardCharsets.UTF_8.name())
     } catch {
       case e: Exception =>
         ctx.reporter.error(s"Failed to embed source from '$path': ${e.getMessage}")

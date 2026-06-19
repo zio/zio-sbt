@@ -17,6 +17,7 @@
 package zio.sbt
 
 import java.io.{ByteArrayOutputStream, PrintStream}
+import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 
 import zio.Scope
@@ -28,7 +29,7 @@ object SourceFileSpec extends ZIOSpecDefault {
   private def withTempFile[A](content: String)(f: String => A): A = {
     val tmp = Files.createTempFile("source_file_spec_", ".scala")
     try {
-      Files.write(tmp, content.getBytes("UTF-8"))
+      Files.write(tmp, content.getBytes(StandardCharsets.UTF_8))
       f(tmp.toAbsolutePath.toString)
     } finally {
       Files.delete(tmp)
@@ -40,7 +41,7 @@ object SourceFileSpec extends ZIOSpecDefault {
     val ps   = new PrintStream(baos)
     Console.withOut(ps)(block)
     ps.flush()
-    baos.toString("UTF-8")
+    baos.toString(StandardCharsets.UTF_8.name())
   }
 
   def spec: Spec[Environment with TestEnvironment with Scope, Any] =
@@ -96,7 +97,7 @@ object SourceFileSpec extends ZIOSpecDefault {
         test("fenced block uses correct language tag from extension") {
           val tmp = Files.createTempFile("source_file_spec_", ".ts")
           try {
-            Files.write(tmp, "const x = 1;".getBytes("UTF-8"))
+            Files.write(tmp, "const x = 1;".getBytes(StandardCharsets.UTF_8))
             val out = capture(SourceFile.printSource(tmp.toAbsolutePath.toString, comment = false))
             assertTrue(out.startsWith("```ts\n"))
           } finally {
