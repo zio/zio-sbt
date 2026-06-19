@@ -124,8 +124,8 @@ lazy val docs = project
     mainModuleName                             := (`zio-sbt-website` / moduleName).value,
     projectStage                               := ProjectStage.ProductionReady,
     ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(`zio-sbt-website`),
-    headerLicense      := None,
-    readmeContribution := readmeContribution.value +
+    headerLicense                              := None,
+    readmeContribution                         := readmeContribution.value +
       """|
          |#### TL;DR
          |
