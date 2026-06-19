@@ -136,8 +136,8 @@ object SourceFileSpec extends ZIOSpecDefault {
           )
         },
         test("handles nested paths with slashes") {
-          val info         = "embed:zio-examples/threadlocal-bridge/src/main/scala/Example.scala"
-          val path         = info.stripPrefix("embed:").stripPrefix(":")
+          val info = "embed:zio-examples/threadlocal-bridge/src/main/scala/Example.scala"
+          val path = info.stripPrefix("embed:").stripPrefix(":")
           assertTrue(path == "zio-examples/threadlocal-bridge/src/main/scala/Example.scala")
         },
         test("handles leading colon in info") {
@@ -146,12 +146,13 @@ object SourceFileSpec extends ZIOSpecDefault {
           assertTrue(path == "path/to/Example.scala")
         },
         test("strips surrounding quotes from path") {
-          val info   = """embed:"path/to/Example.scala""""
+          val info     = """embed:"path/to/Example.scala""""
           val stripped = info.stripPrefix("embed:").stripPrefix(":")
-          val path   = if (stripped.startsWith("\"") && stripped.endsWith("\""))
-            stripped.substring(1, stripped.length - 1)
-          else
-            stripped
+          val path     =
+            if (stripped.startsWith("\"") && stripped.endsWith("\""))
+              stripped.substring(1, stripped.length - 1)
+            else
+              stripped
           assertTrue(path == "path/to/Example.scala")
         },
         test("detects showLineNumbers flag correctly") {
