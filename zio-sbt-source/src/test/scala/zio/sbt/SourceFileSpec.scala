@@ -103,6 +103,18 @@ object SourceFileSpec extends ZIOSpecDefault {
           } finally {
             Files.delete(tmp)
           }
+        },
+        test("embed modifier without :showLineNumbers flag") {
+          val out = withTempFile("val x = 1") { p =>
+            capture(SourceFile.printSource(p, comment = false))
+          }
+          assertTrue(!out.contains("showLineNumbers"))
+        },
+        test("embed modifier with :showLineNumbers flag") {
+          val out = withTempFile("val x = 1") { p =>
+            capture(SourceFile.printSource(p, comment = false, showLineNumbers = true))
+          }
+          assertTrue(out.contains("showLineNumbers"))
         }
       )
     )
