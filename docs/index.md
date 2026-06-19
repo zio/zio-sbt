@@ -202,21 +202,15 @@ import zio.sbt.SourceFile
 SourceFile.printSource("path/to/Example.scala")
 ```
 
-This generates a fenced code block with the file's language tag detected from its extension. For use in mdoc:
-
-```scala mdoc:passthrough
-import zio.sbt.SourceFile
-SourceFile.printSource("path/to/Example.scala")
-```
+This generates a fenced code block with the file's language tag detected from its extension.
 
 ### EmbedSourceModifier: mdoc Plugin for Source Embedding
 
-The `EmbedSourceModifier` extends mdoc with an `embed` directive for embedding source files directly from markdown:
+The `EmbedSourceModifier` extends mdoc with an `embed` directive for embedding source files directly from markdown.
+Use the modifier name `embed` followed by the file path:
 
-```
-```scala mdoc:embed:path/to/Example.scala
-```
-```
+    ```scala mdoc:embed:path/to/Example.scala
+    ```
 
 Renders as a fenced code block with syntax highlighting based on file extension.
 
@@ -224,10 +218,8 @@ Renders as a fenced code block with syntax highlighting based on file extension.
 
 To enable line numbers in [Docusaurus](https://docusaurus.io) code blocks, add the `:showLineNumbers` flag:
 
-```
-```scala mdoc:embed:path/to/Example.scala:showLineNumbers
-```
-```
+    ```scala mdoc:embed:path/to/Example.scala:showLineNumbers
+    ```
 
 This emits `showLineNumbers` in the code fence header, enabling line numbering in the rendered documentation.
 
