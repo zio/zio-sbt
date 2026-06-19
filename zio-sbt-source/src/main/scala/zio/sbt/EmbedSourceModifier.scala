@@ -25,13 +25,16 @@ class EmbedSourceModifier extends PostModifier {
   override val name = "embed"
 
   override def process(ctx: PostModifierContext): String = {
-    val info         = ctx.info.stripPrefix("embed:").stripPrefix(":")
+    val info         = ctx.info.stripPrefix("embed:")
     val showLineNums = info.endsWith(":showLineNumbers")
-    val path         = if (showLineNums) info.stripSuffix(":showLineNumbers") else info
+    val pathPart     = if (showLineNums) info.stripSuffix(":showLineNumbers") else info
+
+    val pathRegex = """"([^"]+)"""".r
+    val path      = pathRegex.findFirstMatchIn(pathPart).map(_.group(1)).getOrElse("")
 
     if (path.isEmpty) {
       ctx.reporter.error(
-        "embed modifier requires a path argument: mdoc:embed:path/to/file.scala"
+        "embed modifier requires a path argument: mdoc:embed(\"path/to/file.scala\")"
       )
       return ""
     }
