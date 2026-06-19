@@ -55,7 +55,7 @@ object SourceFileSpec extends ZIOSpecDefault {
         },
         test("no extension returns full filename") {
           assertTrue(SourceFile.fileExtension("Makefile") == "Makefile")
-        },
+        }
       ),
       suite("readSource")(
         test("reads full file content") {
@@ -65,7 +65,7 @@ object SourceFileSpec extends ZIOSpecDefault {
         test("reads single-line file") {
           val result = withTempFile("only line")(SourceFile.readSource)
           assertTrue(result == "only line")
-        },
+        }
       ),
       suite("printSource")(
         test("default: includes title, no showLineNumbers") {
@@ -76,7 +76,7 @@ object SourceFileSpec extends ZIOSpecDefault {
             out.startsWith(s"""```scala title="$path""""),
             out.contains("val x = 1"),
             out.trim.endsWith("```"),
-            !out.contains("showLineNumbers"),
+            !out.contains("showLineNumbers")
           )
         },
         test("comment=false omits title") {
@@ -85,7 +85,7 @@ object SourceFileSpec extends ZIOSpecDefault {
           }
           assertTrue(
             out.startsWith("```scala\n"),
-            !out.contains("title="),
+            !out.contains("title=")
           )
         },
         test("showLineNumbers=true adds showLineNumbers") {
@@ -103,7 +103,7 @@ object SourceFileSpec extends ZIOSpecDefault {
           } finally {
             Files.delete(tmp)
           }
-        },
-      ),
+        }
+      )
     )
 }

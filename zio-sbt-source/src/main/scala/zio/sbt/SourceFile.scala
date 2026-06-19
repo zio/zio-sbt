@@ -41,7 +41,7 @@ object SourceFile {
   def printSource(
     path: String,
     comment: Boolean = true,
-    showLineNumbers: Boolean = false,
+    showLineNumbers: Boolean = false
   ): Unit = {
     val title     = if (comment) s"""title="$path"""" else ""
     val showLines = if (showLineNumbers) "showLineNumbers" else ""
