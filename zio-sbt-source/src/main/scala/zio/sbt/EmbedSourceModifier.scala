@@ -25,7 +25,7 @@ class EmbedSourceModifier extends PostModifier {
   override val name = "embed"
 
   override def process(ctx: PostModifierContext): String = {
-    val info         = ctx.info.stripPrefix("embed:")
+    val info         = ctx.info.stripPrefix("embed:").stripPrefix(":")
     val showLineNums = info.endsWith(":showLineNumbers")
     val path         = if (showLineNums) info.stripSuffix(":showLineNumbers") else info
 
