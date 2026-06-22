@@ -162,6 +162,28 @@ object SourceFileSpec extends ZIOSpecDefault {
             !info1.endsWith(":showLineNumbers"),
             info2.endsWith(":showLineNumbers")
           )
+        },
+        test("parses embed:path:show-line-numbers format (kebab-case)") {
+          val info         = "embed:path/to/Example.scala:show-line-numbers"
+          val showLineNums =
+            info.endsWith(":showLineNumbers") || info.endsWith(":show-line-numbers")
+          val stripped = info.stripPrefix("embed:").stripPrefix(":")
+          val path     =
+            if (showLineNums)
+              stripped.stripSuffix(":showLineNumbers").stripSuffix(":show-line-numbers")
+            else stripped
+          assertTrue(
+            path == "path/to/Example.scala",
+            showLineNums == true
+          )
+        },
+        test("detects show-line-numbers flag (kebab-case) correctly") {
+          val info1 = "embed:path.scala"
+          val info2 = "embed:path.scala:show-line-numbers"
+          assertTrue(
+            !(info1.endsWith(":showLineNumbers") || info1.endsWith(":show-line-numbers")),
+            info2.endsWith(":show-line-numbers")
+          )
         }
       )
     )

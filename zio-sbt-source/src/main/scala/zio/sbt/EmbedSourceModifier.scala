@@ -26,8 +26,11 @@ class EmbedSourceModifier extends PostModifier {
 
   override def process(ctx: PostModifierContext): String = {
     val info           = ctx.info.stripPrefix("embed:").stripPrefix(":")
-    val showLineNums   = info.endsWith(":showLineNumbers")
-    val pathWithQuotes = if (showLineNums) info.stripSuffix(":showLineNumbers") else info
+    val showLineNums   = info.endsWith(":showLineNumbers") || info.endsWith(":show-line-numbers")
+    val pathWithQuotes =
+      if (showLineNums)
+        info.stripSuffix(":showLineNumbers").stripSuffix(":show-line-numbers")
+      else info
     // Strip surrounding quotes for forward compatibility with quoted path syntax
     val path =
       if (pathWithQuotes.startsWith("\"") && pathWithQuotes.endsWith("\""))
