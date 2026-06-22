@@ -218,14 +218,21 @@ Renders as a fenced code block with syntax highlighting based on file extension.
 
 #### Docusaurus Line Numbers
 
-To enable line numbers in [Docusaurus](https://docusaurus.io) code blocks, add the `:showLineNumbers` flag:
+To enable line numbers in [Docusaurus](https://docusaurus.io) code blocks, add the `:showLineNumbers` flag (or kebab-case `:show-line-numbers` alias):
 
 ```
 \`\`\`scala mdoc:embed:path/to/Example.scala:showLineNumbers
 \`\`\`
 ```
 
-This emits `showLineNumbers` in the code fence header, enabling line numbering in the rendered documentation.
+or
+
+```
+\`\`\`scala mdoc:embed:path/to/Example.scala:show-line-numbers
+\`\`\`
+```
+
+Both forms emit `showLineNumbers` in the code fence header, enabling line numbering in the rendered documentation.
 
 ### Implementation Details
 
