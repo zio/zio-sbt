@@ -25,7 +25,18 @@ class EmbedSourceModifier extends PostModifier {
   override val name = "embed"
 
   override def process(ctx: PostModifierContext): String = {
-    val path = ctx.info.stripPrefix("embed:").stripPrefix(":")
+    val info           = ctx.info.stripPrefix("embed:").stripPrefix(":")
+    val showLineNums   = info.endsWith(":showLineNumbers") || info.endsWith(":show-line-numbers")
+    val pathWithQuotes =
+      if (showLineNums)
+        info.stripSuffix(":showLineNumbers").stripSuffix(":show-line-numbers")
+      else info
+    // Strip surrounding quotes for forward compatibility with quoted path syntax
+    val path =
+      if (pathWithQuotes.startsWith("\"") && pathWithQuotes.endsWith("\""))
+        pathWithQuotes.substring(1, pathWithQuotes.length - 1)
+      else
+        pathWithQuotes
 
     if (path.isEmpty) {
       ctx.reporter.error(
@@ -38,7 +49,7 @@ class EmbedSourceModifier extends PostModifier {
     val ps   = new PrintStream(baos)
     try {
       Console.withOut(ps) {
-        SourceFile.printSource(path)
+        SourceFile.printSource(path, showLineNumbers = showLineNums)
       }
       ps.flush()
       baos.toString(StandardCharsets.UTF_8.name())

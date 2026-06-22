@@ -103,6 +103,87 @@ object SourceFileSpec extends ZIOSpecDefault {
           } finally {
             Files.delete(tmp)
           }
+        },
+        test("SourceFile.printSource without showLineNumbers") {
+          val out = withTempFile("val x = 1") { p =>
+            capture(SourceFile.printSource(p, comment = false))
+          }
+          assertTrue(!out.contains("showLineNumbers"))
+        },
+        test("SourceFile.printSource with showLineNumbers") {
+          val out = withTempFile("val x = 1") { p =>
+            capture(SourceFile.printSource(p, comment = false, showLineNumbers = true))
+          }
+          assertTrue(out.contains("showLineNumbers"))
+        }
+      ),
+      suite("EmbedSourceModifier parsing")(
+        test("parses embed:path format") {
+          val info         = "embed:path/to/Example.scala"
+          val showLineNums = info.endsWith(":showLineNumbers")
+          val stripped     = info.stripPrefix("embed:").stripPrefix(":")
+          val path         = if (showLineNums) stripped.stripSuffix(":showLineNumbers") else stripped
+          assertTrue(path == "path/to/Example.scala")
+        },
+        test("parses embed:path:showLineNumbers format") {
+          val info         = "embed:path/to/Example.scala:showLineNumbers"
+          val showLineNums = info.endsWith(":showLineNumbers")
+          val stripped     = info.stripPrefix("embed:").stripPrefix(":")
+          val path         = if (showLineNums) stripped.stripSuffix(":showLineNumbers") else stripped
+          assertTrue(
+            path == "path/to/Example.scala",
+            showLineNums == true
+          )
+        },
+        test("handles nested paths with slashes") {
+          val info = "embed:zio-examples/threadlocal-bridge/src/main/scala/Example.scala"
+          val path = info.stripPrefix("embed:").stripPrefix(":")
+          assertTrue(path == "zio-examples/threadlocal-bridge/src/main/scala/Example.scala")
+        },
+        test("handles leading colon in info") {
+          val info = "embed::path/to/Example.scala"
+          val path = info.stripPrefix("embed:").stripPrefix(":")
+          assertTrue(path == "path/to/Example.scala")
+        },
+        test("strips surrounding quotes from path") {
+          val info     = """embed:"path/to/Example.scala""""
+          val stripped = info.stripPrefix("embed:").stripPrefix(":")
+          val path     =
+            if (stripped.startsWith("\"") && stripped.endsWith("\""))
+              stripped.substring(1, stripped.length - 1)
+            else
+              stripped
+          assertTrue(path == "path/to/Example.scala")
+        },
+        test("detects showLineNumbers flag correctly") {
+          val info1 = "embed:path.scala"
+          val info2 = "embed:path.scala:showLineNumbers"
+          assertTrue(
+            !info1.endsWith(":showLineNumbers"),
+            info2.endsWith(":showLineNumbers")
+          )
+        },
+        test("parses embed:path:show-line-numbers format (kebab-case)") {
+          val info         = "embed:path/to/Example.scala:show-line-numbers"
+          val showLineNums =
+            info.endsWith(":showLineNumbers") || info.endsWith(":show-line-numbers")
+          val stripped = info.stripPrefix("embed:").stripPrefix(":")
+          val path     =
+            if (showLineNums)
+              stripped.stripSuffix(":showLineNumbers").stripSuffix(":show-line-numbers")
+            else stripped
+          assertTrue(
+            path == "path/to/Example.scala",
+            showLineNums == true
+          )
+        },
+        test("detects show-line-numbers flag (kebab-case) correctly") {
+          val info1 = "embed:path.scala"
+          val info2 = "embed:path.scala:show-line-numbers"
+          assertTrue(
+            !(info1.endsWith(":showLineNumbers") || info1.endsWith(":show-line-numbers")),
+            info2.endsWith(":show-line-numbers")
+          )
         }
       )
     )

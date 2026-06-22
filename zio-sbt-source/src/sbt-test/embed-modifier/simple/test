@@ -1,0 +1,14 @@
+# Run mdoc to compile the markdown
+> mdoc
+
+# Check that output file was generated
+$ test -f target/mdoc/test.md
+
+# Verify the output contains embedded code
+$ grep "println.*Hello" target/mdoc/test.md
+
+# Verify the first embed (without line numbers) is present
+$ grep "object HelloWorld" target/mdoc/test.md
+
+# Verify the second embed (with line numbers) has showLineNumbers attribute
+$ grep "showLineNumbers" target/mdoc/test.md
