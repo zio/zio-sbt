@@ -1,6 +1,6 @@
 enablePlugins(MdocPlugin)
 
-scalaVersion := "2.13.18"
+scalaVersion := "3.3.8"
 
 mdocIn  := baseDirectory.value / "src"
 mdocOut := baseDirectory.value / "target" / "mdoc"
