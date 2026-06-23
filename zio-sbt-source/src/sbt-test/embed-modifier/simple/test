@@ -1,3 +1,10 @@
+# NOTE: This file uses scripted-test syntax for documentation purposes only.
+# zio-sbt-source is a plain library (sbtPlugin := false), so ScriptedPlugin
+# cannot be applied. To run this test manually:
+#   1. sbt "+zio-sbt-source/publishLocal"
+#   2. cd zio-sbt-source/src/sbt-test/embed-modifier/simple
+#   3. sbt -Dproject.version=<published-version> mdoc  (scalaVersion := "2.13.x")
+
 # Run mdoc to compile the markdown
 > mdoc
 
