@@ -104,7 +104,7 @@ lazy val `zio-sbt-source` =
         if (scalaBinaryVersion.value == "2.13") Seq("-Wunused:imports") else Seq()
       },
       libraryDependencies ++= Seq(
-        "org.scalameta" %% "mdoc"         % "2.5.4",
+        "org.scalameta" %% "mdoc"         % "2.9.0",
         "dev.zio"       %% "zio-test"     % zio % Test,
         "dev.zio"       %% "zio-test-sbt" % zio % Test
       ) ++ {
