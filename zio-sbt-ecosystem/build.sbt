@@ -13,7 +13,7 @@ addSbtPlugin("com.github.sbt" % "sbt-unidoc" % "0.6.1")
 addSbtPlugin("com.github.sbt" % "sbt-header" % "5.11.0")
 
 // Cross-Compiler Plugins
-addSbtPlugin("org.scala-js"       % "sbt-scalajs"                   % "1.21.0")
+addSbtPlugin("org.scala-js"       % "sbt-scalajs"                   % "1.22.0")
 addSbtPlugin("org.portable-scala" % "sbt-scalajs-crossproject"      % "1.3.2")
 addSbtPlugin("org.scala-native"   % "sbt-scala-native"              % "0.5.12")
 addSbtPlugin("org.portable-scala" % "sbt-scala-native-crossproject" % "1.3.2")
@@ -24,7 +24,7 @@ addSbtPlugin("pl.project13.scala" % "sbt-jmh"      % "0.4.8")
 addSbtPlugin("pl.project13.scala" % "sbt-jcstress" % "0.2.0")
 
 // Binary Compatibility Plugin
-addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "1.1.5")
+addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "1.1.6")
 
 libraryDependencies += "org.snakeyaml" % "snakeyaml-engine" % "3.0.1"
 libraryDependencies += "dev.zio"      %% "zio"              % "2.1.26"
