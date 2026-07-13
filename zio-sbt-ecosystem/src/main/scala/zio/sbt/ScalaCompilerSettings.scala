@@ -16,12 +16,9 @@
 
 package zio.sbt
 
-import explicitdeps.ExplicitDepsPlugin.autoImport._
-import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
 import sbt.Keys._
 import sbt.{Def, _}
 import sbtbuildinfo.BuildInfoPlugin.autoImport.{BuildInfoKey, buildInfoKeys, buildInfoPackage}
-import sbtcrossproject.CrossPlugin.autoImport.{JVMPlatform, crossProjectPlatform}
 import scalafix.sbt.ScalafixPlugin.autoImport.{scalafixDependencies, scalafixSemanticdb}
 
 import zio.sbt.Versions._
@@ -136,24 +133,11 @@ trait ScalaCompilerSettings {
     platformSpecificSources(platform, conf, baseDir)(versions: _*)
   }
 
-  lazy val crossProjectSettings: Seq[Setting[Seq[File]]] = Seq(
-    Compile / unmanagedSourceDirectories ++= {
-      crossPlatformSources(
-        scalaVersion.value,
-        crossProjectPlatform.value.identifier,
-        "main",
-        baseDirectory.value
-      )
-    },
-    Test / unmanagedSourceDirectories ++= {
-      crossPlatformSources(
-        scalaVersion.value,
-        crossProjectPlatform.value.identifier,
-        "test",
-        baseDirectory.value
-      )
-    }
-  )
+  // Override in CrossScalaCompilerSettings to provide cross-project source directory settings
+  def crossProjectSettings: Seq[Setting[Seq[File]]] = Seq.empty
+
+  // Override in CrossScalaCompilerSettings to provide additional settings (e.g. unusedCompileDependenciesFilter)
+  protected def extraStdSettings: Seq[Setting[_]] = Seq.empty
 
   def stdSettings(
     name: Option[String] = None,
@@ -192,8 +176,7 @@ trait ScalaCompilerSettings {
         },
         Test / parallelExecution := scalaBinaryVersion.value != "3",
         incOptions ~= (_.withLogRecompileOnMacro(false)),
-        autoAPIMappings := true,
-        unusedCompileDependenciesFilter -= moduleFilter("org.scala-js", "scalajs-library")
+        autoAPIMappings := true
       ) ++ (if (enableCrossProject) crossProjectSettings else Seq.empty) ++ {
         packageName match {
           case Some(name) => buildInfoSettings(name)
@@ -201,7 +184,7 @@ trait ScalaCompilerSettings {
         }
       } ++ scala3Settings ++ {
         if (enableScalafix) scalafixSettings else Seq.empty
-      } ++ betterMonadicForSettings
+      } ++ betterMonadicForSettings ++ extraStdSettings
 
   lazy val scalafixSettings: Seq[Def.Setting[_]] =
     Seq(
@@ -222,25 +205,6 @@ trait ScalaCompilerSettings {
         Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value % Test)
     }
   )
-
-  def enableZIO(
-    enableStreaming: Boolean = false,
-    enableTesting: Boolean = true
-  ): Seq[Def.Setting[_]] =
-    Seq(libraryDependencies += "dev.zio" %%% "zio" % ZioSbtEcosystemPlugin.autoImport.zioVersion.value) ++
-      (if (enableTesting)
-         Seq(
-           libraryDependencies ++= Seq(
-             "dev.zio" %%% "zio-test"     % ZioSbtEcosystemPlugin.autoImport.zioVersion.value % Test,
-             "dev.zio" %%% "zio-test-sbt" % ZioSbtEcosystemPlugin.autoImport.zioVersion.value % Test
-           ),
-           testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
-         )
-       else Seq.empty) ++ {
-        if (enableStreaming)
-          libraryDependencies += "dev.zio" %%% "zio-streams" % ZioSbtEcosystemPlugin.autoImport.zioVersion.value
-        else Seq.empty
-      }
 
   def buildInfoSettings(packageName: String): Seq[Setting[_]] =
     Seq(
