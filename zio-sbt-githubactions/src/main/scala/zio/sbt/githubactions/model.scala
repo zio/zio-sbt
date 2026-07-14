@@ -320,6 +320,9 @@ case class Job private (
   def withStrategy(strategy: Strategy): Job =
     copy(strategy = Some(strategy))
 
+  def withRunsOn(runsOn: String): Job =
+    copy(runsOn = runsOn)
+
   def withSteps(steps: Step*): Job =
     copy(steps = Chunk.fromIterable(steps))
 
@@ -423,7 +426,7 @@ object Workflow {
         ("cancel-in-progress", Json.Bool(true))
       )
 
-      val jobsJson = Json.Obj(wf.jobs.map(job => (job.id, job.toJsonAST.getOrElse(Json.Null))): _*)
+      val jobsJson = Json.Obj(wf.jobs.map(job => (job.id, job.toJsonAST.getOrElse(Json.Null)))*)
 
       Json.Obj(
         ("name", Json.Str(wf.name)),

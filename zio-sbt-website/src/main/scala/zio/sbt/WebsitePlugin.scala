@@ -71,18 +71,21 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
   sealed trait VersioningScheme
   object VersioningScheme {
-    final case object HashVersioning     extends VersioningScheme
-    final case object SemanticVersioning extends VersioningScheme
+    case object HashVersioning     extends VersioningScheme
+    case object SemanticVersioning extends VersioningScheme
   }
 
   import autoImport.*
 
   override def requires: Plugins = MdocPlugin && UnifiedScaladocPlugin
 
-  override lazy val projectSettings: Seq[Setting[_ <: Object]] =
+  override lazy val projectSettings: Seq[Setting[? <: Object]] =
     Seq(
-      compileDocs          := compileDocsTask.evaluated,
-      websiteDir           := Paths.get(target.value.getPath, "website"),
+      compileDocs := compileDocsTask.evaluated,
+      // sbt 2.0 nests `target` under `target/out/jvm/scala-<v>/<project>`; the generated website is
+      // not Scala-version-specific, so anchor it at the flat `<base>/target/website` (matching the
+      // sbt 1.x location and the documented output path).
+      websiteDir           := Paths.get(baseDirectory.value.getPath, "target", "website"),
       mdocOut              := websiteDir.value.resolve("docs").toFile,
       installWebsite       := installWebsiteTask.value,
       buildWebsite         := buildWebsiteTask.value,
@@ -115,7 +118,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
       },
       readmeDocumentation := readmeDocumentationSection(
         projectName.value,
-        homepage.value.getOrElse(url(s"https://zio.dev/ecosystem/"))
+        homepage.value.getOrElse(uri(s"https://zio.dev/ecosystem/"))
       ),
       readmeContribution      := readmeContributionSection,
       readmeSupport           := readmeSupportSection,
@@ -181,13 +184,13 @@ object WebsitePlugin extends sbt.AutoPlugin {
       // as a subdirectory instead of replacing it.
       if (Files.exists(websiteDirPath)) {
         logger.info(s"Removing existing website directory: $websiteDirPath")
-        exit(Process(s"rm ${websiteDirPath} -Rvf").!)
+        exit(Process(s"rm -Rvf ${websiteDirPath}").!)
       }
 
       val siteTarget = s"${target.value}/${normalizedName.value}-website"
 
       if (Files.exists(Paths.get(siteTarget)))
-        exit(Process(s"rm $siteTarget -Rvf").!)
+        exit(Process(s"rm -Rvf $siteTarget").!)
 
       val task: String =
         s"""|npx @zio.dev/create-zio-website@${createZioWebsiteVersion.value} ${normalizedName.value}-website \\
@@ -199,9 +202,22 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
       logger.info(s"installing website for ${normalizedName.value} ... \n$task")
 
-      exit(Process(task, target.value).!)
+      // Under sbt 2.0 a bare `Process(...).!` does not relay its output to the (batch) log, and a
+      // chatty child writing to the unconnected stdout can die with a broken pipe. Route npm/npx
+      // through the task logger so their output is both visible and their streams are connected.
+      val procLog = ProcessLogger(logger.info(_), logger.info(_))
 
-      exit(Process(s"mv ${target.value}/${normalizedName.value}-website ${websiteDirPath}").!)
+      exit(Process(task, target.value).!(procLog), "Failed to scaffold the website with create-zio-website")
+
+      // `websiteDir` lives at `<base>/target/website`, but under sbt 2.0 the project's real target is
+      // the root's `target/out/...`, so `<base>/target/` is never created and the `mv` below would
+      // fail with "No such file or directory". Create the destination's parent first.
+      Files.createDirectories(websiteDirPath.getParent)
+
+      exit(
+        Process(s"mv ${target.value}/${normalizedName.value}-website ${websiteDirPath}").!,
+        s"Failed to move the generated website to $websiteDirPath"
+      )
 
       exit(s"rm -rvf ${websiteDirPath.toString}/.git/".!)
 
@@ -215,14 +231,17 @@ object WebsitePlugin extends sbt.AutoPlugin {
         case Left(err) => sys.error(s"Failed to parse package.json: $err")
       }
       IO.write(pkgJsonFile, patched)
-      exit(Process("npm install", new File(s"${websiteDirPath}")).!)
+      exit(Process("npm install", new File(s"${websiteDirPath}")).!(procLog), "npm install failed")
     }
 
   lazy val buildWebsiteTask: Def.Initialize[Task[Unit]] =
     Def.task {
-      val _ = Def.sequential(installWebsiteTask, compileDocs.toTask("")).value
+      val logger = streams.value.log
+      val _      = Def.sequential(installWebsiteTask, compileDocs.toTask("")).value
 
-      val p = Process("npm run build", new File(s"${websiteDir.value}")).!
+      // See installWebsiteTask: connect the child's streams to the logger so the docusaurus build's
+      // output is relayed (sbt 2.0) and it doesn't fail writing to an unconnected stdout.
+      val p = Process("npm run build", new File(s"${websiteDir.value}")).!(ProcessLogger(logger.info(_), logger.info(_)))
       exit(p, "Failed to build the website!")
     }
 
@@ -285,7 +304,11 @@ object WebsitePlugin extends sbt.AutoPlugin {
   }
 
   private def hashVersion: String = {
-    val hashPart = s"git rev-parse --short=12 HEAD".!!
+    // Tolerate the absence of a git repository (e.g. in scripted tests) rather than failing the
+    // build load; sbt 2.0 evaluates this setting eagerly and `.!!` would otherwise throw.
+    val hashPart =
+      try s"git rev-parse --short=12 HEAD".!!.trim
+      catch { case _: Exception => "unknown" }
     val datePart = java.time.LocalDate.now().toString.replace("-", ".")
     datePart + "-" + hashPart
   }
@@ -328,7 +351,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
   private def prefixUrlsWith(markdown: String, prefix: String): String = {
     val regex = """\(((?!http)\S*\.(png|jpg|md|scala|java)\b)\)""".r
 
-    regex.replaceAllIn(markdown, '(' + prefix + _.group(1) + ')')
+    regex.replaceAllIn(markdown, "(" + prefix + _.group(1) + ")")
   }
 
   lazy val normalizedVersion: Def.Initialize[Task[String]] =
@@ -425,7 +448,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
       }
     }
 
-  def readmeDocumentationSection(projectName: String, projectHomepageUrl: URL): String =
+  def readmeDocumentationSection(projectName: String, projectHomepageUrl: java.net.URI): String =
     s"""Learn more on the [$projectName homepage]($projectHomepageUrl)!""".stripMargin
 
   def readmeContributionSection: String =

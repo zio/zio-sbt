@@ -9,16 +9,29 @@ addCommandAlias("test", "scripted")
 
 inThisBuild(
   List(
-    name               := "ZIO SBT",
-    startYear          := Some(2022),
-    scalaVersion       := Scala212,
+    name      := "ZIO SBT",
+    startYear := Some(2022),
+    // sbt 2.0 builds sbt plugins with the Scala 3 version sbt itself uses (3.8.4), so zio-sbt's own
+    // plugin modules must use it. This overrides the Scala 2.13 default that
+    // ZioSbtEcosystemPlugin.buildSettings sets for downstream consumers (intentionally left
+    // unchanged for cross-building libraries). The `zio-sbt-source` library module overrides this
+    // back to the 2.13/3.3 LTS it publishes for.
+    scalaVersion       := SbtScala,
     crossScalaVersions := Seq(scalaVersion.value),
     developers         := List(
-      Developer("khajavi", "Milad Khajavi", "khajavi@gmail.com", url("https://github.com/khajavi"))
+      Developer("khajavi", "Milad Khajavi", "khajavi@gmail.com", uri("https://github.com/khajavi"))
     ),
     ciEnabledBranches := Seq("main")
   )
 )
+
+// The plugin modules build only with the Scala 3 version sbt 2.0 uses (see `SbtScala`), where
+// scalafix's semantic rules would need a SemanticDB + `-Wunused` wired through the shared
+// `scalafixSettings` (which every downstream plugin user inherits) — out of scope for the sbt 2.0
+// upgrade. They therefore run only the syntactic scalafix rules; see `.scalafix-syntactic.conf`.
+// `zio-sbt-source` (a 2.13/3.3 library) keeps the full semantic `.scalafix.conf`.
+lazy val syntacticScalafixOnly: Seq[Setting[?]] =
+  Seq(scalafixConfig := Some((LocalRootProject / baseDirectory).value / ".scalafix-syntactic.conf"))
 
 lazy val root = project
   .in(file("."))
@@ -39,14 +52,15 @@ lazy val root = project
 lazy val `zio-sbt-tests` =
   project
     .settings(
-      stdSettings(),
+      stdSettings(javaPlatform = "17"),
+      syntacticScalafixOnly,
       publish / skip := true,
       headerEndYear  := Some(2023)
     )
 
 lazy val `zio-sbt-website` =
   project
-    .settings(stdSettings())
+    .settings(stdSettings(javaPlatform = "17"), syntacticScalafixOnly)
     .settings(
       headerEndYear      := Some(2023),
       scriptedLaunchOpts := {
@@ -59,7 +73,7 @@ lazy val `zio-sbt-website` =
 
 lazy val `zio-sbt-ecosystem` =
   project
-    .settings(stdSettings())
+    .settings(stdSettings(javaPlatform = "17"), syntacticScalafixOnly)
     .settings(
       headerEndYear      := Some(2023),
       scriptedLaunchOpts := {
@@ -72,7 +86,7 @@ lazy val `zio-sbt-ecosystem` =
 
 lazy val `zio-sbt-ci` =
   project
-    .settings(stdSettings())
+    .settings(stdSettings(javaPlatform = "17"), syntacticScalafixOnly)
     .settings(
       headerEndYear      := Some(2023),
       scriptedLaunchOpts := {
@@ -87,7 +101,8 @@ lazy val `zio-sbt-ci` =
 lazy val `zio-sbt-githubactions` =
   project
     .settings(
-      stdSettings(),
+      stdSettings(javaPlatform = "17"),
+      syntacticScalafixOnly,
       headerEndYear := Some(2023)
     )
 
@@ -111,6 +126,7 @@ lazy val `zio-sbt-source` =
         if (scalaBinaryVersion.value == "2.13") Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value)
         else Seq()
       },
+      jvmSettings, // fork JVM tests for readable logs
       testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
     )
 

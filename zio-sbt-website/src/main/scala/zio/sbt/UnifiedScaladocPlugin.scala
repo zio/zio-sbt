@@ -27,6 +27,6 @@ object UnifiedScaladocPlugin extends sbt.AutoPlugin {
 
   import ScalaUnidocPlugin.autoImport._
 
-  override def projectSettings: Seq[Setting[_]] =
+  override def projectSettings: Seq[Setting[?]] =
     Seq(Compile / doc := (ScalaUnidoc / doc).value)
 }

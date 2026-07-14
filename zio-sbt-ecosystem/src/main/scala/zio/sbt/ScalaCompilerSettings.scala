@@ -16,12 +16,11 @@
 
 package zio.sbt
 
-import explicitdeps.ExplicitDepsPlugin.autoImport._
-import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
+import scala.language.implicitConversions
+
 import sbt.Keys._
 import sbt.{Def, _}
 import sbtbuildinfo.BuildInfoPlugin.autoImport.{BuildInfoKey, buildInfoKeys, buildInfoPackage}
-import sbtcrossproject.CrossPlugin.autoImport.{JVMPlatform, crossProjectPlatform}
 import scalafix.sbt.ScalafixPlugin.autoImport.{scalafixDependencies, scalafixSemanticdb}
 
 import zio.sbt.Versions._
@@ -54,7 +53,7 @@ trait ScalaCompilerSettings {
       )
     else Nil
 
-  lazy val scala3Settings: Seq[Setting[_]] = Seq(
+  lazy val scala3Settings: Seq[Setting[?]] = Seq(
     scalacOptions --= {
       if (Keys.scalaBinaryVersion.value == "3")
         Seq("-Xfatal-warnings")
@@ -133,25 +132,21 @@ trait ScalaCompilerSettings {
       case _ =>
         List()
     }
-    platformSpecificSources(platform, conf, baseDir)(versions: _*)
+    platformSpecificSources(platform, conf, baseDir)(versions*)
   }
 
+  // sbt-uni-crossproject (the sbt 2.0 replacement for portable-scala's sbt-crossproject) does not
+  // expose the per-project `crossProjectPlatform` setting key, so we cannot tell which platform the
+  // current sub-project targets from within these settings. We therefore register the source
+  // directories for every platform; `platformSpecificSources` keeps only the ones that exist.
+  private val crossProjectPlatforms: List[String] = List("jvm", "js", "native")
+
   lazy val crossProjectSettings: Seq[Setting[Seq[File]]] = Seq(
-    Compile / unmanagedSourceDirectories ++= {
-      crossPlatformSources(
-        scalaVersion.value,
-        crossProjectPlatform.value.identifier,
-        "main",
-        baseDirectory.value
-      )
+    Compile / unmanagedSourceDirectories ++= crossProjectPlatforms.flatMap { platform =>
+      crossPlatformSources(scalaVersion.value, platform, "main", baseDirectory.value)
     },
-    Test / unmanagedSourceDirectories ++= {
-      crossPlatformSources(
-        scalaVersion.value,
-        crossProjectPlatform.value.identifier,
-        "test",
-        baseDirectory.value
-      )
+    Test / unmanagedSourceDirectories ++= crossProjectPlatforms.flatMap { platform =>
+      crossPlatformSources(scalaVersion.value, platform, "test", baseDirectory.value)
     }
   )
 
@@ -163,7 +158,7 @@ trait ScalaCompilerSettings {
     enableCrossProject: Boolean = false,
     enableScalafix: Boolean = true,
     turnCompilerWarningIntoErrors: Boolean = true
-  ): Seq[Setting[_]] =
+  ): Seq[Setting[?]] =
     (name.map(n => Keys.name := n) match {
       case Some(value) => Seq(value)
       case None        => Seq.empty
@@ -186,14 +181,13 @@ trait ScalaCompilerSettings {
         libraryDependencies ++= {
           if (enableKindProjector && scalaBinaryVersion.value != "3") {
             Seq(
-              compilerPlugin("org.typelevel" %% "kind-projector" % KindProjectorVersion cross CrossVersion.full)
+              compilerPlugin(("org.typelevel" %% "kind-projector" % KindProjectorVersion).cross(CrossVersion.full))
             )
           } else Seq.empty
         },
         Test / parallelExecution := scalaBinaryVersion.value != "3",
         incOptions ~= (_.withLogRecompileOnMacro(false)),
-        autoAPIMappings := true,
-        unusedCompileDependenciesFilter -= moduleFilter("org.scala-js", "scalajs-library")
+        autoAPIMappings := true
       ) ++ (if (enableCrossProject) crossProjectSettings else Seq.empty) ++ {
         packageName match {
           case Some(name) => buildInfoSettings(name)
@@ -203,7 +197,7 @@ trait ScalaCompilerSettings {
         if (enableScalafix) scalafixSettings else Seq.empty
       } ++ betterMonadicForSettings
 
-  lazy val scalafixSettings: Seq[Def.Setting[_]] =
+  lazy val scalafixSettings: Seq[Def.Setting[?]] =
     Seq(
       semanticdbEnabled := Keys.scalaBinaryVersion.value != "3",
       semanticdbOptions += "-P:semanticdb:synthetics:on",
@@ -214,7 +208,7 @@ trait ScalaCompilerSettings {
     )
 
   // TODO: Review if this works properly
-  def scalaReflectTestSettings: List[Setting[_]] = List(
+  def scalaReflectTestSettings: List[Setting[?]] = List(
     libraryDependencies ++= {
       if (scalaBinaryVersion.value == "3")
         Seq("org.scala-lang" % "scala-reflect" % ZioSbtEcosystemPlugin.autoImport.scala213.value % Test)
@@ -226,36 +220,44 @@ trait ScalaCompilerSettings {
   def enableZIO(
     enableStreaming: Boolean = false,
     enableTesting: Boolean = true
-  ): Seq[Def.Setting[_]] =
-    Seq(libraryDependencies += "dev.zio" %%% "zio" % ZioSbtEcosystemPlugin.autoImport.zioVersion.value) ++
+  ): Seq[Def.Setting[?]] =
+    Seq(libraryDependencies += "dev.zio" %% "zio" % ZioSbtEcosystemPlugin.autoImport.zioVersion.value) ++
       (if (enableTesting)
          Seq(
            libraryDependencies ++= Seq(
-             "dev.zio" %%% "zio-test"     % ZioSbtEcosystemPlugin.autoImport.zioVersion.value % Test,
-             "dev.zio" %%% "zio-test-sbt" % ZioSbtEcosystemPlugin.autoImport.zioVersion.value % Test
+             "dev.zio" %% "zio-test"     % ZioSbtEcosystemPlugin.autoImport.zioVersion.value % Test,
+             "dev.zio" %% "zio-test-sbt" % ZioSbtEcosystemPlugin.autoImport.zioVersion.value % Test
            ),
            testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
          )
        else Seq.empty) ++ {
         if (enableStreaming)
-          libraryDependencies += "dev.zio" %%% "zio-streams" % ZioSbtEcosystemPlugin.autoImport.zioVersion.value
+          libraryDependencies += "dev.zio" %% "zio-streams" % ZioSbtEcosystemPlugin.autoImport.zioVersion.value
         else Seq.empty
       }
 
-  def buildInfoSettings(packageName: String): Seq[Setting[_]] =
+  def buildInfoSettings(packageName: String): Seq[Setting[?]] =
     Seq(
-      buildInfoKeys    := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion, isSnapshot),
+      // sbt-buildinfo's Scala 3 build dropped the implicit SettingKey -> BuildInfoKey conversion,
+      // so each key is wrapped explicitly.
+      buildInfoKeys := Seq[BuildInfoKey](
+        BuildInfoKey(name),
+        BuildInfoKey(version),
+        BuildInfoKey(scalaVersion),
+        BuildInfoKey(sbtVersion),
+        BuildInfoKey(isSnapshot)
+      ),
       buildInfoPackage := packageName
     )
 
-  def macroExpansionSettings: Seq[Setting[_]] = Seq(
+  def macroExpansionSettings: Seq[Setting[?]] = Seq(
     addOptionsOn("2.13")("-Ymacro-annotations"),
     addDependenciesOn("2.12")(
       compilerPlugin(("org.scalamacros" % "paradise" % "2.1.1").cross(CrossVersion.full))
     )
   )
 
-  def macroDefinitionSettings: Seq[Setting[_]] =
+  def macroDefinitionSettings: Seq[Setting[?]] =
     Seq(
       scalacOptions += "-language:experimental.macros",
       libraryDependencies ++= {
@@ -268,8 +270,12 @@ trait ScalaCompilerSettings {
       }
     )
 
-  def jsSettings: Seq[Setting[_]] = Seq(
-    Test / fork := crossProjectPlatform.value == JVMPlatform // set fork to `true` on JVM to improve log readability, JS and Native need `false`
+  def jvmSettings: Seq[Setting[?]] = Seq(
+    Test / fork := true // fork on JVM to improve test log readability; JS and Native need `false`
+  )
+
+  def jsSettings: Seq[Setting[?]] = Seq(
+    Test / fork := false // JS needs `Test / fork := false`
   )
 
 //  def jsSettings_ = Seq(
@@ -277,14 +283,14 @@ trait ScalaCompilerSettings {
 //    libraryDependencies += "io.github.cquiroz" %%% "scala-java-time-tzdb" % "2.2.2"
 //  )
 
-  def nativeSettings: Seq[Setting[_]] = Seq(
+  def nativeSettings: Seq[Setting[?]] = Seq(
     doc / skip              := true,
     Compile / doc / sources := Seq.empty,
-    Test / test             := { val _ = (Test / compile).value; () },
-    Test / fork             := crossProjectPlatform.value == JVMPlatform // set fork to `true` on JVM to improve log readability, JS and Native need `false`
+    Test / test             := { val _ = (Test / compile).value; sbt.protocol.testing.TestResult.Passed },
+    Test / fork             := false // Native needs `Test / fork := false`
   )
 
-  lazy val scalajs: Seq[Setting[_]] =
+  lazy val scalajs: Seq[Setting[?]] =
     addOptionsOn("3")("-scalajs")
 
   def optionsOn(scalaBinaryVersions: String*)(options: String*): Def.Initialize[Seq[String]] =

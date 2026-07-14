@@ -58,12 +58,15 @@ object Tasks {
         enableStrictCompile,
         Compile / compile,
         Test / compile,
-        Test / test
+        (Test / test).toTask("")
       )
       .andFinally(disableStrictCompilePure(s => println(s"[info] $s")))
 
-  lazy val settings: Seq[Setting[_]] = Seq(
-    build                := buildImpl.value,
+  lazy val settings: Seq[Setting[?]] = Seq(
+    // `build` orchestrates clean/compile/test for their side effects; its result is not meaningful
+    // and must not be cached (sbt 2.0 caches task results and would need a HashWriter for the
+    // sequential's result type), so it is wrapped in `Def.uncached` and discarded to Unit.
+    build                := Def.uncached { val _ = buildImpl.value },
     enableStrictCompile  := enableStrictCompileImpl.value,
     disableStrictCompile := disableStrictCompileImpl.value
   )

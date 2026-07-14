@@ -15,8 +15,6 @@
  */
 
 package zio.sbt
-import scala.language.experimental.macros
-import scala.sys.process._
 
 import sbt.{Def, io => _, _}
 
@@ -82,10 +80,10 @@ object ZioSbtCiPlugin extends AutoPlugin {
     val ciPostReleaseJobs: SettingKey[Seq[Job]]   = settingKey[Seq[Job]]("CI Post Release Jobs")
 
     def targetScalaVersionsFor(projects: Project*): sbt.Def.Initialize[Map[String, Seq[String]]] =
-      macro CiTargetMap.macroMakeTargetScalaMapImpl
+      CiTargetMap.makeTargetScalaMap(projects*)
 
     def minTargetJavaVersionsFor(projects: Project*): sbt.Def.Initialize[Map[String, String]] =
-      macro CiTargetMap.macroMakeJavaVersionMapImpl
+      CiTargetMap.makeTargetJavaMap(projects*)
   }
 
   import autoImport.*
@@ -178,7 +176,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
             CacheDependencies,
             checkout
           ) ++ (if (javaPlatformMatrix.values.toSet.isEmpty) {
-                  scalaVersionMatrix.values.toSeq.flatten.distinct.map { scalaVersion: String =>
+                  scalaVersionMatrix.values.toSeq.flatten.distinct.map { (scalaVersion: String) =>
                     Step.SingleStep(
                       name = "Test",
                       condition = Some(Condition.Expression(s"matrix.scala == '$scalaVersion'")),
@@ -191,12 +189,11 @@ object ZioSbtCiPlugin extends AutoPlugin {
                   }
                 } else {
                   (for {
-                    javaPlatform: String <- Set("17", "21", "25")
-                    scalaVersion: String <- scalaVersionMatrix.values.toSeq.flatten.toSet
-                    projects              =
-                      scalaVersionMatrix.filterKeys { p =>
-                        javaPlatformMatrix.getOrElse(p, javaPlatform).toInt <= javaPlatform.toInt
-                      }.filter { case (_, versions) =>
+                    javaPlatform <- Set("17", "21", "25")
+                    scalaVersion <- scalaVersionMatrix.values.toSeq.flatten.toSet
+                    projects      =
+                      scalaVersionMatrix.filter { case (p, versions) =>
+                        javaPlatformMatrix.getOrElse(p, javaPlatform).toInt <= javaPlatform.toInt &&
                         versions.contains(scalaVersion)
                       }.keys
                   } yield
@@ -237,7 +234,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
                  }.toList)
                } else {
                  def generateScalaProjectJavaPlatform(javaPlatform: String) =
-                   s"scala-project-java$javaPlatform" -> scalaVersionMatrix.filterKeys { p =>
+                   s"scala-project-java$javaPlatform" -> scalaVersionMatrix.filter { case (p, _) =>
                      javaPlatformMatrix.getOrElse(p, javaPlatform).toInt <= javaPlatform.toInt
                    }.flatMap { case (moduleName, versions) =>
                      versions.map { version =>
@@ -545,7 +542,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
         triggers = Seq(
           Trigger.WorkflowDispatch(),
           Trigger.Release(Seq("published")),
-          Trigger.Push(branches = enabledBranches.map(Branch.Named)),
+          Trigger.Push(branches = enabledBranches.map(Branch.Named.apply)),
           Trigger.PullRequest(ignoredBranches = Seq(Branch.Named("gh-pages")))
         ),
         jobs =
@@ -572,7 +569,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
       IO.write(new File(s".github/workflows/${ciWorkflowName.value.toLowerCase}.yml"), template)
     }
 
-  override lazy val buildSettings: Seq[Setting[_]] =
+  override lazy val buildSettings: Seq[Setting[?]] =
     Seq(
       ciWorkflowName             := "CI",
       ciEnabledBranches          := Seq.empty,
@@ -635,7 +632,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
     Def.task {
       val _ = ciGenerateGithubWorkflow.value
 
-      if ("git diff --exit-code".! == 1) {
+      if (scala.sys.process.Process("git diff --exit-code").! == 1) {
         sys.error(
           "The ci.yml workflow is not up-to-date!\n" +
             "Please run `sbt ciGenerateGithubWorkflow` and commit new changes."
