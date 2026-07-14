@@ -1,7 +1,6 @@
 // Linting Plugins
-addSbtPlugin("org.scalameta"    % "sbt-scalafmt"              % "2.6.1")
-addSbtPlugin("ch.epfl.scala"    % "sbt-scalafix"              % "0.14.7")
-addSbtPlugin("com.github.cb372" % "sbt-explicit-dependencies" % "0.3.1")
+addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.6.1")
+addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.14.7")
 
 // Versioning and Release Plugins
 addSbtPlugin("com.eed3si9n"   % "sbt-buildinfo"  % "0.13.1")
@@ -13,15 +12,13 @@ addSbtPlugin("com.github.sbt" % "sbt-unidoc" % "0.6.1")
 addSbtPlugin("com.github.sbt" % "sbt-header" % "5.11.0")
 
 // Cross-Compiler Plugins
-addSbtPlugin("org.scala-js"       % "sbt-scalajs"                   % "1.22.0")
-addSbtPlugin("org.portable-scala" % "sbt-scalajs-crossproject"      % "1.3.2")
-addSbtPlugin("org.scala-native"   % "sbt-scala-native"              % "0.5.12")
-addSbtPlugin("org.portable-scala" % "sbt-scala-native-crossproject" % "1.3.2")
-addSbtPlugin("org.portable-scala" % "sbt-platform-deps"             % "1.0.2")
+addSbtPlugin("org.scala-js"     % "sbt-scalajs"      % "1.22.0")
+addSbtPlugin("org.scala-native" % "sbt-scala-native" % "0.5.12")
+// sbt 2.x re-implementation of portable-scala/sbt-crossproject (no sbt 2.0 release).
+addSbtPlugin("org.wvlet.uni" % "sbt-uni-crossproject" % "2026.1.20")
 
 // Benchmarking Plugins
-addSbtPlugin("pl.project13.scala" % "sbt-jmh"      % "0.4.8")
-addSbtPlugin("pl.project13.scala" % "sbt-jcstress" % "0.2.0")
+addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.4.8")
 
 // Binary Compatibility Plugin
 addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "1.1.6")

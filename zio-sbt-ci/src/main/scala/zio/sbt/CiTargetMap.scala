@@ -1,46 +1,36 @@
 package zio.sbt
 
-import scala.language.experimental.macros
-import scala.reflect.macros.whitebox
-
-import sbt.Project
+import sbt.ProjectExtra.projectToLocalProject
+import sbt.{Def, Keys, Project, SettingKey}
 
 object CiTargetMap {
-  def makeTargetScalaMap(projects: Project*): sbt.Def.Initialize[Map[String, Seq[String]]] =
-    macro macroMakeTargetScalaMapImpl
 
-  def makeTargetJavaMap(projects: Project*): sbt.Def.Initialize[Map[String, String]] =
-    macro macroMakeJavaVersionMapImpl
+  /**
+   * Maps each project's id to its `crossScalaVersions`.
+   *
+   * This used to be a Scala 2 whitebox macro; sbt 2.0 builds plugins with Scala
+   * 3, which dropped `scala.reflect.macros`, so it is now a plain function. A
+   * macro was never actually required: a project's id is available statically
+   * via `Project#id`, and the per-project `crossScalaVersions` value is read
+   * reactively by combining `Def.Initialize` values.
+   */
+  def makeTargetScalaMap(projects: Project*): Def.Initialize[Map[String, Seq[String]]] =
+    projects.foldLeft(Def.setting(Map.empty[String, Seq[String]])) { (acc, p) =>
+      acc.zipWith(Def.setting(p.id -> (p / Keys.crossScalaVersions).value))(_ + _)
+    }
 
-  def macroMakeTargetScalaMapImpl(
-    c: whitebox.Context
-  )(projects: c.Expr[Project]*): c.Expr[sbt.Def.Initialize[Map[String, Seq[String]]]] = {
-    import c.universe.*
-
-    // Define the keys and values to use in the final Map
-    val keys   = projects.map(p => q"(${p.tree} / sbt.Keys.thisProject).value.id")
-    val values = projects.map(p => q"(${p.tree} / sbt.Keys.crossScalaVersions).value")
-
-    // Combine the keys and values into a Map
-    val map = q"_root_.scala.collection.immutable.Map(..${keys.zip(values).map { case (k, v) => q"$k -> $v" }})"
-
-    // Return the final setting
-    c.Expr(q"sbt.Def.setting($map)")
-  }
-
-  def macroMakeJavaVersionMapImpl(
-    c: whitebox.Context
-  )(projects: c.Expr[Project]*): c.Expr[sbt.Def.Initialize[Map[String, String]]] = {
-    import c.universe.*
-
-    // Define the keys and values to use in the final Map
-    val keys   = projects.map(p => q"(${p.tree} / sbt.Keys.thisProject).value.id")
-    val values = projects.map(p => q"(${p.tree} / sbt.Keys.javaPlatform).value")
-
-    // Combine the keys and values into a Map
-    val map = q"_root_.scala.collection.immutable.Map(..${keys.zip(values).map { case (k, v) => q"$k -> $v" }})"
-
-    // Return the final setting
-    c.Expr(q"sbt.Def.setting($map)")
+  /**
+   * Maps each project's id to its `javaPlatform` setting.
+   *
+   * `javaPlatform` is defined in `ZioSbtEcosystemPlugin.autoImport`, which this
+   * module does not depend on, so it is referenced by name (sbt resolves
+   * setting keys by label + type). The original macro referenced a non-existent
+   * `sbt.Keys.javaPlatform`, so it never compiled at any call site.
+   */
+  def makeTargetJavaMap(projects: Project*): Def.Initialize[Map[String, String]] = {
+    val javaPlatform = SettingKey[String]("javaPlatform")
+    projects.foldLeft(Def.setting(Map.empty[String, String])) { (acc, p) =>
+      acc.zipWith(Def.setting(p.id -> (p / javaPlatform).value))(_ + _)
+    }
   }
 }

@@ -151,7 +151,7 @@ object Commands {
 
   }
 
-  lazy val settings: Seq[Setting[_]] = Seq(
+  lazy val settings: Seq[Setting[?]] = Seq(
     commands ++= Seq(
       fix.toCommand,
       fmt.toCommand,

@@ -36,12 +36,12 @@ object ZioSbtEcosystemPlugin extends AutoPlugin {
 
   object autoImport extends ScalaCompilerSettings {
 
-    def addCommand(commandString: List[String], name: String, description: String): Seq[Setting[_]] = {
+    def addCommand(commandString: List[String], name: String, description: String): Seq[Setting[?]] = {
       val cCommand = Commands.ComposableCommand(commandString, name, description)
       addCommand(cCommand)
     }
 
-    def addCommand(command: Commands.ComposableCommand): Seq[Setting[_]] =
+    def addCommand(command: Commands.ComposableCommand): Seq[Setting[?]] =
       Seq(
         commands += command.toCommand,
         usefulTasksAndSettings += command.toItem
@@ -96,13 +96,13 @@ object ZioSbtEcosystemPlugin extends AutoPlugin {
       } else ""
     }
 
-  override def projectSettings: Seq[Setting[_]] =
+  override def projectSettings: Seq[Setting[?]] =
     Commands.settings ++ welcomeMessage ++ Seq(
       usefulTasksAndSettings := defaultTasksAndSettings,
       welcomeBannerEnabled   := true
     ) ++ Tasks.settings // ++ Tasks.settings
 
-  override def buildSettings: Seq[Def.Setting[_]] = super.buildSettings ++ Seq(
+  override def buildSettings: Seq[Def.Setting[?]] = super.buildSettings ++ Seq(
     scala3             := Versions.scala3,
     scala212           := Versions.scala212,
     scala213           := Versions.scala213,
@@ -112,16 +112,19 @@ object ZioSbtEcosystemPlugin extends AutoPlugin {
     javaPlatform       := "11"
   )
 
-  override def globalSettings: Seq[Def.Setting[_]] =
+  override def globalSettings: Seq[Def.Setting[?]] =
     super.globalSettings ++ Seq(
-      licenses       := Seq(License.Apache2),
-      organization   := "dev.zio",
-      homepage       := Some(url(s"https://zio.dev/${normalizedName.value}")),
-      normalizedName := (ThisBuild / name).value.toLowerCase.replaceAll(" ", "-"),
+      licenses     := Seq(License.Apache2),
+      organization := "dev.zio",
+      homepage     := Some(uri(s"https://zio.dev/${normalizedName.value}")),
+      // sbt 2.0 errors on `(ThisBuild / name).value` when `name` is not set at the build level
+      // (sbt 1.x tolerated it); fall back to an empty string so the plugin loads in builds that
+      // don't define a build-level name.
+      normalizedName := (ThisBuild / name).?.value.getOrElse("").toLowerCase.replaceAll(" ", "-"),
       scmInfo        := Some(
         ScmInfo(
           homepage.value.get,
-          s"scm:git:git@github.com:zio/${normalizedName}.git"
+          s"scm:git:git@github.com:zio/${normalizedName.value}.git"
         )
       ),
       pgpPassphrase        := sys.env.get("PGP_PASSPHRASE").map(_.toArray),

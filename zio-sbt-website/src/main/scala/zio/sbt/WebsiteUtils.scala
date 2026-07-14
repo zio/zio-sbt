@@ -86,12 +86,12 @@ object WebsiteUtils {
       s"https://img.shields.io/badge/Project%20Stage-${name.replace(" ", "%20") + '-' + color}.svg"
   }
   object ProjectStage {
-    final case object ProductionReady extends ProjectStage(name = "Production Ready", "brightgreen")
-    final case object Development     extends ProjectStage(name = "Development", "green")
-    final case object Experimental    extends ProjectStage(name = "Experimental", "yellowgreen")
-    final case object Research        extends ProjectStage(name = "Research", "yellow")
-    final case object Concept         extends ProjectStage(name = "Concept", "orange")
-    final case object Deprecated      extends ProjectStage(name = "Deprecated", "red")
+    case object ProductionReady extends ProjectStage(name = "Production Ready", "brightgreen")
+    case object Development     extends ProjectStage(name = "Development", "green")
+    case object Experimental    extends ProjectStage(name = "Experimental", "yellowgreen")
+    case object Research        extends ProjectStage(name = "Research", "yellow")
+    case object Concept         extends ProjectStage(name = "Concept", "orange")
+    case object Deprecated      extends ProjectStage(name = "Deprecated", "red")
   }
 
   def projectStageBadge(stage: ProjectStage): String =
