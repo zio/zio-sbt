@@ -130,6 +130,36 @@ This will generate a GitHub workflow file inside the `.github/workflows` directo
 > 
 > To use this plugin, we also need to install [ZIO Assistant](https://github.com/apps/zio-assistant) bot.
 
+### Auto-Approving and Auto-Merging Dependency Update PRs
+
+Besides `ci.yml`, the `ciGenerateGithubWorkflow` task also generates two more workflow files: `auto-approve.yml` and `auto-merge.yml`. These auto-approve and enable GitHub's native auto-merge (squash strategy) on pull requests opened by dependency-update bots, such as [Scala Steward](https://github.com/scala-steward-org/scala-steward), [Dependabot](https://github.com/dependabot), and [Renovate](https://github.com/renovatebot/renovate).
+
+Both workflows trigger on `pull_request_target` and also support `workflow_dispatch`, which backfills the approval/auto-merge on every currently open PR from the configured bots—handy for recovering PRs that were opened before the workflow existed, or after a workflow bug is fixed.
+
+The set of trusted bots is controlled by the `ciDependencyUpdateBots` setting, which takes a `Seq[DependencyBot]`:
+
+```scala
+import zio.sbt.githubactions.DependencyBot
+
+ciDependencyUpdateBots := Seq(
+  DependencyBot.Dependabot,
+  DependencyBot.Renovate,
+  DependencyBot.ScalaSteward("zio-scala-steward"),
+  DependencyBot.Custom("some-other-bot[bot]")
+)
+```
+
+- `DependencyBot.Dependabot` — matches login `dependabot[bot]`
+- `DependencyBot.Renovate` — matches login `renovate[bot]`
+- `DependencyBot.ScalaSteward(githubAppName)` — matches login `<githubAppName>[bot]`, where `githubAppName` is the name of the GitHub App you registered for Scala Steward
+- `DependencyBot.Custom(login)` — matches any exact GitHub login, for bots not covered by the predefined cases
+
+The default value mirrors the bots used by the `zio/zio` repository: `Seq(DependencyBot.Dependabot, DependencyBot.Renovate, DependencyBot.ScalaSteward("zio-scala-steward"))`. If your Scala Steward GitHub App has a different name, override the setting with the correct `ScalaSteward` app name.
+
+> **Note:**
+>
+> For `gh pr merge --auto` to actually merge a PR (rather than just queue it), the target repository needs "Allow auto-merge" enabled under **Settings → General**, and branch protection with required status checks configured on the target branch.
+
 ## ZIO SBT Source
 
 ZIO SBT Source is a Scala 2.13 + Scala 3 cross-compiled library that provides utilities for self-documenting example code. It includes the `ExprEval` macro, which captures the source text of expressions at compile time and prints them alongside their evaluated results at runtime.
