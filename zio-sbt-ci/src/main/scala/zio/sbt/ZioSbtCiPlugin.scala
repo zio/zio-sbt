@@ -658,7 +658,11 @@ object ZioSbtCiPlugin extends AutoPlugin {
     Workflow(
       name = "Auto-merge bot dependency PRs",
       triggers = dependencyBotPRTriggers,
-      permissions = Map("contents" -> "write", "pull-requests" -> "write"),
+      // "actions: write" is required for `gh pr merge --auto` to succeed on PRs that touch
+      // .github/workflows/**, per https://github.com/cli/cli/issues/11493 — GitHub's
+      // enablePullRequestAutoMerge mutation otherwise rejects with a "workflows permission"
+      // error, even though "workflows" isn't a valid permissions key at all.
+      permissions = Map("contents" -> "write", "pull-requests" -> "write", "actions" -> "write"),
       jobs = Seq(
         Job(
           id = "auto-merge",
