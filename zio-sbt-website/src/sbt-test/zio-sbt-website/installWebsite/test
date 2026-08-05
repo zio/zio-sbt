@@ -1,11 +1,13 @@
 > clean
 > installWebsite
-$ exists target/website/src 
-$ exists target/website/static 
-$ exists target/website/LICENSE 
+$ exists website/src
+$ exists website/static
+$ exists website/LICENSE
 
-# Running installWebsite again should succeed (idempotent — removes and reinstalls)
+# Running installWebsite again should succeed and be a no-op: since the website
+# directory already exists, the task warns and skips scaffolding instead of
+# removing/reinstalling it.
 > installWebsite
-$ exists target/website/src 
-$ exists target/website/static 
-$ exists target/website/LICENSE 
+$ exists website/src
+$ exists website/static
+$ exists website/LICENSE
