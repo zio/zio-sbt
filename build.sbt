@@ -120,8 +120,10 @@ lazy val docs = project
     moduleName := "zio-sbt-docs",
     scalacOptions -= "-Yno-imports",
     scalacOptions -= "-Xfatal-warnings",
-    projectName                                := (ThisBuild / name).value,
-    mainModuleName                             := (`zio-sbt-website` / moduleName).value,
+    projectName    := (ThisBuild / name).value,
+    mainModuleName := (`zio-sbt-website` / moduleName).value,
+    // sbt plugins are published with an extra sbt cross-version suffix, e.g. zio-sbt-website_2.12_1.0
+    badgeArtifactId                            := mainModuleName.value + '_' + scalaBinaryVersion.value + '_' + sbtBinaryVersion.value,
     projectStage                               := ProjectStage.ProductionReady,
     ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(`zio-sbt-website`),
     headerLicense                              := None,

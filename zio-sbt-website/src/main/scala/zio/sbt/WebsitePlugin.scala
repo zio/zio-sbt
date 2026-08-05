@@ -33,21 +33,26 @@ import zio.sbt.WebsiteUtils.{readFile, removeYamlHeader}
 object WebsitePlugin extends sbt.AutoPlugin {
 
   object autoImport {
-    val compileDocs: InputKey[Unit]                        = inputKey[Unit]("Compile docs")
-    val installWebsite: TaskKey[Unit]                      = taskKey[Unit]("Install the website for the first time")
-    val buildWebsite: TaskKey[Unit]                        = taskKey[Unit]("Build website (default output: website/build)")
-    val previewWebsite: TaskKey[Unit]                      = taskKey[Unit]("preview website")
-    val publishToNpm: InputKey[Unit]                       = inputKey[Unit]("Publish website to the npm registry")
-    val publishSnapshotToNpm: InputKey[Unit]               = inputKey[Unit]("Publish snapshot version of website to the npm registry")
-    val publishHashverToNpm: InputKey[Unit]                = inputKey[Unit]("Publish hash version of website to the npm registry")
-    val checkReadme: TaskKey[Unit]                         = taskKey[Unit]("Make sure if the README.md file is up-to-date")
-    val generateReadme: TaskKey[Unit]                      = taskKey[Unit]("Generate readme file")
-    val npmToken: SettingKey[String]                       = settingKey[String]("NPM Token")
-    val docsDependencies: SettingKey[Seq[ModuleID]]        = settingKey[Seq[ModuleID]]("documentation project dependencies")
-    val websiteDir: SettingKey[Path]                       = settingKey[Path]("Website directory")
-    val projectStage: SettingKey[ProjectStage]             = settingKey[ProjectStage]("Project stage")
-    val projectName: SettingKey[String]                    = settingKey[String]("Project name e.g. ZIO SBT")
-    val mainModuleName: SettingKey[String]                 = settingKey[String]("Main Module Name e.g. zio-sbt")
+    val compileDocs: InputKey[Unit]                 = inputKey[Unit]("Compile docs")
+    val installWebsite: TaskKey[Unit]               = taskKey[Unit]("Install the website for the first time")
+    val buildWebsite: TaskKey[Unit]                 = taskKey[Unit]("Build website (default output: website/build)")
+    val previewWebsite: TaskKey[Unit]               = taskKey[Unit]("preview website")
+    val publishToNpm: InputKey[Unit]                = inputKey[Unit]("Publish website to the npm registry")
+    val publishSnapshotToNpm: InputKey[Unit]        = inputKey[Unit]("Publish snapshot version of website to the npm registry")
+    val publishHashverToNpm: InputKey[Unit]         = inputKey[Unit]("Publish hash version of website to the npm registry")
+    val checkReadme: TaskKey[Unit]                  = taskKey[Unit]("Make sure if the README.md file is up-to-date")
+    val generateReadme: TaskKey[Unit]               = taskKey[Unit]("Generate readme file")
+    val npmToken: SettingKey[String]                = settingKey[String]("NPM Token")
+    val docsDependencies: SettingKey[Seq[ModuleID]] = settingKey[Seq[ModuleID]]("documentation project dependencies")
+    val websiteDir: SettingKey[Path]                = settingKey[Path]("Website directory")
+    val projectStage: SettingKey[ProjectStage]      = settingKey[ProjectStage]("Project stage")
+    val projectName: SettingKey[String]             = settingKey[String]("Project name e.g. ZIO SBT")
+    val mainModuleName: SettingKey[String]          = settingKey[String]("Main Module Name e.g. zio-sbt")
+    val badgeArtifactId: SettingKey[String]         =
+      settingKey[String](
+        "Artifact id used in version badges (default: mainModuleName_scalaBinaryVersion). " +
+          "Override it for artifacts with non-standard coordinates, e.g. sbt plugins (name_2.12_1.0)."
+      )
     val ciWorkflowName: SettingKey[String]                 = settingKey[String]("CI Workflow Name")
     val projectHomePage: SettingKey[String]                = settingKey[String]("Project home page url e.g. https://zio.dev/zio-sbt")
     val readmeBanner: SettingKey[String]                   = settingKey[String]("Readme banner section")
@@ -101,6 +106,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
         "md,html,mdx"
       ),
       docsDependencies := Seq.empty,
+      badgeArtifactId  := mainModuleName.value + '_' + scalaBinaryVersion.value,
       libraryDependencies ++= docsDependencies.value,
       mdocVariables ++= {
         Map(
@@ -111,7 +117,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
             WebsiteUtils.generateProjectBadges(
               projectStage = projectStage.value,
               groupId = organization.value,
-              artifactId = mainModuleName.value + '_' + scalaBinaryVersion.value,
+              artifactId = badgeArtifactId.value,
               docsArtifactId = moduleName.value + '_' + scalaBinaryVersion.value,
               githubUser = "zio",
               githubRepo = scmInfo.value.map(_.browseUrl.getPath.split('/').last).getOrElse("github repo not provided"),
