@@ -211,7 +211,9 @@ object WebsitePlugin extends sbt.AutoPlugin {
         val pkgJsonContent = IO.read(pkgJsonFile)
         val patched        = pkgJsonContent.fromJson[Json.Obj] match {
           case Right(obj) =>
-            Json.Obj(obj.fields :+ ("overrides" -> Json.Obj(Chunk("webpack" -> Json.Str("5.75.0"))))).toJsonPretty + "\n"
+            Json
+              .Obj(obj.fields :+ ("overrides" -> Json.Obj(Chunk("webpack" -> Json.Str("5.75.0")))))
+              .toJsonPretty + "\n"
           case Left(err) => sys.error(s"Failed to parse package.json: $err")
         }
         IO.write(pkgJsonFile, patched)
