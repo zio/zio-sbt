@@ -227,6 +227,14 @@ object WebsitePlugin extends sbt.AutoPlugin {
     Def.task {
       val _ = Def.sequential(installWebsiteTask, compileDocs.toTask("")).value
 
+      // The website directory may already exist (e.g. committed to the repository) so
+      // installWebsiteTask skips installation, but its dependencies are not versioned.
+      if (!Files.exists(websiteDir.value.resolve("node_modules")))
+        exit(
+          Process("npm install", new File(s"${websiteDir.value}")).!,
+          "Failed to install website dependencies!"
+        )
+
       val p = Process("npm run build", new File(s"${websiteDir.value}")).!
       exit(p, "Failed to build the website!")
     }
