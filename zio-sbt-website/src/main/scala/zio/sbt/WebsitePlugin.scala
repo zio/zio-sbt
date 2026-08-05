@@ -211,9 +211,9 @@ object WebsitePlugin extends sbt.AutoPlugin {
         }
         IO.write(pkgJsonFile, patched)
         exit(Process("npm install", new File(s"${websiteDirPath}")).!)
-
-        val _ = Files.createDirectories(websiteDirPath.resolve("docs"))
       }
+
+      val _ = Files.createDirectories(websiteDirPath.resolve("docs"))
     }
 
   lazy val buildWebsiteTask: Def.Initialize[Task[Unit]] =
