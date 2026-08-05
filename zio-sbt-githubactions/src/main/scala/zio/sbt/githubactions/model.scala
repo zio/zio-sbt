@@ -28,6 +28,20 @@ object OS {
   case object UbuntuLatest extends OS { val asString = "ubuntu-latest" }
 }
 
+sealed trait DependencyBot {
+  def login: String
+}
+object DependencyBot {
+  case object Dependabot extends DependencyBot { val login = "dependabot[bot]" }
+  case object Renovate   extends DependencyBot { val login = "renovate[bot]"   }
+
+  final case class ScalaSteward(githubAppName: String) extends DependencyBot {
+    val login: String = s"$githubAppName[bot]"
+  }
+
+  final case class Custom(login: String) extends DependencyBot
+}
+
 sealed trait Branch
 object Branch {
   case object All                extends Branch
@@ -105,6 +119,39 @@ object Trigger {
       ignoredBranches: Seq[Branch] = Seq.empty
     ): PullRequest =
       PullRequest(
+        Chunk.fromIterable(branches),
+        Chunk.fromIterable(ignoredBranches)
+      )
+  }
+
+  case class PullRequestTarget private (
+    types: Chunk[String],
+    branches: Chunk[Branch],
+    ignoredBranches: Chunk[Branch]
+  ) extends Trigger {
+    override def toKeyValuePair: (String, Json) = {
+      val fields = Chunk(
+        ("types", types.toJsonAST.getOrElse(Json.Null)),
+        ("branches", branches.toJsonAST.getOrElse(Json.Null)),
+        ("branches-ignore", ignoredBranches.toJsonAST.getOrElse(Json.Null))
+      ).filter { case (_, data) =>
+        data match {
+          case Json.Arr(elements) => elements.nonEmpty
+          case _                  => false
+        }
+      }
+      ("pull_request_target", Json.Obj(fields))
+    }
+  }
+
+  object PullRequestTarget {
+    def apply(
+      types: Seq[String] = Seq.empty,
+      branches: Seq[Branch] = Seq.empty,
+      ignoredBranches: Seq[Branch] = Seq.empty
+    ): PullRequestTarget =
+      PullRequestTarget(
+        Chunk.fromIterable(types),
         Chunk.fromIterable(branches),
         Chunk.fromIterable(ignoredBranches)
       )
@@ -378,32 +425,37 @@ case class Workflow private (
   env: Map[String, String],
   triggers: Chunk[Trigger],
   jobs: Chunk[Job]
+)(
+  val permissions: Map[String, String]
 ) {
   def on(triggers: Trigger*): Workflow =
-    copy(triggers = Chunk.fromIterable(triggers))
+    copy(triggers = Chunk.fromIterable(triggers))(permissions)
 
   def withJobs(jobs: Job*): Workflow =
-    copy(jobs = Chunk.fromIterable(jobs))
+    copy(jobs = Chunk.fromIterable(jobs))(permissions)
 
   def addJob(job: Job): Workflow =
-    copy(jobs = jobs :+ job)
+    copy(jobs = jobs :+ job)(permissions)
 
   def addJobs(newJobs: Chunk[Job]): Workflow =
-    copy(jobs = jobs ++ newJobs)
+    copy(jobs = jobs ++ newJobs)(permissions)
 }
 
 object Workflow {
+  val defaultPermissions: Map[String, String] = Map("id-token" -> "write", "contents" -> "read")
+
   def apply(
     name: String,
     env: Map[String, String] = Map.empty,
     triggers: Seq[Trigger] = Seq.empty,
-    jobs: Seq[Job] = Seq.empty
+    jobs: Seq[Job] = Seq.empty,
+    permissions: Map[String, String] = defaultPermissions
   ): Workflow = Workflow(
     name = name,
     env = env,
     triggers = Chunk.fromIterable(triggers),
     jobs = Chunk.fromIterable(jobs)
-  )
+  )(permissions)
 
   implicit val encoder: JsonEncoder[Workflow] =
     JsonEncoder[Json].contramap { wf =>
@@ -429,7 +481,7 @@ object Workflow {
         ("name", Json.Str(wf.name)),
         ("env", wf.env.toJsonAST.getOrElse(Json.Null)),
         ("on", onJson),
-        ("permissions", Json.Obj(("id-token", Json.Str("write")), ("contents", Json.Str("read")))),
+        ("permissions", wf.permissions.toJsonAST.getOrElse(Json.Null)),
         ("concurrency", concurrencyJson),
         ("jobs", jobsJson)
       )
