@@ -67,15 +67,15 @@ object WebsiteUtils {
   }
 
   def snapshotBadge(groupId: String, artifact: String): String = {
-    val badge =
-      s"https://img.shields.io/nexus/s/https/oss.sonatype.org/$groupId/$artifact.svg?label=Sonatype%20Snapshot"
-    val link = s"https://oss.sonatype.org/content/repositories/snapshots/${groupId.replace('.', '/')}/$artifact/"
-    s"[![Sonatype Snapshots]($badge)]($link)"
+    val repoUrl     = s"https://central.sonatype.com/repository/maven-snapshots/${groupId.replace('.', '/')}/$artifact"
+    val metadataUrl = java.net.URLEncoder.encode(s"$repoUrl/maven-metadata.xml", "UTF-8")
+    val badge       = s"https://img.shields.io/maven-metadata/v?metadataUrl=$metadataUrl&label=Sonatype%20Snapshot"
+    s"[![Sonatype Snapshots]($badge)]($repoUrl/)"
   }
 
   def releaseBadge(groupId: String, artifact: String): String = {
-    val badge = s"https://img.shields.io/nexus/r/https/oss.sonatype.org/$groupId/$artifact.svg?label=Sonatype%20Release"
-    val link  = s"https://oss.sonatype.org/content/repositories/releases/${groupId.replace('.', '/')}/$artifact/"
+    val badge = s"https://img.shields.io/maven-central/v/$groupId/$artifact.svg?label=Sonatype%20Release"
+    val link  = s"https://central.sonatype.com/artifact/$groupId/$artifact"
     s"[![Sonatype Releases]($badge)]($link)"
   }
 

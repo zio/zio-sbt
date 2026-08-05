@@ -6,16 +6,16 @@
 
 _ZIO SBT_ contains multiple sbt plugins that are useful for ZIO projects. It provides high-level SBT utilities that simplify the development of ZIO applications.
 
-[![Production Ready](https://img.shields.io/badge/Project%20Stage-Production%20Ready-brightgreen.svg)](https://github.com/zio/zio/wiki/Project-Stages) ![CI Badge](https://github.com/zio/zio-sbt/workflows/CI/badge.svg) [![Sonatype Releases](https://img.shields.io/nexus/r/https/oss.sonatype.org/dev.zio/zio-sbt-website_2.12.svg?label=Sonatype%20Release)](https://oss.sonatype.org/content/repositories/releases/dev/zio/zio-sbt-website_2.12/) [![Sonatype Snapshots](https://img.shields.io/nexus/s/https/oss.sonatype.org/dev.zio/zio-sbt-website_2.12.svg?label=Sonatype%20Snapshot)](https://oss.sonatype.org/content/repositories/snapshots/dev/zio/zio-sbt-website_2.12/) [![javadoc](https://javadoc.io/badge2/dev.zio/zio-sbt-docs_2.12/javadoc.svg)](https://javadoc.io/doc/dev.zio/zio-sbt-docs_2.12) [![ZIO SBT](https://img.shields.io/github/stars/zio/zio-sbt?style=social)](https://github.com/zio/zio-sbt)
+[![Production Ready](https://img.shields.io/badge/Project%20Stage-Production%20Ready-brightgreen.svg)](https://github.com/zio/zio/wiki/Project-Stages) ![CI Badge](https://github.com/zio/zio-sbt/workflows/CI/badge.svg) [![Sonatype Releases](https://img.shields.io/maven-central/v/dev.zio/zio-sbt-website_2.12_1.0.svg?label=Sonatype%20Release)](https://central.sonatype.com/artifact/dev.zio/zio-sbt-website_2.12_1.0) [![Sonatype Snapshots](https://img.shields.io/maven-metadata/v?metadataUrl=https%3A%2F%2Fcentral.sonatype.com%2Frepository%2Fmaven-snapshots%2Fdev%2Fzio%2Fzio-sbt-website_2.12_1.0%2Fmaven-metadata.xml&label=Sonatype%20Snapshot)](https://central.sonatype.com/repository/maven-snapshots/dev/zio/zio-sbt-website_2.12_1.0/) [![javadoc](https://javadoc.io/badge2/dev.zio/zio-sbt-docs_2.12/javadoc.svg)](https://javadoc.io/doc/dev.zio/zio-sbt-docs_2.12) [![ZIO SBT](https://img.shields.io/github/stars/zio/zio-sbt?style=social)](https://github.com/zio/zio-sbt)
 
 ## Installation
 
 Add the following lines to your `project/plugins.sbt` file:
 
 ```scala
-addSbtPlugin("dev.zio" % "zio-sbt-ecosystem" % "0.5.3")
-addSbtPlugin("dev.zio" % "zio-sbt-ci"        % "0.5.3")
-addSbtPlugin("dev.zio" % "zio-sbt-website"   % "0.5.3")
+addSbtPlugin("dev.zio" % "zio-sbt-ecosystem" % "0.6.3")
+addSbtPlugin("dev.zio" % "zio-sbt-ci"        % "0.6.3")
+addSbtPlugin("dev.zio" % "zio-sbt-website"   % "0.6.3")
 ```
 
 Then you can enable them by using the following code in your `build.sbt` file:
@@ -102,7 +102,7 @@ ZIO SBT CI plugin generates a default GitHub workflow that includes common CI ta
 To use ZIO SBT CI plugin, add the following lines to your `plugins.sbt` file:
 
 ```scala
-addSbtPlugin("dev.zio" % "zio-sbt-ci" % "0.5.3")
+addSbtPlugin("dev.zio" % "zio-sbt-ci" % "0.6.3")
 
 resolvers ++= Resolver.sonatypeOssRepos("public")
 ```
@@ -169,7 +169,7 @@ ZIO SBT Source is a Scala 2.13 + Scala 3 cross-compiled library that provides ut
 Add the following line to your `libraryDependencies` in `build.sbt`:
 
 ```scala
-libraryDependencies += "dev.zio" %% "zio-sbt-source" % "0.5.3"
+libraryDependencies += "dev.zio" %% "zio-sbt-source" % "0.6.3"
 ```
 
 ### Features
