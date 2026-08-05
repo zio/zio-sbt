@@ -92,7 +92,19 @@ object WebsitePlugin extends sbt.AutoPlugin {
       publishHashverToNpm  := publishHashverToNpmTask.value,
       checkReadme          := checkReadmeTask.value,
       generateReadme       := generateReadmeTask.value,
-      docsDependencies     := Seq.empty,
+      // mdoc only treats "md" and "html" files as markdown by default, so without
+      // this, docs/index.mdx would be copied verbatim, leaving @VERSION@ and
+      // @PROJECT_BADGES@ unsubstituted. Passing the flag replaces the default
+      // list, so the defaults must be repeated here.
+      mdocExtraArguments ++= Seq(
+        "--markdown-extensions",
+        "md",
+        "--markdown-extensions",
+        "html",
+        "--markdown-extensions",
+        "mdx"
+      ),
+      docsDependencies := Seq.empty,
       libraryDependencies ++= docsDependencies.value,
       mdocVariables ++= {
         Map(
@@ -133,6 +145,14 @@ object WebsitePlugin extends sbt.AutoPlugin {
     )
 
   private def exit(exitCode: Int, errorMessage: String = "") = if (exitCode != 0) sys.error(errorMessage: String)
+
+  // Docs index may be either index.md or index.mdx (e.g. when the page needs
+  // JSX components like Tabs); mdoc preserves the extension on output.
+  private def resolveIndexFile(docsDir: Path): Path = {
+    val md  = docsDir.resolve("index.md")
+    val mdx = docsDir.resolve("index.mdx")
+    if (!Files.exists(md) && Files.exists(mdx)) mdx else md
+  }
 
   lazy val previewWebsiteTask: Def.Initialize[Task[Unit]] = Def.task {
     import zio.*
@@ -331,7 +351,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
     }
 
   private def prefixUrlsWith(markdown: String, prefix: String): String = {
-    val regex = """\(((?!http)\S*\.(png|jpg|md|scala|java)\b)\)""".r
+    val regex = """\(((?!http)\S*\.(png|jpg|mdx?|scala|java)\b)\)""".r
 
     regex.replaceAllIn(markdown, '(' + prefix + _.group(1) + ')')
   }
@@ -367,14 +387,17 @@ object WebsitePlugin extends sbt.AutoPlugin {
   }
 
   lazy val ignoreIndexSnapshotVersion: Def.Initialize[Task[Unit]] = Def.task {
-    if (normalizedVersion.value.endsWith("-SNAPSHOT"))
-      exit("sed -i.bak s/@VERSION@/<version>/g docs/index.md".!)
+    if (normalizedVersion.value.endsWith("-SNAPSHOT")) {
+      val index = resolveIndexFile(Paths.get("docs"))
+      exit(s"sed -i.bak s/@VERSION@/<version>/g $index".!)
+    }
   }
 
   lazy val revertIndexChanges: Def.Initialize[Task[Unit]] = Def.task {
     if (normalizedVersion.value.endsWith("-SNAPSHOT")) {
-      exit("rm docs/index.md".!)
-      exit("mv docs/index.md.bak docs/index.md".!)
+      val index = resolveIndexFile(Paths.get("docs"))
+      exit(s"rm $index".!)
+      exit(s"mv $index.bak $index".!)
     }
   }
 
@@ -394,8 +417,9 @@ object WebsitePlugin extends sbt.AutoPlugin {
       Unsafe.unsafe { implicit unsafe =>
         Runtime.default.unsafe
           .run(
-            readFile(websiteDir.value.resolve("docs/index.md").toString).map(md => removeYamlHeader(md).trim).flatMap {
-              introduction =>
+            readFile(resolveIndexFile(websiteDir.value.resolve("docs")).toString)
+              .map(md => removeYamlHeader(md).trim)
+              .flatMap { introduction =>
                 WebsiteUtils.generateReadme(
                   projectName = projectName.value,
                   banner = readmeBanner.value,
@@ -409,7 +433,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
                   credits = readmeCredits.value.trim,
                   maintainers = readmeMaintainers.value.trim
                 )
-            }
+              }
           )
           .getOrThrowFiberFailure()
       }
