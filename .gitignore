@@ -10,3 +10,4 @@ metals.sbt
 /website/build
 /website/node_modules
 /website/.docusaurus
+/zio-sbt-docs/website
