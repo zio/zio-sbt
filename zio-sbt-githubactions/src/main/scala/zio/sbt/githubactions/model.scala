@@ -420,20 +420,21 @@ case class Workflow private (
   name: String,
   env: Map[String, String],
   triggers: Chunk[Trigger],
-  jobs: Chunk[Job],
-  permissions: Map[String, String]
+  jobs: Chunk[Job]
+)(
+  val permissions: Map[String, String]
 ) {
   def on(triggers: Trigger*): Workflow =
-    copy(triggers = Chunk.fromIterable(triggers))
+    copy(triggers = Chunk.fromIterable(triggers))(permissions)
 
   def withJobs(jobs: Job*): Workflow =
-    copy(jobs = Chunk.fromIterable(jobs))
+    copy(jobs = Chunk.fromIterable(jobs))(permissions)
 
   def addJob(job: Job): Workflow =
-    copy(jobs = jobs :+ job)
+    copy(jobs = jobs :+ job)(permissions)
 
   def addJobs(newJobs: Chunk[Job]): Workflow =
-    copy(jobs = jobs ++ newJobs)
+    copy(jobs = jobs ++ newJobs)(permissions)
 }
 
 object Workflow {
@@ -449,9 +450,8 @@ object Workflow {
     name = name,
     env = env,
     triggers = Chunk.fromIterable(triggers),
-    jobs = Chunk.fromIterable(jobs),
-    permissions = permissions
-  )
+    jobs = Chunk.fromIterable(jobs)
+  )(permissions)
 
   implicit val encoder: JsonEncoder[Workflow] =
     JsonEncoder[Json].contramap { wf =>
