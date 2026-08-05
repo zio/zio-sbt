@@ -6,7 +6,9 @@ target
 .vscode
 .metals
 metals.sbt
-/website/docs
+/website/docs/*
+!/website/docs/.gitkeep
 /website/build
 /website/node_modules
 /website/.docusaurus
+/zio-sbt-docs/website
