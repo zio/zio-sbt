@@ -120,8 +120,8 @@ object ZioSbtEcosystemPlugin extends AutoPlugin {
       normalizedName := (ThisBuild / name).value.toLowerCase.replaceAll(" ", "-"),
       scmInfo        := Some(
         ScmInfo(
-          homepage.value.get,
-          s"scm:git:git@github.com:zio/${normalizedName}.git"
+          url(s"https://github.com/zio/${normalizedName.value}"),
+          s"scm:git:git@github.com:zio/${normalizedName.value}.git"
         )
       ),
       pgpPassphrase        := sys.env.get("PGP_PASSPHRASE").map(_.toArray),
