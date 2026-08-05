@@ -177,7 +177,12 @@ object WebsitePlugin extends sbt.AutoPlugin {
       val websiteDirPath = websiteDir.value
 
       if (Files.exists(websiteDirPath)) {
-        logger.warn(s"Website directory already exists, skipping installation: $websiteDirPath")
+        logger.warn(
+          s"""|
+              |Website directory already exists, skipping installation: $websiteDirPath
+              |Remove it manually and rerun installWebsite if you want a fresh install.
+              |""".stripMargin
+        )
       } else {
         val siteTarget = s"${target.value}/${normalizedName.value}-website"
 
