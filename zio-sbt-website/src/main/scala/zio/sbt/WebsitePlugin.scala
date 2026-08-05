@@ -92,17 +92,13 @@ object WebsitePlugin extends sbt.AutoPlugin {
       publishHashverToNpm  := publishHashverToNpmTask.value,
       checkReadme          := checkReadmeTask.value,
       generateReadme       := generateReadmeTask.value,
-      // mdoc only treats "md" and "html" files as markdown by default, so without
+      // mdoc only treats a limited set of extensions as markdown by default, so without
       // this, docs/index.mdx would be copied verbatim, leaving @VERSION@ and
-      // @PROJECT_BADGES@ unsubstituted. Passing the flag replaces the default
-      // list, so the defaults must be repeated here.
+      // @PROJECT_BADGES@ unsubstituted. `--markdown-extensions` expects a comma-separated
+      // list (and replaces the defaults), so include all desired extensions here.
       mdocExtraArguments ++= Seq(
         "--markdown-extensions",
-        "md",
-        "--markdown-extensions",
-        "html",
-        "--markdown-extensions",
-        "mdx"
+        "md,html,mdx"
       ),
       docsDependencies := Seq.empty,
       libraryDependencies ++= docsDependencies.value,
