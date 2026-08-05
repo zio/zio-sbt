@@ -58,7 +58,8 @@ object ZioSbtCiPlugin extends AutoPlugin {
       settingKey[String](
         "The default Java version which is used in CI, especially for releasing artifacts, defaults to 17. Note that this is just JDK version used for compilation. Artefact will be compiled with -target and -source flags specified by 'javaPlatform' setting or 'javaPlatform' parameter in 'stdSettings'"
       )
-    val ciCheckGithubWorkflow: TaskKey[Unit]              = taskKey[Unit]("Make sure if the ci.yml file is up-to-date")
+    val ciCheckGithubWorkflow: TaskKey[Unit] =
+      taskKey[Unit]("Make sure if the ci.yml, auto-approve.yml, and auto-merge.yml files are up-to-date")
     val ciCheckArtifactsBuildSteps: SettingKey[Seq[Step]] =
       settingKey[Seq[Step]]("Workflow steps for checking artifact build process")
     val ciCheckWebsiteBuildProcess: SettingKey[Seq[Step]] =

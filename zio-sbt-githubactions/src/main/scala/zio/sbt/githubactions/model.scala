@@ -126,12 +126,14 @@ object Trigger {
 
   case class PullRequestTarget private (
     types: Chunk[String],
-    branches: Chunk[Branch]
+    branches: Chunk[Branch],
+    ignoredBranches: Chunk[Branch]
   ) extends Trigger {
     override def toKeyValuePair: (String, Json) = {
       val fields = Chunk(
         ("types", types.toJsonAST.getOrElse(Json.Null)),
-        ("branches", branches.toJsonAST.getOrElse(Json.Null))
+        ("branches", branches.toJsonAST.getOrElse(Json.Null)),
+        ("branches-ignore", ignoredBranches.toJsonAST.getOrElse(Json.Null))
       ).filter { case (_, data) =>
         data match {
           case Json.Arr(elements) => elements.nonEmpty
@@ -145,11 +147,13 @@ object Trigger {
   object PullRequestTarget {
     def apply(
       types: Seq[String] = Seq.empty,
-      branches: Seq[Branch] = Seq.empty
+      branches: Seq[Branch] = Seq.empty,
+      ignoredBranches: Seq[Branch] = Seq.empty
     ): PullRequestTarget =
       PullRequestTarget(
         Chunk.fromIterable(types),
-        Chunk.fromIterable(branches)
+        Chunk.fromIterable(branches),
+        Chunk.fromIterable(ignoredBranches)
       )
   }
 
