@@ -6,3 +6,7 @@ target
 .vscode
 .metals
 metals.sbt
+/website/docs
+/website/build
+/website/node_modules
+/website/.docusaurus

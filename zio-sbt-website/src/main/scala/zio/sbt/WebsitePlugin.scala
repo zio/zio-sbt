@@ -35,7 +35,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
   object autoImport {
     val compileDocs: InputKey[Unit]                        = inputKey[Unit]("Compile docs")
     val installWebsite: TaskKey[Unit]                      = taskKey[Unit]("Install the website for the first time")
-    val buildWebsite: TaskKey[Unit]                        = taskKey[Unit]("Build website (default output: target/website/build)")
+    val buildWebsite: TaskKey[Unit]                        = taskKey[Unit]("Build website (default output: website/build)")
     val previewWebsite: TaskKey[Unit]                      = taskKey[Unit]("preview website")
     val publishToNpm: InputKey[Unit]                       = inputKey[Unit]("Publish website to the npm registry")
     val publishSnapshotToNpm: InputKey[Unit]               = inputKey[Unit]("Publish snapshot version of website to the npm registry")
@@ -82,7 +82,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
   override lazy val projectSettings: Seq[Setting[_ <: Object]] =
     Seq(
       compileDocs          := compileDocsTask.evaluated,
-      websiteDir           := Paths.get(target.value.getPath, "website"),
+      websiteDir           := Paths.get((ThisBuild / baseDirectory).value.getPath, "website"),
       mdocOut              := websiteDir.value.resolve("docs").toFile,
       installWebsite       := installWebsiteTask.value,
       buildWebsite         := buildWebsiteTask.value,
@@ -176,46 +176,44 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
       val websiteDirPath = websiteDir.value
 
-      // Always remove existing websiteDir to ensure a clean install.
-      // Without this, `mv` would move the new directory *into* the existing one
-      // as a subdirectory instead of replacing it.
       if (Files.exists(websiteDirPath)) {
-        logger.info(s"Removing existing website directory: $websiteDirPath")
-        exit(Process(s"rm ${websiteDirPath} -Rvf").!)
+        logger.warn(s"Website directory already exists, skipping installation: $websiteDirPath")
+      } else {
+        val siteTarget = s"${target.value}/${normalizedName.value}-website"
+
+        if (Files.exists(Paths.get(siteTarget)))
+          exit(Process(s"rm $siteTarget -Rvf").!)
+
+        val task: String =
+          s"""|npx @zio.dev/create-zio-website@${createZioWebsiteVersion.value} ${normalizedName.value}-website \\
+              |  --description="${name.value}" \\
+              |  --author="ZIO Contributors" \\
+              |  --email="email@zio.dev" \\
+              |  --license="Apache-2.0" \\
+              |  --architecture=Linux""".stripMargin
+
+        logger.info(s"installing website for ${normalizedName.value} ... \n$task")
+
+        exit(Process(task, target.value).!)
+
+        exit(Process(s"mv ${target.value}/${normalizedName.value}-website ${websiteDirPath}").!)
+
+        exit(s"rm -rvf ${websiteDirPath.toString}/.git/".!)
+
+        // Docusaurus 2.1.0 uses ProgressPlugin options removed in webpack >=5.76.
+        // Pin webpack to 5.75.0 via npm overrides and reinstall until Docusaurus is upgraded.
+        val pkgJsonFile    = new File(s"${websiteDirPath}/package.json")
+        val pkgJsonContent = IO.read(pkgJsonFile)
+        val patched        = pkgJsonContent.fromJson[Json.Obj] match {
+          case Right(obj) =>
+            Json.Obj(obj.fields :+ ("overrides" -> Json.Obj(Chunk("webpack" -> Json.Str("5.75.0"))))).toJsonPretty + "\n"
+          case Left(err) => sys.error(s"Failed to parse package.json: $err")
+        }
+        IO.write(pkgJsonFile, patched)
+        exit(Process("npm install", new File(s"${websiteDirPath}")).!)
+
+        val _ = Files.createDirectories(websiteDirPath.resolve("docs"))
       }
-
-      val siteTarget = s"${target.value}/${normalizedName.value}-website"
-
-      if (Files.exists(Paths.get(siteTarget)))
-        exit(Process(s"rm $siteTarget -Rvf").!)
-
-      val task: String =
-        s"""|npx @zio.dev/create-zio-website@${createZioWebsiteVersion.value} ${normalizedName.value}-website \\
-            |  --description="${name.value}" \\
-            |  --author="ZIO Contributors" \\
-            |  --email="email@zio.dev" \\
-            |  --license="Apache-2.0" \\
-            |  --architecture=Linux""".stripMargin
-
-      logger.info(s"installing website for ${normalizedName.value} ... \n$task")
-
-      exit(Process(task, target.value).!)
-
-      exit(Process(s"mv ${target.value}/${normalizedName.value}-website ${websiteDirPath}").!)
-
-      exit(s"rm -rvf ${websiteDirPath.toString}/.git/".!)
-
-      // Docusaurus 2.1.0 uses ProgressPlugin options removed in webpack >=5.76.
-      // Pin webpack to 5.75.0 via npm overrides and reinstall until Docusaurus is upgraded.
-      val pkgJsonFile    = new File(s"${websiteDirPath}/package.json")
-      val pkgJsonContent = IO.read(pkgJsonFile)
-      val patched        = pkgJsonContent.fromJson[Json.Obj] match {
-        case Right(obj) =>
-          Json.Obj(obj.fields :+ ("overrides" -> Json.Obj(Chunk("webpack" -> Json.Str("5.75.0"))))).toJsonPretty + "\n"
-        case Left(err) => sys.error(s"Failed to parse package.json: $err")
-      }
-      IO.write(pkgJsonFile, patched)
-      exit(Process("npm install", new File(s"${websiteDirPath}")).!)
     }
 
   lazy val buildWebsiteTask: Def.Initialize[Task[Unit]] =
