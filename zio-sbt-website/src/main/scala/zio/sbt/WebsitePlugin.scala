@@ -118,7 +118,10 @@ object WebsitePlugin extends sbt.AutoPlugin {
               projectStage = projectStage.value,
               groupId = organization.value,
               artifactId = badgeArtifactId.value,
-              docsArtifactId = moduleName.value + '_' + scalaBinaryVersion.value,
+              // The javadoc badge must point at a published artifact. The docs module
+              // itself (moduleName here) is typically not published, so use the same
+              // published coordinate as the release badge.
+              docsArtifactId = badgeArtifactId.value,
               githubUser = "zio",
               githubRepo = scmInfo.value.map(_.browseUrl.getPath.split('/').last).getOrElse("github repo not provided"),
               projectName = projectName.value,
