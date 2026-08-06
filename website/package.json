@@ -39,7 +39,7 @@
   "engines" : {
     "node" : ">=16.14"
   },
-  "overrides" : {
+  "resolutions" : {
     "webpack" : "5.75.0"
   }
 }
