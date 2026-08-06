@@ -5,7 +5,18 @@ publishMavenStyle := true
 
 enablePlugins(ZioSbtEcosystemPlugin, ZioSbtCiPlugin)
 
-addCommandAlias("test", "scripted")
+// Run the sbt-plugin scripted tests from the plain `test` task. A command
+// alias like `addCommandAlias("test", "scripted")` is not enough: the `+`
+// cross command runs the `test` *task* directly without expanding command
+// aliases, so CI's `sbt +test` used to skip the scripted tests entirely.
+lazy val scriptedTestSettings = Seq(
+  scriptedLaunchOpts := {
+    scriptedLaunchOpts.value ++
+      Seq("-Xmx1024M", "-Dplugin.version=" + version.value)
+  },
+  scriptedBufferLog := false,
+  Test / test       := scripted.toTask("").value
+)
 
 inThisBuild(
   List(
@@ -48,12 +59,8 @@ lazy val `zio-sbt-website` =
   project
     .settings(stdSettings())
     .settings(
-      headerEndYear      := Some(2023),
-      scriptedLaunchOpts := {
-        scriptedLaunchOpts.value ++
-          Seq("-Xmx1024M", "-Dplugin.version=" + version.value)
-      },
-      scriptedBufferLog := false
+      headerEndYear := Some(2023),
+      scriptedTestSettings
     )
     .enablePlugins(SbtPlugin)
 
@@ -61,12 +68,8 @@ lazy val `zio-sbt-ecosystem` =
   project
     .settings(stdSettings())
     .settings(
-      headerEndYear      := Some(2023),
-      scriptedLaunchOpts := {
-        scriptedLaunchOpts.value ++
-          Seq("-Xmx1024M", "-Dplugin.version=" + version.value)
-      },
-      scriptedBufferLog := false
+      headerEndYear := Some(2023),
+      scriptedTestSettings
     )
     .enablePlugins(SbtPlugin)
 
@@ -74,12 +77,8 @@ lazy val `zio-sbt-ci` =
   project
     .settings(stdSettings())
     .settings(
-      headerEndYear      := Some(2023),
-      scriptedLaunchOpts := {
-        scriptedLaunchOpts.value ++
-          Seq("-Xmx1024M", "-Dplugin.version=" + version.value)
-      },
-      scriptedBufferLog := false
+      headerEndYear := Some(2023),
+      scriptedTestSettings
     )
     .enablePlugins(SbtPlugin)
     .dependsOn(`zio-sbt-githubactions`)

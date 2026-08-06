@@ -292,12 +292,27 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
   private val docsVersionTask: Def.Initialize[String] =
     Def.setting {
+      val logger           = sLog.value
+      val projectVersion   = version.value
       val versioningScheme = docsVersioningScheme.value
+
+      // This setting is evaluated at project load, so it must not blow up when
+      // git is unavailable (e.g. a source tarball or a scripted test sandbox).
+      def hashOrProjectVersion: String =
+        hashVersion.getOrElse {
+          logger.warn(
+            "Could not determine the hash version from git, falling back to the project version. " +
+              "This is most likely because git is not installed, this project has no git repo initialized, " +
+              "or the repo has no commits yet."
+          )
+          projectVersion
+        }
+
       versioningScheme match {
         case VersioningScheme.HashVersioning =>
-          hashVersion
+          hashOrProjectVersion
         case VersioningScheme.SemanticVersioning =>
-          WebsiteUtils.releaseVersion(sLog.value.warn(_)).getOrElse(hashVersion)
+          WebsiteUtils.releaseVersion(logger.warn(_)).getOrElse(hashOrProjectVersion)
       }
     }
 
@@ -327,11 +342,15 @@ object WebsitePlugin extends sbt.AutoPlugin {
     exit(Process(s"npm publish $npmTag".trim, docsDir).!)
   }
 
-  private def hashVersion: String = {
-    val hashPart = s"git rev-parse --short=12 HEAD".!!
-    val datePart = java.time.LocalDate.now().toString.replace("-", ".")
-    datePart + "-" + hashPart
-  }
+  private def hashVersion: Option[String] =
+    try {
+      val hashPart = s"git rev-parse --short=12 HEAD".!!.trim
+      val datePart = java.time.LocalDate.now().toString.replace("-", ".")
+      Some(datePart + "-" + hashPart)
+    } catch {
+      // Not a git repository, or a repository without any commit yet.
+      case scala.util.control.NonFatal(_) => None
+    }
 
   lazy val publishHashverToNpmTask: Def.Initialize[Task[Unit]] =
     Def.task {
@@ -343,7 +362,14 @@ object WebsitePlugin extends sbt.AutoPlugin {
         .map(_.browseUrl.toString)
         .getOrElse(sys.error("scmInfo must be set for npm provenance verification"))
 
-      exit(Process(s"npm version $hashVersion --no-git-tag-version", docsDir).!)
+      val hashVer = hashVersion.getOrElse(
+        sys.error(
+          "Could not determine the hash version from git. This is most likely because git is not installed, " +
+            "this project has no git repo initialized, or the repo has no commits yet."
+        )
+      )
+
+      exit(Process(s"npm version $hashVer --no-git-tag-version", docsDir).!)
       exit(Process(s"npm pkg set repository.url=$repoUrl", docsDir).!)
       exit("npm config set access public".!)
       exit(Process("npm publish --tag hash", docsDir).!)
