@@ -331,25 +331,47 @@ object ImageRef {
     JsonEncoder.string.contramap(_.ref)
 }
 
+/**
+ * A port mapping, rendered as `inner:outer`.
+ *
+ * GitHub reads that as `<host>:<container>`, so `inner` is the port exposed on
+ * the runner and `outer` the port inside the service container. A step reaching
+ * the service connects to `inner` on localhost.
+ */
 case class ServicePort(inner: Int, outer: Int)
 object ServicePort {
   implicit val encoder: JsonEncoder[ServicePort] =
     JsonEncoder.string.contramap(sp => s"${sp.inner}:${sp.outer}")
 }
 
+/**
+ * A service container attached to a job.
+ *
+ * `options` carries the raw `docker create` arguments, which is where health
+ * checks live. Without one, a job races the container: the service is started
+ * but steps may run before it is accepting connections. For example:
+ *
+ * {{{
+ * options = Some("--health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5")
+ * }}}
+ */
 case class Service(
   name: String,
   image: ImageRef,
   env: Map[String, String] = Map.empty,
-  ports: Chunk[ServicePort] = Chunk.empty
+  ports: Chunk[ServicePort] = Chunk.empty,
+  options: Option[String] = None
 )
 object Service {
   implicit val encoder: JsonEncoder[Service] =
     JsonEncoder[Json].contramap { s =>
       Json.Obj(
         ("image", s.image.toJsonAST.getOrElse(Json.Null)),
-        ("env", s.env.toJsonAST.getOrElse(Json.Null)),
-        ("ports", s.ports.toJsonAST.getOrElse(Json.Null))
+        // Empty collections would otherwise render as `env: {}` and `ports: []`, which `dropNulls`
+        // cannot remove.
+        ("env", if (s.env.nonEmpty) s.env.toJsonAST.getOrElse(Json.Null) else Json.Null),
+        ("ports", if (s.ports.nonEmpty) s.ports.toJsonAST.getOrElse(Json.Null) else Json.Null),
+        ("options", s.options.toJsonAST.getOrElse(Json.Null))
       )
     }
 }
