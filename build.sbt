@@ -78,7 +78,13 @@ lazy val `zio-sbt-ci` =
     .settings(stdSettings())
     .settings(
       headerEndYear := Some(2023),
-      scriptedTestSettings
+      scriptedTestSettings,
+      // The `bothPlugins` fixture puts zio-sbt-website on the same build classpath, which is the
+      // configuration that used to fail to load because both plugins declared `ciWorkflowName`.
+      scriptedDependencies := {
+        val _ = scriptedDependencies.value
+        (`zio-sbt-website` / publishLocal).value
+      }
     )
     .enablePlugins(SbtPlugin)
     .dependsOn(`zio-sbt-githubactions`)

@@ -72,7 +72,12 @@ object ZioSbtCiPlugin extends AutoPlugin {
       settingKey[Seq[String]]("Job IDs that need to pass before a pull request (PR) can be approved")
     val ciReleaseApprovalJobs: SettingKey[Seq[String]] =
       settingKey[Seq[String]]("Job IDs that need to pass before a new release.")
-    val ciWorkflowName: SettingKey[String]                     = settingKey[String]("CI Workflow Name")
+    val ciWorkflowTitle: SettingKey[String] =
+      settingKey[String](
+        "Name of the generated CI workflow, which also determines the file it is written to; " +
+          "default is \"CI\", written to .github/workflows/ci.yml. Named `ciWorkflowTitle` rather " +
+          "than `ciWorkflowName` so it does not collide with zio-sbt-website's key of that name"
+      )
     val ciDependencyUpdateBots: SettingKey[Seq[DependencyBot]] =
       settingKey[Seq[DependencyBot]](
         "Bots whose PRs are auto-approved and auto-merged, e.g. `DependencyBot.Dependabot`, " +
@@ -571,7 +576,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
 
   lazy val generateGithubWorkflowTask: Def.Initialize[Task[Unit]] =
     Def.task {
-      val workflowName     = ciWorkflowName.value
+      val workflowName     = ciWorkflowTitle.value
       val enabledBranches  = ciEnabledBranches.value
       val buildJobs        = ciBuildJobs.value
       val lintJobs         = ciLintJobs.value
@@ -711,7 +716,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
 
   override lazy val buildSettings: Seq[Setting[_]] =
     Seq(
-      ciWorkflowName         := "CI",
+      ciWorkflowTitle        := "CI",
       ciEnabledBranches      := Seq.empty,
       ciDependencyUpdateBots := Seq(
         DependencyBot.Dependabot,
