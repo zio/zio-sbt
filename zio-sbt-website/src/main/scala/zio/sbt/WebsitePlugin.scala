@@ -99,11 +99,16 @@ object WebsitePlugin extends sbt.AutoPlugin {
       generateReadme       := generateReadmeTask.value,
       // mdoc only treats a limited set of extensions as markdown by default, so without
       // this, docs/index.mdx would be copied verbatim, leaving @VERSION@ and
-      // @PROJECT_BADGES@ unsubstituted. `--markdown-extensions` expects a comma-separated
-      // list (and replaces the defaults), so include all desired extensions here.
+      // @PROJECT_BADGES@ unsubstituted. `--markdown-extensions` replaces the defaults and
+      // must be passed once per extension (a comma-separated value is parsed as a single
+      // literal extension that matches no files), so include all desired extensions here.
       mdocExtraArguments ++= Seq(
         "--markdown-extensions",
-        "md,html,mdx"
+        "md",
+        "--markdown-extensions",
+        "html",
+        "--markdown-extensions",
+        "mdx"
       ),
       docsDependencies := Seq.empty,
       badgeArtifactId  := mainModuleName.value + '_' + scalaBinaryVersion.value,
