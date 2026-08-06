@@ -48,6 +48,13 @@ object ZioSbtCiPlugin extends AutoPlugin {
           "`ciJvmOptions`) and NODE_OPTIONS (from `ciNodeOptions`); assigning to this key replaces " +
           "that map entirely, which is how a build opts out of JDK_JAVA_OPTIONS in favour of, say, SBT_OPTS"
       )
+    val ciConcurrency: SettingKey[Option[Concurrency]] =
+      settingKey[Option[Concurrency]](
+        "Concurrency group for the generated workflow, or None to omit the block entirely. Defaults " +
+          "to one run per branch with in-progress runs cancelled, keeping every run on the default " +
+          "branch. `cancelInProgress` accepts an expression via `CancelInProgress.When(...)`, so a " +
+          "workflow can cancel superseded pull request runs while letting releases finish"
+      )
     val ciUpdateReadmeCondition: SettingKey[Option[Condition]] =
       settingKey[Option[Condition]]("condition to update readme")
     val ciTargetJavaVersions: SettingKey[Seq[String]] =
@@ -592,10 +599,12 @@ object ZioSbtCiPlugin extends AutoPlugin {
       val releaseJobs      = ciReleaseJobs.value
       val postReleaseJobs  = ciPostReleaseJobs.value
       val workflowEnv      = ciWorkflowEnv.value
+      val concurrency      = ciConcurrency.value
 
       val workflow = Workflow(
         name = workflowName,
         env = workflowEnv,
+        concurrency = concurrency,
         triggers = Seq(
           Trigger.WorkflowDispatch(),
           Trigger.Release(Seq("published")),
@@ -744,6 +753,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
         Map("JDK_JAVA_OPTIONS" -> jvmOptions.mkString(" ")) ++
           (if (nodeOptions.nonEmpty) Map("NODE_OPTIONS" -> nodeOptions.mkString(" ")) else Map.empty)
       },
+      ciConcurrency              := Some(Workflow.defaultConcurrency),
       ciUpdateReadmeCondition    := None,
       ciGroupSimilarTests        := false,
       ciSwapSizeGB               := 0,
