@@ -33,21 +33,26 @@ import zio.sbt.WebsiteUtils.{readFile, removeYamlHeader}
 object WebsitePlugin extends sbt.AutoPlugin {
 
   object autoImport {
-    val compileDocs: InputKey[Unit]                        = inputKey[Unit]("Compile docs")
-    val installWebsite: TaskKey[Unit]                      = taskKey[Unit]("Install the website for the first time")
-    val buildWebsite: TaskKey[Unit]                        = taskKey[Unit]("Build website (default output: website/build)")
-    val previewWebsite: TaskKey[Unit]                      = taskKey[Unit]("preview website")
-    val publishToNpm: InputKey[Unit]                       = inputKey[Unit]("Publish website to the npm registry")
-    val publishSnapshotToNpm: InputKey[Unit]               = inputKey[Unit]("Publish snapshot version of website to the npm registry")
-    val publishHashverToNpm: InputKey[Unit]                = inputKey[Unit]("Publish hash version of website to the npm registry")
-    val checkReadme: TaskKey[Unit]                         = taskKey[Unit]("Make sure if the README.md file is up-to-date")
-    val generateReadme: TaskKey[Unit]                      = taskKey[Unit]("Generate readme file")
-    val npmToken: SettingKey[String]                       = settingKey[String]("NPM Token")
-    val docsDependencies: SettingKey[Seq[ModuleID]]        = settingKey[Seq[ModuleID]]("documentation project dependencies")
-    val websiteDir: SettingKey[Path]                       = settingKey[Path]("Website directory")
-    val projectStage: SettingKey[ProjectStage]             = settingKey[ProjectStage]("Project stage")
-    val projectName: SettingKey[String]                    = settingKey[String]("Project name e.g. ZIO SBT")
-    val mainModuleName: SettingKey[String]                 = settingKey[String]("Main Module Name e.g. zio-sbt")
+    val compileDocs: InputKey[Unit]                 = inputKey[Unit]("Compile docs")
+    val installWebsite: TaskKey[Unit]               = taskKey[Unit]("Install the website for the first time")
+    val buildWebsite: TaskKey[Unit]                 = taskKey[Unit]("Build website (default output: website/build)")
+    val previewWebsite: TaskKey[Unit]               = taskKey[Unit]("preview website")
+    val publishToNpm: InputKey[Unit]                = inputKey[Unit]("Publish website to the npm registry")
+    val publishSnapshotToNpm: InputKey[Unit]        = inputKey[Unit]("Publish snapshot version of website to the npm registry")
+    val publishHashverToNpm: InputKey[Unit]         = inputKey[Unit]("Publish hash version of website to the npm registry")
+    val checkReadme: TaskKey[Unit]                  = taskKey[Unit]("Make sure if the README.md file is up-to-date")
+    val generateReadme: TaskKey[Unit]               = taskKey[Unit]("Generate readme file")
+    val npmToken: SettingKey[String]                = settingKey[String]("NPM Token")
+    val docsDependencies: SettingKey[Seq[ModuleID]] = settingKey[Seq[ModuleID]]("documentation project dependencies")
+    val websiteDir: SettingKey[Path]                = settingKey[Path]("Website directory")
+    val projectStage: SettingKey[ProjectStage]      = settingKey[ProjectStage]("Project stage")
+    val projectName: SettingKey[String]             = settingKey[String]("Project name e.g. ZIO SBT")
+    val mainModuleName: SettingKey[String]          = settingKey[String]("Main Module Name e.g. zio-sbt")
+    val badgeArtifactId: SettingKey[String]         =
+      settingKey[String](
+        "Artifact id used in version badges (default: mainModuleName_scalaBinaryVersion). " +
+          "Override it for artifacts with non-standard coordinates, e.g. sbt plugins (name_2.12_1.0)."
+      )
     val ciWorkflowName: SettingKey[String]                 = settingKey[String]("CI Workflow Name")
     val projectHomePage: SettingKey[String]                = settingKey[String]("Project home page url e.g. https://zio.dev/zio-sbt")
     val readmeBanner: SettingKey[String]                   = settingKey[String]("Readme banner section")
@@ -92,7 +97,21 @@ object WebsitePlugin extends sbt.AutoPlugin {
       publishHashverToNpm  := publishHashverToNpmTask.value,
       checkReadme          := checkReadmeTask.value,
       generateReadme       := generateReadmeTask.value,
-      docsDependencies     := Seq.empty,
+      // mdoc only treats a limited set of extensions as markdown by default, so without
+      // this, docs/index.mdx would be copied verbatim, leaving @VERSION@ and
+      // @PROJECT_BADGES@ unsubstituted. `--markdown-extensions` replaces the defaults and
+      // must be passed once per extension (a comma-separated value is parsed as a single
+      // literal extension that matches no files), so include all desired extensions here.
+      mdocExtraArguments ++= Seq(
+        "--markdown-extensions",
+        "md",
+        "--markdown-extensions",
+        "html",
+        "--markdown-extensions",
+        "mdx"
+      ),
+      docsDependencies := Seq.empty,
+      badgeArtifactId  := mainModuleName.value + '_' + scalaBinaryVersion.value,
       libraryDependencies ++= docsDependencies.value,
       mdocVariables ++= {
         Map(
@@ -103,8 +122,11 @@ object WebsitePlugin extends sbt.AutoPlugin {
             WebsiteUtils.generateProjectBadges(
               projectStage = projectStage.value,
               groupId = organization.value,
-              artifactId = mainModuleName.value + '_' + scalaBinaryVersion.value,
-              docsArtifactId = moduleName.value + '_' + scalaBinaryVersion.value,
+              artifactId = badgeArtifactId.value,
+              // The javadoc badge must point at a published artifact. The docs module
+              // itself (moduleName here) is typically not published, so use the same
+              // published coordinate as the release badge.
+              docsArtifactId = badgeArtifactId.value,
               githubUser = "zio",
               githubRepo = scmInfo.value.map(_.browseUrl.getPath.split('/').last).getOrElse("github repo not provided"),
               projectName = projectName.value,
@@ -133,6 +155,14 @@ object WebsitePlugin extends sbt.AutoPlugin {
     )
 
   private def exit(exitCode: Int, errorMessage: String = "") = if (exitCode != 0) sys.error(errorMessage: String)
+
+  // Docs index may be either index.md or index.mdx (e.g. when the page needs
+  // JSX components like Tabs); mdoc preserves the extension on output.
+  private def resolveIndexFile(docsDir: Path): Path = {
+    val md  = docsDir.resolve("index.md")
+    val mdx = docsDir.resolve("index.mdx")
+    if (!Files.exists(md) && Files.exists(mdx)) mdx else md
+  }
 
   lazy val previewWebsiteTask: Def.Initialize[Task[Unit]] = Def.task {
     import zio.*
@@ -226,6 +256,14 @@ object WebsitePlugin extends sbt.AutoPlugin {
   lazy val buildWebsiteTask: Def.Initialize[Task[Unit]] =
     Def.task {
       val _ = Def.sequential(installWebsiteTask, compileDocs.toTask("")).value
+
+      // The website directory may already exist (e.g. committed to the repository) so
+      // installWebsiteTask skips installation, but its dependencies are not versioned.
+      if (!Files.exists(websiteDir.value.resolve("node_modules")))
+        exit(
+          Process("npm install", new File(s"${websiteDir.value}")).!,
+          "Failed to install website dependencies!"
+        )
 
       val p = Process("npm run build", new File(s"${websiteDir.value}")).!
       exit(p, "Failed to build the website!")
@@ -353,7 +391,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
     }
 
   private def prefixUrlsWith(markdown: String, prefix: String): String = {
-    val regex = """\(((?!http)\S*\.(png|jpg|md|scala|java)\b)\)""".r
+    val regex = """\(((?!http)\S*\.(png|jpg|mdx?|scala|java)\b)\)""".r
 
     regex.replaceAllIn(markdown, '(' + prefix + _.group(1) + ')')
   }
@@ -389,14 +427,17 @@ object WebsitePlugin extends sbt.AutoPlugin {
   }
 
   lazy val ignoreIndexSnapshotVersion: Def.Initialize[Task[Unit]] = Def.task {
-    if (normalizedVersion.value.endsWith("-SNAPSHOT"))
-      exit("sed -i.bak s/@VERSION@/<version>/g docs/index.md".!)
+    if (normalizedVersion.value.endsWith("-SNAPSHOT")) {
+      val index = resolveIndexFile(Paths.get("docs"))
+      exit(s"sed -i.bak s/@VERSION@/<version>/g $index".!)
+    }
   }
 
   lazy val revertIndexChanges: Def.Initialize[Task[Unit]] = Def.task {
     if (normalizedVersion.value.endsWith("-SNAPSHOT")) {
-      exit("rm docs/index.md".!)
-      exit("mv docs/index.md.bak docs/index.md".!)
+      val index = resolveIndexFile(Paths.get("docs"))
+      exit(s"rm $index".!)
+      exit(s"mv $index.bak $index".!)
     }
   }
 
@@ -416,8 +457,9 @@ object WebsitePlugin extends sbt.AutoPlugin {
       Unsafe.unsafe { implicit unsafe =>
         Runtime.default.unsafe
           .run(
-            readFile(websiteDir.value.resolve("docs/index.md").toString).map(md => removeYamlHeader(md).trim).flatMap {
-              introduction =>
+            readFile(resolveIndexFile(websiteDir.value.resolve("docs")).toString)
+              .map(md => removeYamlHeader(md).trim)
+              .flatMap { introduction =>
                 WebsiteUtils.generateReadme(
                   projectName = projectName.value,
                   banner = readmeBanner.value,
@@ -431,7 +473,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
                   credits = readmeCredits.value.trim,
                   maintainers = readmeMaintainers.value.trim
                 )
-            }
+              }
           )
           .getOrThrowFiberFailure()
       }
