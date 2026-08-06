@@ -83,7 +83,11 @@ object ZioSbtCiPlugin extends AutoPlugin {
       taskKey[Unit]("Generate the github workflow that auto-approves dependency-bot PRs")
     val ciGenerateAutoMergeWorkflow: TaskKey[Unit] =
       taskKey[Unit]("Generate the github workflow that auto-merges dependency-bot PRs")
-    val ciSwapSizeGB: SettingKey[Int]             = settingKey[Int]("Swap size, default is 0")
+    val ciSwapSizeGB: SettingKey[Int]           = settingKey[Int]("Swap size, default is 0")
+    val ciPublishSnapshots: SettingKey[Boolean] =
+      settingKey[Boolean](
+        "Whether the release job also runs on pushes to enabled branches, publishing SNAPSHOT artifacts via `sbt ci-release`; default is true"
+      )
     val ciBackgroundJobs: SettingKey[Seq[String]] = settingKey[Seq[String]]("Background jobs")
     val ciBuildJobs: SettingKey[Seq[Job]]         = settingKey[Seq[Job]]("CI Build Jobs")
     val ciLintJobs: SettingKey[Seq[Job]]          = settingKey[Seq[Job]]("CI Lint Jobs")
@@ -445,20 +449,27 @@ object ZioSbtCiPlugin extends AutoPlugin {
       )
   )
 
+  // The workflow's push trigger is already restricted to ciEnabledBranches, so
+  // matching push events here only adds pushes to those branches, where an
+  // untagged HEAD makes `sbt ci-release` publish a SNAPSHOT.
+  private val releaseOrSnapshotCondition =
+    releaseCondition.map(_ || Condition.Expression("github.event_name == 'push'"))
+
   lazy val releaseJobs: Def.Initialize[Seq[Job]] = Def.setting {
-    val swapSizeGB   = ciSwapSizeGB.value
-    val setSwapSpace = SetSwapSpace.value
-    val checkout     = Checkout.value
-    val javaVersion  = ciDefaultJavaVersion.value
-    val release      = Release.value
-    val jobs         = ciReleaseApprovalJobs.value
+    val swapSizeGB       = ciSwapSizeGB.value
+    val setSwapSpace     = SetSwapSpace.value
+    val checkout         = Checkout.value
+    val javaVersion      = ciDefaultJavaVersion.value
+    val release          = Release.value
+    val jobs             = ciReleaseApprovalJobs.value
+    val publishSnapshots = ciPublishSnapshots.value
 
     Seq(
       Job(
         id = "release",
         name = "Release",
         need = jobs,
-        condition = releaseCondition,
+        condition = if (publishSnapshots) releaseOrSnapshotCondition else releaseCondition,
         steps = (if (swapSizeGB > 0) Seq(setSwapSpace) else Seq.empty) ++
           Seq(
             checkout,
@@ -746,6 +757,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
       ciBackgroundJobs          := Seq.empty,
       ciMatrixMaxParallel       := None,
       ciDefaultJavaVersion      := "17",
+      ciPublishSnapshots        := true,
       ciBuildJobs               := buildJobs.value,
       ciLintJobs                := lintJobs.value,
       ciTestJobs                := testJobs.value,
