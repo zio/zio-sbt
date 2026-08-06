@@ -449,11 +449,16 @@ object ZioSbtCiPlugin extends AutoPlugin {
       )
   )
 
-  // The workflow's push trigger is already restricted to ciEnabledBranches, so
-  // matching push events here only adds pushes to those branches, where an
-  // untagged HEAD makes `sbt ci-release` publish a SNAPSHOT.
+  // Snapshots are only published from the repository's default branch: the
+  // workflow's push trigger covers ciEnabledBranches, but when that setting is
+  // empty the trigger matches all branches, and snapshots must not be
+  // published from feature branches. On a default-branch push HEAD is
+  // untagged, so `sbt ci-release` publishes a SNAPSHOT.
   private val releaseOrSnapshotCondition =
-    releaseCondition.map(_ || Condition.Expression("github.event_name == 'push'"))
+    releaseCondition.map(
+      _ || (Condition.Expression("github.event_name == 'push'") &&
+        Condition.Expression("github.ref == format('refs/heads/{0}', github.event.repository.default_branch)"))
+    )
 
   lazy val releaseJobs: Def.Initialize[Seq[Job]] = Def.setting {
     val swapSizeGB       = ciSwapSizeGB.value
