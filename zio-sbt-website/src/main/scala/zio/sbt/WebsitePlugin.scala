@@ -302,7 +302,8 @@ object WebsitePlugin extends sbt.AutoPlugin {
         hashVersion.getOrElse {
           logger.warn(
             "Could not determine the hash version from git, falling back to the project version. " +
-              "This is most likely a result of this project not having a git repo initialized."
+              "This is most likely because git is not installed, this project has no git repo initialized, " +
+              "or the repo has no commits yet."
           )
           projectVersion
         }
@@ -362,7 +363,10 @@ object WebsitePlugin extends sbt.AutoPlugin {
         .getOrElse(sys.error("scmInfo must be set for npm provenance verification"))
 
       val hashVer = hashVersion.getOrElse(
-        sys.error("Could not determine the hash version: not a git repository or it has no commits")
+        sys.error(
+          "Could not determine the hash version from git. This is most likely because git is not installed, " +
+            "this project has no git repo initialized, or the repo has no commits yet."
+        )
       )
 
       exit(Process(s"npm version $hashVer --no-git-tag-version", docsDir).!)
