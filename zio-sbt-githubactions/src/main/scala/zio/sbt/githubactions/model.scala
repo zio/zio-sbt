@@ -16,6 +16,8 @@
 
 package zio.sbt.githubactions
 
+import scala.annotation.nowarn
+
 import zio.Chunk
 import zio.json._
 import zio.json.ast.Json
@@ -352,17 +354,22 @@ object Service {
     }
 }
 
+// The synthetic `copy`/`apply`/`unapply` all mention the deprecated `timeoutMinutes`, which would
+// otherwise warn here on every compile - and `enableStrictCompile` turns warnings into errors.
+@nowarn("cat=deprecation")
 case class Job private (
   id: String,
   name: String,
   runsOn: String,
+  @deprecated("Use jobTimeout instead", "0.6.4")
   timeoutMinutes: Int,
   continueOnError: Boolean,
   strategy: Option[Strategy],
   steps: Chunk[Step],
   need: Chunk[String],
   services: Chunk[Service],
-  condition: Option[Condition]
+  condition: Option[Condition],
+  jobTimeout: Option[Int]
 ) {
   def withStrategy(strategy: Strategy): Job =
     copy(strategy = Some(strategy))
@@ -372,20 +379,36 @@ case class Job private (
 
   def withServices(services: Service*): Job =
     copy(services = Chunk.fromIterable(services))
+
+  def withTimeout(minutes: Int): Job =
+    copy(jobTimeout = Some(minutes))
 }
 
 object Job {
+
+  /**
+   * The historical default of the deprecated `timeoutMinutes` field.
+   *
+   * `timeoutMinutes` was accepted but never rendered, so no repository has ever
+   * had a `timeout-minutes` line in its generated workflow. Emitting the
+   * default would silently impose a 30 minute cap on every existing job,
+   * killing any that legitimately runs longer, so only a value that differs
+   * from this default is treated as a request for a timeout.
+   */
+  private final val UnsetTimeoutMinutes = 30
+
   def apply(
     id: String,
     name: String,
     runsOn: String = "ubuntu-latest",
-    timeoutMinutes: Int = 30,
+    timeoutMinutes: Int = UnsetTimeoutMinutes,
     continueOnError: Boolean = false,
     strategy: Option[Strategy] = None,
     steps: Seq[Step] = Seq.empty,
     need: Seq[String] = Seq.empty,
     services: Seq[Service] = Seq.empty,
-    condition: Option[Condition] = None
+    condition: Option[Condition] = None,
+    jobTimeout: Option[Int] = None
   ): Job = Job(
     id = id,
     name = name,
@@ -396,8 +419,20 @@ object Job {
     steps = Chunk.fromIterable(steps),
     need = Chunk.fromIterable(need),
     services = Chunk.fromIterable(services),
-    condition = condition
+    condition = condition,
+    jobTimeout = jobTimeout
   )
+
+  /**
+   * The timeout to render, if any.
+   *
+   * `jobTimeout` wins. Failing that, a `timeoutMinutes` that differs from its
+   * default is honoured, so builds that set it before it was ever rendered -
+   * zio-prelude sets 60 - get what they asked for without having to change.
+   */
+  @nowarn("cat=deprecation")
+  private def timeoutOf(job: Job): Option[Int] =
+    job.jobTimeout.orElse(Some(job.timeoutMinutes).filter(_ != UnsetTimeoutMinutes))
 
   implicit val encoder: JsonEncoder[Job] =
     JsonEncoder[Json].contramap { job =>
@@ -410,6 +445,7 @@ object Job {
       Json.Obj(
         ("name", Json.Str(job.name)),
         ("runs-on", Json.Str(job.runsOn)),
+        ("timeout-minutes", timeoutOf(job).toJsonAST.getOrElse(Json.Null)),
         ("continue-on-error", Json.Bool(job.continueOnError)),
         ("strategy", job.strategy.toJsonAST.getOrElse(Json.Null)),
         ("needs", if (job.need.nonEmpty) job.need.toJsonAST.getOrElse(Json.Null) else Json.Null),

@@ -23,6 +23,7 @@ jobs:
   compile:
     name: Compile
     runs-on: ubuntu-22.04
+    timeout-minutes: 60
     continue-on-error: false
     strategy:
       fail-fast: false
@@ -81,40 +82,26 @@ jobs:
       run: sbt ciCheckGithubWorkflow
     - name: Lint
       run: sbt lint
-  test:
-    name: Test
+  integration-test:
+    name: Integration Test
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     continue-on-error: false
-    strategy:
-      fail-fast: false
-      matrix:
-        java:
-        - '17'
-        - '21'
-        - '25'
     steps:
-    - name: Set Swap Space
-      uses: pierotofy/set-swap-space@master
-      with:
-        swap-size-gb: 7
-    - name: Install libuv
-      run: sudo apt-get update && sudo apt-get install -y libuv1-dev
-    - name: Setup Scala
-      uses: actions/setup-java@v5
-      with:
-        distribution: corretto
-        java-version: ${{ matrix.java }}
-        check-latest: true
-    - name: Setup SBT
-      uses: sbt/setup-sbt@v1
-    - name: Cache Dependencies
-      uses: coursier/cache-action@v8
     - name: Git Checkout
       uses: actions/checkout@v7
       with:
         fetch-depth: '0'
-    - name: Test
-      run: sbt +test
+    - name: Setup Scala
+      uses: actions/setup-java@v5
+      with:
+        distribution: corretto
+        java-version: '17'
+        check-latest: true
+    - name: Cache Dependencies
+      uses: coursier/cache-action@v8
+    - name: Integration test
+      run: sbt it:test
   update-readme:
     name: Update README
     runs-on: ubuntu-latest
@@ -189,6 +176,7 @@ jobs:
     needs:
     - lint
     - compile
+    - integration-test
     steps:
     - name: Report Successful CI
       run: echo "ci passed"

@@ -2,9 +2,9 @@
 // reusable step values the plugin exports, and `ciPullRequestApprovalJobs` renamed to match the
 // custom job ids.
 //
-// This fixture is also the canary for rendering `timeout-minutes`. `timeoutMinutes = 60` below is
-// currently accepted and silently discarded, exactly as in zio-prelude. When that starts being
-// emitted, this golden file must change and no other should.
+// This fixture is also where `timeout-minutes` is pinned, via both routes: the deprecated
+// `timeoutMinutes` on the compile job (the zio-prelude shape, which was accepted and silently
+// discarded before 0.6.4) and the current `jobTimeout` on the test job.
 
 import zio.sbt.ZioSbtCiPlugin._
 import zio.sbt.githubactions.{Job, Step, Strategy}
@@ -14,7 +14,21 @@ ThisBuild / name := "Test Project"
 inThisBuild(
   List(
     ciSwapSizeGB              := 7,
-    ciPullRequestApprovalJobs := Seq("lint", "compile"),
+    ciPullRequestApprovalJobs := Seq("lint", "compile", "integration-test"),
+    // `jobTimeout` is the current way to ask for a timeout; `withTimeout` is equivalent.
+    ciTestJobs                := Seq(
+      Job(
+        id         = "integration-test",
+        name       = "Integration Test",
+        jobTimeout = Some(45),
+        steps      = Seq(
+          Checkout.value,
+          SetupJava("17"),
+          CacheDependencies,
+          Step.SingleStep(name = "Integration test", run = Some("sbt it:test"))
+        )
+      )
+    ),
     ciBuildJobs               := Seq(
       Job(
         id             = "compile",
