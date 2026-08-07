@@ -106,17 +106,11 @@ jobs:
       if: ${{ (matrix.java == '17') && (matrix.scala == '2.13.16') }}
       run: 'sbt ++${{ matrix.scala }} moduleA/test '
     - name: Test
-      if: ${{ (matrix.java == '25') && (matrix.scala == '2.13.16') }}
+      if: ${{ (matrix.java == '21') && (matrix.scala == '2.13.16') }}
       run: 'sbt ++${{ matrix.scala }} moduleA/test  moduleB/test '
     - name: Test
       if: ${{ (matrix.java == '21') && (matrix.scala == '3.3.4') }}
       run: 'sbt ++${{ matrix.scala }} moduleB/test '
-    - name: Test
-      if: ${{ (matrix.java == '25') && (matrix.scala == '3.3.4') }}
-      run: 'sbt ++${{ matrix.scala }} moduleB/test '
-    - name: Test
-      if: ${{ (matrix.java == '21') && (matrix.scala == '2.13.16') }}
-      run: 'sbt ++${{ matrix.scala }} moduleA/test  moduleB/test '
   update-readme:
     name: Update README
     runs-on: ubuntu-latest

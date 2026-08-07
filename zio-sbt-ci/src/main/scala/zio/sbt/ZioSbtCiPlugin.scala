@@ -232,7 +232,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
                   }
                 } else {
                   (for {
-                    javaPlatform: String <- Set("17", "21", "25")
+                    javaPlatform: String <- javaPlatforms
                     scalaVersion: String <- scalaVersionMatrix.values.toSeq.flatten.toSet
                     projects              =
                       scalaVersionMatrix.filterKeys { p =>
@@ -306,29 +306,15 @@ object ZioSbtCiPlugin extends AutoPlugin {
               )
             } else {
               Step.StepSequence(
-                Seq(
+                javaPlatforms.map { javaPlatform =>
                   Step.SingleStep(
-                    name = "Java 17 Tests",
-                    condition = Some(Condition.Expression("matrix.java == '17'")),
+                    name = s"Java $javaPlatform Tests",
+                    condition = Some(Condition.Expression(s"matrix.java == '$javaPlatform'")),
                     run = Some(
-                      prefixJobs + "sbt ${{ matrix.scala-project-java17 }}/test"
-                    )
-                  ),
-                  Step.SingleStep(
-                    name = "Java 21 Tests",
-                    condition = Some(Condition.Expression("matrix.java == '21'")),
-                    run = Some(
-                      prefixJobs + "sbt ${{ matrix.scala-project-java21 }}/test"
-                    )
-                  ),
-                  Step.SingleStep(
-                    name = "Java 25 Tests",
-                    condition = Some(Condition.Expression("matrix.java == '25'")),
-                    run = Some(
-                      prefixJobs + "sbt ${{ matrix.scala-project-java25 }}/test"
+                      prefixJobs + s"sbt $${{ matrix.scala-project-java$javaPlatform }}/test"
                     )
                   )
-                )
+                }
               )
 
             }
@@ -828,8 +814,9 @@ object ZioSbtCiPlugin extends AutoPlugin {
       ciReleaseJobs             := releaseJobs.value,
       ciPostReleaseJobs         := postReleaseJobs.value,
       ciPullRequestApprovalJobs := Def.setting {
-        val test = ciTestJobs.value.map(_ => "test")
-        Seq("lint") ++ test ++ Seq("build")
+        // The real job ids: a build that renames a job, or adds a second test job, needs the
+        // aggregate job to wait on what actually exists.
+        ciLintJobs.value.map(_.id) ++ ciTestJobs.value.map(_.id) ++ ciBuildJobs.value.map(_.id)
       }.value,
       ciReleaseApprovalJobs := Seq("ci")
     )
