@@ -584,8 +584,24 @@ object ZioSbtCiPlugin extends AutoPlugin {
         |$yaml""".stripMargin
   }
 
+  /**
+   * Turns a workflow name into a file name.
+   *
+   * Anything that is not alphanumeric becomes a dash, so a name like
+   * "Continuous Integration" yields `continuous-integration.yml` rather than a
+   * file with a space in it.
+   */
+  private[sbt] def workflowFileName(workflowName: String): String = {
+    val slug = workflowName.trim.toLowerCase.replaceAll("[^a-z0-9]+", "-").replaceAll("(^-)|(-$)", "")
+    s"${if (slug.isEmpty) "ci" else slug}.yml"
+  }
+
+  def writeWorkflowFile(baseDir: File, workflow: Workflow, fileName: String): Unit =
+    IO.write(baseDir / ".github" / "workflows" / fileName, renderWorkflow(workflow))
+
+  @deprecated("Use the overload taking the build's base directory", "0.6.4")
   def writeWorkflowFile(workflow: Workflow, fileName: String): Unit =
-    IO.write(new File(s".github/workflows/$fileName"), renderWorkflow(workflow))
+    writeWorkflowFile(file("."), workflow, fileName)
 
   lazy val generateGithubWorkflowTask: Def.Initialize[Task[Unit]] =
     Def.task {
@@ -615,7 +631,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
           buildJobs ++ lintJobs ++ testJobs ++ updateReadmeJobs ++ reportSuccessful ++ releaseJobs ++ postReleaseJobs
       )
 
-      writeWorkflowFile(workflow, s"${workflowName.toLowerCase}.yml")
+      writeWorkflowFile((ThisBuild / Keys.baseDirectory).value, workflow, workflowFileName(workflowName))
     }
 
   private def dependencyBotPRCondition(bots: Seq[String]): Condition = {
@@ -717,10 +733,10 @@ object ZioSbtCiPlugin extends AutoPlugin {
   }
 
   lazy val generateAutoApproveWorkflowTask: Def.Initialize[Task[Unit]] =
-    Def.task(writeWorkflowFile(autoApproveWorkflow.value, "auto-approve.yml"))
+    Def.task(writeWorkflowFile((ThisBuild / Keys.baseDirectory).value, autoApproveWorkflow.value, "auto-approve.yml"))
 
   lazy val generateAutoMergeWorkflowTask: Def.Initialize[Task[Unit]] =
-    Def.task(writeWorkflowFile(autoMergeWorkflow.value, "auto-merge.yml"))
+    Def.task(writeWorkflowFile((ThisBuild / Keys.baseDirectory).value, autoMergeWorkflow.value, "auto-merge.yml"))
 
   override lazy val buildSettings: Seq[Setting[_]] =
     Seq(
