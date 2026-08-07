@@ -198,7 +198,7 @@ jobs:
     needs:
     - lint
     - test
-    - test
+    - compile-examples
     - build
     steps:
     - name: Report Successful CI
