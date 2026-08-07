@@ -803,16 +803,53 @@ object ZioSbtCiPlugin extends AutoPlugin {
     object HashVersioning     extends DocsVersioning("publishHashverToNpm")
   }
 
+  private val WorkflowsDir = ".github/workflows"
+
+  /** Runs git, returning its exit code and stdout lines. */
+  private def git(args: String*): (Int, Seq[String]) = {
+    val out  = scala.collection.mutable.ListBuffer.empty[String]
+    val code = Process("git" +: args) ! ProcessLogger(out += _, _ => ())
+    (code, out.toList)
+  }
+
   lazy val checkGithubWorkflowTask: Def.Initialize[Task[Unit]] =
     Def.task {
       val _ = ciGenerateGithubWorkflow.value
 
-      if ("git diff --exit-code".! == 1) {
+      // Regeneration has just overwritten the workflow files, so anything git still reports as
+      // changed is a difference between what the build produces and what was committed.
+      //
+      // The comparison is deliberately scoped to the workflow directory: a whole-tree `git diff`
+      // reports every unrelated edit in the working copy as workflow drift, which is a confusing
+      // failure for anyone running `sbt lint` locally with work in progress.
+      if (git("rev-parse", "--git-dir")._1 != 0)
         sys.error(
-          "The ci.yml workflow is not up-to-date!\n" +
-            "Please run `sbt ciGenerateGithubWorkflow` and commit new changes."
+          "`ciCheckGithubWorkflow` needs a git repository to compare the generated workflows " +
+            "against, and none was found."
         )
+
+      // Comparing against HEAD rather than the index, so a staged-but-uncommitted edit still counts.
+      // A repository with no commits yet has no HEAD; there everything is simply untracked.
+      val modified =
+        if (git("rev-parse", "--verify", "--quiet", "HEAD")._1 == 0)
+          git("diff", "--name-only", "HEAD", "--", WorkflowsDir) match {
+            case (0, files) => files
+            case (code, _)  => sys.error(s"`git diff` exited with $code; cannot verify the workflows.")
+          }
+        else Seq.empty
+
+      val untracked = git("ls-files", "--others", "--exclude-standard", "--", WorkflowsDir) match {
+        case (0, files) => files
+        case (code, _)  => sys.error(s"`git ls-files` exited with $code; cannot verify the workflows.")
       }
+
+      val stale = (modified ++ untracked).map(_.trim).filter(_.nonEmpty).distinct.sorted
+
+      if (stale.nonEmpty)
+        sys.error(
+          stale.mkString("These workflow files are not up to date:\n  ", "\n  ", "\n") +
+            "Please run `sbt ciGenerateGithubWorkflow` and commit the result."
+        )
     }
 
   def makePrefixJobs(backgroundJobs: Seq[String]): String =
