@@ -118,12 +118,20 @@ Now you can generate a Github workflow by running the following command:
 sbt ciGenerateGithubWorkflow
 ```
 
-This will generate a GitHub workflow file inside the `.github/workflows` directory, named `ci.yml`. The workflow file contains following default Jobs:
+This will generate a GitHub workflow file inside the `.github/workflows` directory, named `ci.yml`. The workflow file contains the following default jobs:
 
-- Build
-- Lint
-- Test
-- Update Readme
+| Job | What it does |
+| --- | --- |
+| `build` | Compiles everything, publishes locally, and builds the website |
+| `lint` | Checks the generated workflow is up to date, then runs `sbt lint` |
+| `test` | Runs the test suite across the target Java versions |
+| `update-readme` | Regenerates `README.md` from `docs/index.md` and opens a PR |
+| `ci` | Aggregate gate: succeeds only if the jobs above did. Point branch protection at this one |
+| `release` | Runs `sbt ci-release` on a published release, and on pushes to enabled branches for SNAPSHOTs |
+| `release-docs` | Publishes the docs to npm |
+| `notify-docs-release` | Tells `zio/zio` to rebuild the docs site |
+
+Note that the plugin declares `trigger = allRequirements`, so having it on the classpath is enough — `enablePlugins(ZioSbtCiPlugin)` is not strictly required. Its settings are defined at `ThisBuild` level, so set them as `ThisBuild / ciSomething := ...`, or inside `inThisBuild(...)`.
 
 > **Note:**
 > 
@@ -158,6 +166,205 @@ The default value mirrors the bots used by the `zio/zio` repository: `Seq(Depend
 > **Note:**
 >
 > For `gh pr merge --auto` to actually merge a PR (rather than just queue it), the target repository needs "Allow auto-merge" enabled under **Settings → General**, and branch protection with required status checks configured on the target branch.
+
+### Keeping the Workflow in Sync
+
+The generated files are meant to be committed and never edited by hand. To stop them drifting from the build, run the check in CI — the default `lint` job already does:
+
+```bash
+sbt ciCheckGithubWorkflow
+```
+
+It regenerates the workflows and fails if the result differs from what is committed, naming the files that are stale. If a generated file is edited directly, the next run of this check fails, which is what keeps `build.sbt` the single source of truth.
+
+### Settings Reference
+
+All settings are `ThisBuild`-scoped.
+
+**Workflow-level**
+
+| Setting | Type | Default | Description |
+| --- | --- | --- | --- |
+| `ciWorkflowTitle` | `String` | `"CI"` | Workflow name, lowercased to form the filename (`ci.yml`). Named this way to avoid colliding with zio-sbt-website's `ciWorkflowName`, which sets the README badge |
+| `ciEnabledBranches` | `Seq[String]` | `Seq.empty` | Branches the workflow runs on. Empty means every branch |
+| `ciWorkflowEnv` | `Map[String, String]` | derived from `ciJvmOptions`/`ciNodeOptions` | Workflow-level environment. Assigning **replaces** the derived map, which is how a build opts out of `JDK_JAVA_OPTIONS` |
+| `ciJvmOptions` | `Seq[String]` | `Seq.empty` | Appended to `JDK_JAVA_OPTIONS` |
+| `ciNodeOptions` | `Seq[String]` | `Seq.empty` | Sets `NODE_OPTIONS` when non-empty |
+| `ciConcurrency` | `Option[Concurrency]` | one run per branch, cancelling in progress | Concurrency group, or `None` to omit the block |
+| `ciSwapSizeGB` | `Int` | `0` | Adds a swap-space step to every job when greater than zero |
+| `ciBackgroundJobs` | `Seq[String]` | `Seq.empty` | Commands prefixed to each `run`, for daemons a job needs |
+
+**Test matrix**
+
+| Setting | Type | Default | Description |
+| --- | --- | --- | --- |
+| `ciTargetJavaVersions` | `Seq[String]` | `Seq("17", "21", "25")` | Java versions in the test matrix |
+| `ciDefaultJavaVersion` | `String` | `"17"` | Java version for the non-matrix jobs |
+| `ciTargetScalaVersions` | `Map[String, Seq[String]]` | `Map.empty` | Module to Scala versions. Empty runs a plain `sbt +test` |
+| `ciTargetMinJavaVersions` | `Map[String, String]` | `Map.empty` | Module to minimum Java version, gating modules per matrix entry |
+| `ciGroupSimilarTests` | `Boolean` | `false` | Groups by Java and Scala version instead of one entry per module |
+| `ciMatrixMaxParallel` | `Option[Int]` | `None` | `strategy.max-parallel` |
+
+**Jobs and steps**
+
+| Setting | Type | Default | Description |
+| --- | --- | --- | --- |
+| `ciBuildJobs` | `Seq[Job]` | one `build` job | Replaces or extends the build jobs |
+| `ciLintJobs` | `Seq[Job]` | one `lint` job | |
+| `ciTestJobs` | `Seq[Job]` | one `test` job | |
+| `ciUpdateReadmeJobs` | `Seq[Job]` | one `update-readme` job | Set to `Seq.empty` if the README is maintained by hand |
+| `ciReleaseJobs` | `Seq[Job]` | one `release` job | |
+| `ciPostReleaseJobs` | `Seq[Job]` | `release-docs`, `notify-docs-release` | |
+| `ciPullRequestApprovalJobs` | `Seq[String]` | `lint`, `test`, `build` | Job ids the aggregate `ci` job waits on. Update this when renaming or adding jobs |
+| `ciReleaseApprovalJobs` | `Seq[String]` | `Seq("ci")` | Job ids the release waits on |
+| `ciCheckArtifactsCompilationSteps` | `Seq[Step]` | `sbt +Test/compile` | |
+| `ciCheckArtifactsBuildSteps` | `Seq[Step]` | `sbt +publishLocal` | |
+| `ciCheckWebsiteBuildProcess` | `Seq[Step]` | `sbt docs/buildWebsite` | Set to `Seq.empty` in a build with no `docs` project |
+| `ciCheckGithubWorkflowSteps` | `Seq[Step]` | `sbt ciCheckGithubWorkflow` | |
+
+**Release and docs**
+
+| Setting | Type | Default | Description |
+| --- | --- | --- | --- |
+| `ciPublishSnapshots` | `Boolean` | `true` | Also publish SNAPSHOTs on pushes to enabled branches |
+| `ciUpdateReadmeCondition` | `Option[Condition]` | `None` | When to run the README job. Defaults to published releases |
+| `ciDocsVersioningScheme` | `DocsVersioning` | `SemanticVersioning` | `SemanticVersioning` or `HashVersioning` |
+| `ciDependencyUpdateBots` | `Seq[DependencyBot]` | Dependabot, Renovate, `ScalaSteward("zio-scala-steward")` | Bots whose PRs are auto-approved and auto-merged |
+
+**Tasks**
+
+| Task | Description |
+| --- | --- |
+| `ciGenerateGithubWorkflow` | Writes `ci.yml`, `auto-approve.yml` and `auto-merge.yml` |
+| `ciCheckGithubWorkflow` | Regenerates and fails if the committed files are stale |
+| `ciGenerateAutoApproveWorkflow` | Writes `auto-approve.yml` only |
+| `ciGenerateAutoMergeWorkflow` | Writes `auto-merge.yml` only |
+
+### Customizing Jobs
+
+Jobs are values, so they can be transformed or replaced. The types live in `zio.sbt.githubactions` and the reusable steps in `zio.sbt.ZioSbtCiPlugin`; neither is exported through `autoImport`, so import them explicitly.
+
+To adjust the generated jobs, map over them:
+
+```scala
+import zio.sbt.githubactions.Job
+
+def onUbuntu22(job: Job): Job = job.copy(runsOn = "ubuntu-22.04")
+
+inThisBuild(
+  List(
+    ciTestJobs  := ciTestJobs.value.map(onUbuntu22),
+    ciBuildJobs := ciBuildJobs.value.map(onUbuntu22)
+  )
+)
+```
+
+To write one from scratch, build it from the exported steps:
+
+```scala
+import zio.sbt.ZioSbtCiPlugin._
+import zio.sbt.githubactions.{Job, Step, Strategy}
+
+ciTestJobs := Seq(
+  Job(
+    id = "integration-test",
+    name = "Integration Test",
+    jobTimeout = Some(30),
+    strategy = Some(Strategy(matrix = Map("java" -> List("17", "21")), failFast = false)),
+    steps = Seq(
+      Checkout.value,
+      SetupJava("17"),
+      SetupSBT,
+      CacheDependencies,
+      Step.SingleStep(name = "Test", run = Some("sbt it:test"))
+    )
+  )
+)
+
+// The aggregate `ci` job waits on job ids, so keep it in step:
+ciPullRequestApprovalJobs := Seq("lint", "build", "integration-test")
+```
+
+`Checkout`, `SetupLibuv`, `SetupJava(version)`, `SetupSBT`, `CacheDependencies`, `SetupNodeJs` and `SetSwapSpace` are all available; the ones defined as settings need `.value`.
+
+### Job Timeouts
+
+A job with no timeout inherits GitHub's default of six hours, which is a long time to wait for a hung build:
+
+```scala
+Job(id = "test", name = "Test", jobTimeout = Some(25), steps = ...)
+
+// or on an existing job
+ciTestJobs := ciTestJobs.value.map(_.withTimeout(25))
+```
+
+> **Note:**
+>
+> `Job` also has an older `timeoutMinutes: Int` field. It predates `jobTimeout` and was accepted but never rendered, so it is deprecated. It is still honoured when set to anything other than its historical default of `30`, so builds that set it keep working.
+
+### Concurrency
+
+By default one run per branch is kept and in-progress runs are cancelled. `cancelInProgress` accepts an expression as well as a boolean, which is what lets a workflow cancel superseded pull request runs while letting releases finish:
+
+```scala
+import zio.sbt.githubactions.{CancelInProgress, Concurrency, Condition}
+
+ciConcurrency := Some(
+  Concurrency(
+    group = "ci-pr-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.ref }}",
+    cancelInProgress = CancelInProgress.When(Condition.Expression("github.event_name == 'pull_request'"))
+  )
+)
+```
+
+Individual jobs can override it. A release should generally not be cancelled halfway through:
+
+```scala
+Job(
+  id = "release",
+  name = "Release",
+  concurrency = Some(
+    Concurrency(group = "release-${{ github.ref }}", cancelInProgress = CancelInProgress.Never)
+  ),
+  steps = ...
+)
+```
+
+### Service Containers
+
+Jobs that need a database can attach a service. `options` carries the raw `docker create` arguments, which is where the health check goes — without one the job races the container and steps can start before it accepts connections:
+
+```scala
+import zio.Chunk
+import zio.sbt.githubactions.{ImageRef, Service, ServicePort}
+
+Job(
+  id = "test",
+  name = "Test",
+  services = Seq(
+    Service(
+      name = "postgres",
+      image = ImageRef("postgres:16"),
+      env = Map("POSTGRES_USER" -> "postgres", "POSTGRES_PASSWORD" -> "postgres"),
+      ports = Chunk(ServicePort(5432, 5432)),
+      options = Some("--health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5")
+    )
+  ),
+  steps = ...
+)
+```
+
+`ServicePort(inner, outer)` renders as `inner:outer`, which GitHub reads as `<host>:<container>` — so `inner` is the port a step connects to on `localhost`.
+
+### The Workflow Environment
+
+By default the workflow exports `JDK_JAVA_OPTIONS`, built from `ciJvmOptions`. That is not always wanted: it makes `java -version` print a note containing commas, which corrupts the cache keys computed by `setup-sbt` and `coursier/cache-action`. Assigning `ciWorkflowEnv` replaces the derived map, so JVM flags can go through `SBT_OPTS` instead:
+
+```scala
+ciWorkflowEnv := Map(
+  "SBT_OPTS" -> "-XX:+PrintCommandLineFlags -Djava.locale.providers=CLDR,JRE"
+)
+```
 
 ## ZIO SBT Source
 
@@ -274,7 +481,7 @@ Both forms emit `showLineNumbers` in the code fence header, enabling line number
 
 ### Default Testing Strategy
 
-The default testing strategy for ZIO SBT CI plugin is to run `sbt +test` on Corretto Java 11, 17 and 21. So this will generate the following job:
+The default testing strategy for ZIO SBT CI plugin is to run `sbt +test` on Corretto Java 17, 21 and 25. So this will generate the following job:
 
 ```yaml
 test:
@@ -284,12 +491,12 @@ test:
   strategy:
     fail-fast: false
     matrix:
-      java: ['11', '17', '21']
+      java: ['17', '21', '25']
   steps:
   - name: Install libuv
     run: sudo apt-get update && sudo apt-get install -y libuv1-dev
   - name: Setup Scala
-    uses: actions/setup-java@v3.13.0
+    uses: actions/setup-java@v5
     with:
       distribution: corretto
       java-version: ${{ matrix.java }}
@@ -348,7 +555,7 @@ test:
   strategy:
     fail-fast: false
     matrix:
-      java: ['11', '17', '21']
+      java: ['17', '21', '25']
       scala-project:
       - ++2.12.20 submoduleA
       - ++2.12.20 submoduleB
@@ -358,7 +565,7 @@ test:
   - name: Install libuv
     run: sudo apt-get update && sudo apt-get install -y libuv1-dev
   - name: Setup Scala
-    uses: actions/setup-java@v3.10.0
+    uses: actions/setup-java@v5
     with:
       distribution: corretto
       java-version: ${{ matrix.java }}
