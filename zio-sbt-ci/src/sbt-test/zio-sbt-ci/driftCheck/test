@@ -1,0 +1,15 @@
+# Generate the workflows, then commit them so there is a baseline to compare against.
+> ciGenerateGithubWorkflow
+> gitInit
+
+# A clean tree is up to date.
+> ciCheckGithubWorkflow
+
+# An unrelated edit is not workflow drift. This is the regression under test:
+# a whole-tree `git diff` used to fail here.
+> dirtyUnrelated
+> ciCheckGithubWorkflow
+
+# A committed hand-edit of a generated file is drift, and must be caught.
+> commitHandEdit
+-> ciCheckGithubWorkflow
