@@ -39,9 +39,22 @@ object ZioSbtCiPlugin extends AutoPlugin {
       settingKey[Option[Int]](
         "Set the maximum number of jobs that can run simultaneously when using a matrix job strategy, default is None"
       )
-    val ciGenerateGithubWorkflow: TaskKey[Unit]                = taskKey[Unit]("Generate github workflow")
-    val ciJvmOptions: SettingKey[Seq[String]]                  = settingKey[Seq[String]]("JVM Options")
-    val ciNodeOptions: SettingKey[Seq[String]]                 = settingKey[Seq[String]]("NodeJS Options")
+    val ciGenerateGithubWorkflow: TaskKey[Unit]        = taskKey[Unit]("Generate github workflow")
+    val ciJvmOptions: SettingKey[Seq[String]]          = settingKey[Seq[String]]("JVM Options")
+    val ciNodeOptions: SettingKey[Seq[String]]         = settingKey[Seq[String]]("NodeJS Options")
+    val ciWorkflowEnv: SettingKey[Map[String, String]] =
+      settingKey[Map[String, String]](
+        "Environment variables set at the workflow level. Defaults to JDK_JAVA_OPTIONS (from " +
+          "`ciJvmOptions`) and NODE_OPTIONS (from `ciNodeOptions`); assigning to this key replaces " +
+          "that map entirely, which is how a build opts out of JDK_JAVA_OPTIONS in favour of, say, SBT_OPTS"
+      )
+    val ciConcurrency: SettingKey[Option[Concurrency]] =
+      settingKey[Option[Concurrency]](
+        "Concurrency group for the generated workflow, or None to omit the block entirely. Defaults " +
+          "to one run per branch with in-progress runs cancelled, keeping every run on the default " +
+          "branch. `cancelInProgress` accepts an expression via `CancelInProgress.When(...)`, so a " +
+          "workflow can cancel superseded pull request runs while letting releases finish"
+      )
     val ciUpdateReadmeCondition: SettingKey[Option[Condition]] =
       settingKey[Option[Condition]]("condition to update readme")
     val ciTargetJavaVersions: SettingKey[Seq[String]] =
@@ -72,7 +85,12 @@ object ZioSbtCiPlugin extends AutoPlugin {
       settingKey[Seq[String]]("Job IDs that need to pass before a pull request (PR) can be approved")
     val ciReleaseApprovalJobs: SettingKey[Seq[String]] =
       settingKey[Seq[String]]("Job IDs that need to pass before a new release.")
-    val ciWorkflowName: SettingKey[String]                     = settingKey[String]("CI Workflow Name")
+    val ciWorkflowTitle: SettingKey[String] =
+      settingKey[String](
+        "Name of the generated CI workflow, which also determines the file it is written to; " +
+          "default is \"CI\", written to .github/workflows/ci.yml. Named `ciWorkflowTitle` rather " +
+          "than `ciWorkflowName` so it does not collide with zio-sbt-website's key of that name"
+      )
     val ciDependencyUpdateBots: SettingKey[Seq[DependencyBot]] =
       settingKey[Seq[DependencyBot]](
         "Bots whose PRs are auto-approved and auto-merged, e.g. `DependencyBot.Dependabot`, " +
@@ -571,7 +589,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
 
   lazy val generateGithubWorkflowTask: Def.Initialize[Task[Unit]] =
     Def.task {
-      val workflowName     = ciWorkflowName.value
+      val workflowName     = ciWorkflowTitle.value
       val enabledBranches  = ciEnabledBranches.value
       val buildJobs        = ciBuildJobs.value
       val lintJobs         = ciLintJobs.value
@@ -580,18 +598,13 @@ object ZioSbtCiPlugin extends AutoPlugin {
       val updateReadmeJobs = ciUpdateReadmeJobs.value
       val releaseJobs      = ciReleaseJobs.value
       val postReleaseJobs  = ciPostReleaseJobs.value
-      val jvmOptions       = Seq("-XX:+PrintCommandLineFlags") ++ ciJvmOptions.value
-      val nodeOptions      = ciNodeOptions.value
-
-      val jvmMap = Map(
-        "JDK_JAVA_OPTIONS" -> jvmOptions.mkString(" ")
-      )
-      val nodeMap: Map[String, String] =
-        if (nodeOptions.nonEmpty) Map("NODE_OPTIONS" -> nodeOptions.mkString(" ")) else Map.empty
+      val workflowEnv      = ciWorkflowEnv.value
+      val concurrency      = ciConcurrency.value
 
       val workflow = Workflow(
         name = workflowName,
-        env = jvmMap ++ nodeMap,
+        env = workflowEnv,
+        concurrency = concurrency,
         triggers = Seq(
           Trigger.WorkflowDispatch(),
           Trigger.Release(Seq("published")),
@@ -711,7 +724,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
 
   override lazy val buildSettings: Seq[Setting[_]] =
     Seq(
-      ciWorkflowName         := "CI",
+      ciWorkflowTitle        := "CI",
       ciEnabledBranches      := Seq.empty,
       ciDependencyUpdateBots := Seq(
         DependencyBot.Dependabot,
@@ -727,12 +740,20 @@ object ZioSbtCiPlugin extends AutoPlugin {
           generateAutoMergeWorkflowTask
         )
         .value,
-      ciDocsVersioningScheme     := DocsVersioning.SemanticVersioning,
-      ciCheckGithubWorkflow      := checkGithubWorkflowTask.value,
-      ciTargetScalaVersions      := Map.empty,
-      ciTargetMinJavaVersions    := Map.empty,
-      ciJvmOptions               := Seq.empty,
-      ciNodeOptions              := Seq.empty,
+      ciDocsVersioningScheme  := DocsVersioning.SemanticVersioning,
+      ciCheckGithubWorkflow   := checkGithubWorkflowTask.value,
+      ciTargetScalaVersions   := Map.empty,
+      ciTargetMinJavaVersions := Map.empty,
+      ciJvmOptions            := Seq.empty,
+      ciNodeOptions           := Seq.empty,
+      ciWorkflowEnv           := {
+        val jvmOptions  = Seq("-XX:+PrintCommandLineFlags") ++ ciJvmOptions.value
+        val nodeOptions = ciNodeOptions.value
+
+        Map("JDK_JAVA_OPTIONS" -> jvmOptions.mkString(" ")) ++
+          (if (nodeOptions.nonEmpty) Map("NODE_OPTIONS" -> nodeOptions.mkString(" ")) else Map.empty)
+      },
+      ciConcurrency              := Some(Workflow.defaultConcurrency),
       ciUpdateReadmeCondition    := None,
       ciGroupSimilarTests        := false,
       ciSwapSizeGB               := 0,

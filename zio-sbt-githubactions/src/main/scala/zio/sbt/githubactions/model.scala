@@ -16,6 +16,8 @@
 
 package zio.sbt.githubactions
 
+import scala.annotation.nowarn
+
 import zio.Chunk
 import zio.json._
 import zio.json.ast.Json
@@ -329,40 +331,101 @@ object ImageRef {
     JsonEncoder.string.contramap(_.ref)
 }
 
+/**
+ * A port mapping, rendered as `inner:outer`.
+ *
+ * GitHub reads that as `<host>:<container>`, so `inner` is the port exposed on
+ * the runner and `outer` the port inside the service container. A step reaching
+ * the service connects to `inner` on localhost.
+ */
 case class ServicePort(inner: Int, outer: Int)
 object ServicePort {
   implicit val encoder: JsonEncoder[ServicePort] =
     JsonEncoder.string.contramap(sp => s"${sp.inner}:${sp.outer}")
 }
 
+/**
+ * A service container attached to a job.
+ *
+ * `options` carries the raw `docker create` arguments, which is where health
+ * checks live. Without one, a job races the container: the service is started
+ * but steps may run before it is accepting connections. For example:
+ *
+ * {{{
+ * options = Some("--health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5")
+ * }}}
+ */
 case class Service(
   name: String,
   image: ImageRef,
   env: Map[String, String] = Map.empty,
-  ports: Chunk[ServicePort] = Chunk.empty
+  ports: Chunk[ServicePort] = Chunk.empty,
+  options: Option[String] = None
 )
 object Service {
   implicit val encoder: JsonEncoder[Service] =
     JsonEncoder[Json].contramap { s =>
       Json.Obj(
         ("image", s.image.toJsonAST.getOrElse(Json.Null)),
-        ("env", s.env.toJsonAST.getOrElse(Json.Null)),
-        ("ports", s.ports.toJsonAST.getOrElse(Json.Null))
+        // Empty collections would otherwise render as `env: {}` and `ports: []`, which `dropNulls`
+        // cannot remove.
+        ("env", if (s.env.nonEmpty) s.env.toJsonAST.getOrElse(Json.Null) else Json.Null),
+        ("ports", if (s.ports.nonEmpty) s.ports.toJsonAST.getOrElse(Json.Null) else Json.Null),
+        ("options", s.options.toJsonAST.getOrElse(Json.Null))
       )
     }
 }
 
+/**
+ * Whether an in-flight run is cancelled when a new one joins the same
+ * concurrency group.
+ *
+ * GitHub accepts either a boolean or an expression here, which is what lets a
+ * workflow cancel superseded pull request runs while letting releases run to
+ * completion.
+ */
+sealed trait CancelInProgress {
+  def toJsonValue: Json
+}
+
+object CancelInProgress {
+  case object Always extends CancelInProgress { def toJsonValue: Json = Json.Bool(true)  }
+  case object Never  extends CancelInProgress { def toJsonValue: Json = Json.Bool(false) }
+
+  final case class When(condition: Condition) extends CancelInProgress {
+    def toJsonValue: Json = Json.Str(condition.asString)
+  }
+}
+
+case class Concurrency(group: String, cancelInProgress: CancelInProgress = CancelInProgress.Always)
+
+object Concurrency {
+  implicit val encoder: JsonEncoder[Concurrency] =
+    JsonEncoder[Json].contramap { c =>
+      Json.Obj(
+        ("group", Json.Str(c.group)),
+        ("cancel-in-progress", c.cancelInProgress.toJsonValue)
+      )
+    }
+}
+
+// The synthetic `copy`/`apply`/`unapply` all mention the deprecated `timeoutMinutes`, which would
+// otherwise warn here on every compile - and `enableStrictCompile` turns warnings into errors.
+@nowarn("cat=deprecation")
 case class Job private (
   id: String,
   name: String,
   runsOn: String,
+  @deprecated("Use jobTimeout instead", "0.6.4")
   timeoutMinutes: Int,
   continueOnError: Boolean,
   strategy: Option[Strategy],
   steps: Chunk[Step],
   need: Chunk[String],
   services: Chunk[Service],
-  condition: Option[Condition]
+  condition: Option[Condition],
+  jobTimeout: Option[Int],
+  concurrency: Option[Concurrency]
 ) {
   def withStrategy(strategy: Strategy): Job =
     copy(strategy = Some(strategy))
@@ -372,20 +435,37 @@ case class Job private (
 
   def withServices(services: Service*): Job =
     copy(services = Chunk.fromIterable(services))
+
+  def withTimeout(minutes: Int): Job =
+    copy(jobTimeout = Some(minutes))
 }
 
 object Job {
+
+  /**
+   * The historical default of the deprecated `timeoutMinutes` field.
+   *
+   * `timeoutMinutes` was accepted but never rendered, so no repository has ever
+   * had a `timeout-minutes` line in its generated workflow. Emitting the
+   * default would silently impose a 30 minute cap on every existing job,
+   * killing any that legitimately runs longer, so only a value that differs
+   * from this default is treated as a request for a timeout.
+   */
+  private final val UnsetTimeoutMinutes = 30
+
   def apply(
     id: String,
     name: String,
     runsOn: String = "ubuntu-latest",
-    timeoutMinutes: Int = 30,
+    timeoutMinutes: Int = UnsetTimeoutMinutes,
     continueOnError: Boolean = false,
     strategy: Option[Strategy] = None,
     steps: Seq[Step] = Seq.empty,
     need: Seq[String] = Seq.empty,
     services: Seq[Service] = Seq.empty,
-    condition: Option[Condition] = None
+    condition: Option[Condition] = None,
+    jobTimeout: Option[Int] = None,
+    concurrency: Option[Concurrency] = None
   ): Job = Job(
     id = id,
     name = name,
@@ -396,8 +476,21 @@ object Job {
     steps = Chunk.fromIterable(steps),
     need = Chunk.fromIterable(need),
     services = Chunk.fromIterable(services),
-    condition = condition
+    condition = condition,
+    jobTimeout = jobTimeout,
+    concurrency = concurrency
   )
+
+  /**
+   * The timeout to render, if any.
+   *
+   * `jobTimeout` wins. Failing that, a `timeoutMinutes` that differs from its
+   * default is honoured, so builds that set it before it was ever rendered -
+   * zio-prelude sets 60 - get what they asked for without having to change.
+   */
+  @nowarn("cat=deprecation")
+  private def timeoutOf(job: Job): Option[Int] =
+    job.jobTimeout.orElse(Some(job.timeoutMinutes).filter(_ != UnsetTimeoutMinutes))
 
   implicit val encoder: JsonEncoder[Job] =
     JsonEncoder[Json].contramap { job =>
@@ -410,6 +503,8 @@ object Job {
       Json.Obj(
         ("name", Json.Str(job.name)),
         ("runs-on", Json.Str(job.runsOn)),
+        ("timeout-minutes", timeoutOf(job).toJsonAST.getOrElse(Json.Null)),
+        ("concurrency", job.concurrency.toJsonAST.getOrElse(Json.Null)),
         ("continue-on-error", Json.Bool(job.continueOnError)),
         ("strategy", job.strategy.toJsonAST.getOrElse(Json.Null)),
         ("needs", if (job.need.nonEmpty) job.need.toJsonAST.getOrElse(Json.Null) else Json.Null),
@@ -424,7 +519,8 @@ case class Workflow private (
   name: String,
   env: Map[String, String],
   triggers: Chunk[Trigger],
-  jobs: Chunk[Job]
+  jobs: Chunk[Job],
+  concurrency: Option[Concurrency]
 )(
   val permissions: Map[String, String]
 ) {
@@ -444,17 +540,34 @@ case class Workflow private (
 object Workflow {
   val defaultPermissions: Map[String, String] = Map("id-token" -> "write", "contents" -> "read")
 
+  /**
+   * One run per branch, except on the default branch where every run is kept.
+   *
+   * This was hard-coded into the encoder before it became configurable, so it
+   * stays the default to keep generated workflows byte-identical for builds
+   * that do not override it.
+   */
+  val defaultConcurrency: Concurrency = Concurrency(
+    group =
+      "${{ github.workflow }}-${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.run_id || github.ref }}",
+    cancelInProgress = CancelInProgress.Always
+  )
+
   def apply(
     name: String,
     env: Map[String, String] = Map.empty,
     triggers: Seq[Trigger] = Seq.empty,
     jobs: Seq[Job] = Seq.empty,
-    permissions: Map[String, String] = defaultPermissions
-  ): Workflow = Workflow(
+    permissions: Map[String, String] = defaultPermissions,
+    concurrency: Option[Concurrency] = Some(defaultConcurrency)
+    // `new` rather than the synthetic apply: with `concurrency` added, the two overloads take the
+    // same number of named arguments and the call would be ambiguous.
+  ): Workflow = new Workflow(
     name = name,
     env = env,
     triggers = Chunk.fromIterable(triggers),
-    jobs = Chunk.fromIterable(jobs)
+    jobs = Chunk.fromIterable(jobs),
+    concurrency = concurrency
   )(permissions)
 
   implicit val encoder: JsonEncoder[Workflow] =
@@ -465,15 +578,7 @@ object Workflow {
         Json.Obj(wf.triggers.map(_.toKeyValuePair))
       }
 
-      val concurrencyJson = Json.Obj(
-        (
-          "group",
-          Json.Str(
-            "${{ github.workflow }}-${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.run_id || github.ref }}"
-          )
-        ),
-        ("cancel-in-progress", Json.Bool(true))
-      )
+      val concurrencyJson = wf.concurrency.toJsonAST.getOrElse(Json.Null)
 
       val jobsJson = Json.Obj(wf.jobs.map(job => (job.id, job.toJsonAST.getOrElse(Json.Null))): _*)
 

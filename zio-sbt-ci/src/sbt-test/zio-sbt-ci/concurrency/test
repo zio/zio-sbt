@@ -1,0 +1,5 @@
+# Generate the workflows for this configuration.
+> ciGenerateGithubWorkflow
+
+# Compare against the recorded golden copy.
+> checkWorkflows
