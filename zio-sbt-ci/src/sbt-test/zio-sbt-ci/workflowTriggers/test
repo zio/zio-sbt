@@ -1,0 +1,5 @@
+# Generate with a narrowed trigger set.
+> ciGenerateGithubWorkflow
+
+# Compare against the recorded golden copy.
+> checkWorkflows

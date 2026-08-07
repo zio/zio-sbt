@@ -48,6 +48,12 @@ object ZioSbtCiPlugin extends AutoPlugin {
           "`ciJvmOptions`) and NODE_OPTIONS (from `ciNodeOptions`); assigning to this key replaces " +
           "that map entirely, which is how a build opts out of JDK_JAVA_OPTIONS in favour of, say, SBT_OPTS"
       )
+    val ciWorkflowTriggers: SettingKey[Seq[Trigger]] =
+      settingKey[Seq[Trigger]](
+        "Events the generated workflow runs on. Defaults to workflow_dispatch, published releases, " +
+          "pushes to `ciEnabledBranches`, and pull requests not targeting gh-pages. Worth narrowing " +
+          "if a job's condition would let a manual run do something it should not, such as release"
+      )
     val ciConcurrency: SettingKey[Option[Concurrency]] =
       settingKey[Option[Concurrency]](
         "Concurrency group for the generated workflow, or None to omit the block entirely. Defaults " +
@@ -590,7 +596,6 @@ object ZioSbtCiPlugin extends AutoPlugin {
   lazy val generateGithubWorkflowTask: Def.Initialize[Task[Unit]] =
     Def.task {
       val workflowName     = ciWorkflowTitle.value
-      val enabledBranches  = ciEnabledBranches.value
       val buildJobs        = ciBuildJobs.value
       val lintJobs         = ciLintJobs.value
       val testJobs         = ciTestJobs.value
@@ -599,18 +604,14 @@ object ZioSbtCiPlugin extends AutoPlugin {
       val releaseJobs      = ciReleaseJobs.value
       val postReleaseJobs  = ciPostReleaseJobs.value
       val workflowEnv      = ciWorkflowEnv.value
+      val triggers         = ciWorkflowTriggers.value
       val concurrency      = ciConcurrency.value
 
       val workflow = Workflow(
         name = workflowName,
         env = workflowEnv,
         concurrency = concurrency,
-        triggers = Seq(
-          Trigger.WorkflowDispatch(),
-          Trigger.Release(Seq("published")),
-          Trigger.Push(branches = enabledBranches.map(Branch.Named)),
-          Trigger.PullRequest(ignoredBranches = Seq(Branch.Named("gh-pages")))
-        ),
+        triggers = triggers,
         jobs =
           buildJobs ++ lintJobs ++ testJobs ++ updateReadmeJobs ++ reportSuccessful ++ releaseJobs ++ postReleaseJobs
       )
@@ -753,6 +754,12 @@ object ZioSbtCiPlugin extends AutoPlugin {
         Map("JDK_JAVA_OPTIONS" -> jvmOptions.mkString(" ")) ++
           (if (nodeOptions.nonEmpty) Map("NODE_OPTIONS" -> nodeOptions.mkString(" ")) else Map.empty)
       },
+      ciWorkflowTriggers := Seq(
+        Trigger.WorkflowDispatch(),
+        Trigger.Release(Seq("published")),
+        Trigger.Push(branches = ciEnabledBranches.value.map(Branch.Named)),
+        Trigger.PullRequest(ignoredBranches = Seq(Branch.Named("gh-pages")))
+      ),
       ciConcurrency              := Some(Workflow.defaultConcurrency),
       ciUpdateReadmeCondition    := None,
       ciGroupSimilarTests        := false,
