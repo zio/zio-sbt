@@ -1,0 +1,9 @@
+# Generate with a narrowed trigger set.
+> ciGenerateGithubWorkflow
+
+# Compare against the recorded golden copy.
+> checkWorkflows
+
+# An empty trigger list would emit a workflow with no `on:` block, which GitHub rejects.
+> set ThisBuild / ciWorkflowTriggers := Seq.empty
+-> ciGenerateGithubWorkflow
