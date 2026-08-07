@@ -51,8 +51,10 @@ object ZioSbtCiPlugin extends AutoPlugin {
     val ciWorkflowTriggers: SettingKey[Seq[Trigger]] =
       settingKey[Seq[Trigger]](
         "Events the generated workflow runs on. Defaults to workflow_dispatch, published releases, " +
-          "pushes to `ciEnabledBranches`, and pull requests not targeting gh-pages. Worth narrowing " +
-          "if a job's condition would let a manual run do something it should not, such as release"
+          "pushes (to `ciEnabledBranches` if set, otherwise to every branch), and pull requests not " +
+          "targeting gh-pages. Worth narrowing if a job's condition would let a manual run do " +
+          "something it should not, such as release. Must not be empty: a workflow with no `on:` " +
+          "block is rejected by GitHub"
       )
     val ciConcurrency: SettingKey[Option[Concurrency]] =
       settingKey[Option[Concurrency]](
@@ -606,6 +608,14 @@ object ZioSbtCiPlugin extends AutoPlugin {
       val workflowEnv      = ciWorkflowEnv.value
       val triggers         = ciWorkflowTriggers.value
       val concurrency      = ciConcurrency.value
+
+      // An empty trigger list encodes as no `on:` block at all, and GitHub rejects a workflow
+      // without one. Better to say so here than to emit a file that silently never runs.
+      if (triggers.isEmpty)
+        sys.error(
+          "`ciWorkflowTriggers` is empty, which would generate a workflow with no `on:` block. " +
+            "GitHub requires at least one trigger."
+        )
 
       val workflow = Workflow(
         name = workflowName,
