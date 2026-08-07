@@ -205,7 +205,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
           Strategy(
             matrix = Map(
               "java"  -> javaPlatforms.toList,
-              "scala" -> scalaVersionMatrix.values.flatten.toSet.toList
+              "scala" -> scalaVersionMatrix.values.toSeq.flatten.distinct.toList
             ),
             maxParallel = matrixMaxParallel,
             failFast = false
@@ -233,7 +233,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
                 } else {
                   (for {
                     javaPlatform: String <- javaPlatforms
-                    scalaVersion: String <- scalaVersionMatrix.values.toSeq.flatten.toSet
+                    scalaVersion: String <- scalaVersionMatrix.values.toSeq.flatten.distinct
                     projects              =
                       scalaVersionMatrix.filterKeys { p =>
                         javaPlatformMatrix.getOrElse(p, javaPlatform).toInt <= javaPlatform.toInt

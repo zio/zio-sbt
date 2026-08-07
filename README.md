@@ -216,7 +216,7 @@ All settings are `ThisBuild`-scoped.
 | `ciUpdateReadmeJobs` | `Seq[Job]` | one `update-readme` job | Set to `Seq.empty` if the README is maintained by hand |
 | `ciReleaseJobs` | `Seq[Job]` | one `release` job | |
 | `ciPostReleaseJobs` | `Seq[Job]` | `release-docs`, `notify-docs-release` | |
-| `ciPullRequestApprovalJobs` | `Seq[String]` | `lint`, `test`, `build` | Job ids the aggregate `ci` job waits on. Update this when renaming or adding jobs |
+| `ciPullRequestApprovalJobs` | `Seq[String]` | the ids of `ciLintJobs`, `ciTestJobs` and `ciBuildJobs` | Job ids the aggregate `ci` job waits on. Follows the jobs those three settings produce, so renaming or adding one is picked up without touching this |
 | `ciReleaseApprovalJobs` | `Seq[String]` | `Seq("ci")` | Job ids the release waits on |
 | `ciCheckArtifactsCompilationSteps` | `Seq[Step]` | `sbt +Test/compile` | |
 | `ciCheckArtifactsBuildSteps` | `Seq[Step]` | `sbt +publishLocal` | |
@@ -281,9 +281,14 @@ ciTestJobs := Seq(
     )
   )
 )
+```
 
-// The aggregate `ci` job waits on job ids, so keep it in step:
-ciPullRequestApprovalJobs := Seq("lint", "build", "integration-test")
+The aggregate `ci` job waits on the ids of whatever `ciLintJobs`, `ciTestJobs` and `ciBuildJobs`
+produce, so replacing `test` with `integration-test` above is enough on its own. Set
+`ciPullRequestApprovalJobs` only to wait on a different set than those three:
+
+```scala
+ciPullRequestApprovalJobs := Seq("lint", "integration-test")
 ```
 
 `Checkout`, `SetupLibuv`, `SetupJava(version)`, `SetupSBT`, `CacheDependencies`, `SetupNodeJs` and `SetSwapSpace` are all available; the ones defined as settings need `.value`.
