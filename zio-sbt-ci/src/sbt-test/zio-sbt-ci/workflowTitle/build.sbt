@@ -14,8 +14,10 @@ lazy val root = (project in file("."))
     TaskKey[Unit]("checkFileName") := {
       val dir      = baseDirectory.value / ".github" / "workflows"
       val expected = dir / "continuous-integration.yml"
-      if (!expected.exists)
-        sys.error(s"expected $expected, found: ${IO.listFiles(dir).map(_.getName).sorted.mkString(", ")}")
+      if (!expected.exists) {
+        val found = if (dir.exists) IO.listFiles(dir).map(_.getName).sorted.mkString(", ") else "<dir missing>"
+        sys.error(s"expected $expected, found: $found")
+      }
       if (!IO.read(expected).contains("name: Continuous Integration"))
         sys.error("the workflow name inside the file should be unchanged")
     }
