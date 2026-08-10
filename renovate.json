@@ -42,6 +42,13 @@
       "enabled": false
     },
     {
+      "description": "Hold sbt on 1.x. Moving to sbt 2 needs the plugins in project/plugins.sbt migrated as well - see #684, #689 and #699 - so a bare version bump does not work. #726 did exactly that and left main unable to load at all, because the plugins have no sbt 2 builds; it was reverted in #728. Remove this once the migration lands.",
+      "matchPackageNames": [
+        "sbt/sbt"
+      ],
+      "allowedVersions": "<2"
+    },
+    {
       "description": "A pin bumped in V.scala leaves the committed workflows stale until `sbt ciGenerateGithubWorkflow` is run, so these need a follow-up commit before they can merge.",
       "matchManagers": [
         "custom.regex"
