@@ -15,7 +15,8 @@
       "matchStrings": [
         "\"(?<depName>[\\w.-]+/[\\w.-]+)\"\\s*->\\s*\"(?<currentValue>v\\d[\\w.-]*)\""
       ],
-      "datasourceTemplate": "github-tags"
+      "datasourceTemplate": "github-tags",
+      "versioningTemplate": "semver-coerced"
     }
   ],
   "packageRules": [
