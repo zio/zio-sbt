@@ -1,8 +1,7 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:recommended",
-    ":disableDependencyDashboard"
+    "config:recommended"
   ],
   "branchPrefix": "renovate/",
   "customManagers": [
@@ -29,6 +28,16 @@
         ".github/workflows/ci.yml",
         ".github/workflows/auto-approve.yml",
         ".github/workflows/auto-merge.yml"
+      ],
+      "enabled": false
+    },
+    {
+      "description": "Workflows under src/sbt-test are scripted-test fixtures, not this repository's CI. They are inputs to the plugin's own tests, so bumping an action in one edits test data rather than a build.",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchFileNames": [
+        "**/src/sbt-test/**"
       ],
       "enabled": false
     },
