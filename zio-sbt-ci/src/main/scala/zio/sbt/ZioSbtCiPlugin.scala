@@ -360,7 +360,26 @@ object ZioSbtCiPlugin extends AutoPlugin {
         id = "ci",
         name = "ci",
         need = pullRequestApprovalJobs,
+        // Runs even when a job it needs has failed.
+        //
+        // Without this the job is skipped, and GitHub reports a skipped job to branch protection as
+        // a success. Since this is the job repositories are told to require, the single required
+        // check would pass precisely when something upstream had broken - and a pull request with a
+        // failing lint or test job would merge. That is not hypothetical: it is how #694 landed on
+        // main with a red Lint job.
+        condition = Some(Condition.Function("always()")),
         steps = Seq(
+          // Only `failure` and `cancelled` count. An upstream job that was skipped was usually
+          // skipped on purpose, by its own condition, and should not fail the gate.
+          SingleStep(
+            name = "Report Failed CI",
+            condition = Some(
+              Condition.Expression(
+                "contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')"
+              )
+            ),
+            run = Some("echo \"ci failed: one or more required jobs did not succeed\"; exit 1")
+          ),
           SingleStep(
             name = "Report Successful CI",
             run = Some("echo \"ci passed\"")
