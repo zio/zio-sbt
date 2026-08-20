@@ -144,7 +144,16 @@ object ZioSbtCiPlugin extends AutoPlugin {
       Job(
         id = "build",
         name = "Build",
-        continueOnError = true,
+        // Must stay false.
+        //
+        // With continue-on-error the job reports success to `needs` even when a step failed, so
+        // `needs.*.result` never reads 'failure' and the `ci` gate below cannot see the breakage.
+        // The build job then fails silently for as long as nobody reads the logs: zio-sbt's own
+        // "Check website build process" step was red from 2026-08-11 to 2026-08-20 under a green
+        // CI badge, because Dependabot had bumped Docusaurus without its peers.
+        //
+        // A repository that genuinely needs a non-blocking build job can override `ciBuildJobs`.
+        continueOnError = false,
         steps = {
           (if (swapSizeGB > 0) Seq(setSwapSpace) else Seq.empty) ++
             Seq(
