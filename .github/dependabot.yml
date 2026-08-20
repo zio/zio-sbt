@@ -4,3 +4,28 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+
+  # The Docusaurus site under website/ is built with npm by WebsitePlugin
+  # (`npm install` / `npm run build`). Without this entry only Dependabot
+  # *security* updates reach it, which is how the site drifted onto Docusaurus
+  # 3.x while its peers stayed on 2.x and `npm install` started failing with
+  # ERESOLVE. Docusaurus and its peer packages are grouped so they always move
+  # together in a single PR instead of one at a time.
+  - package-ecosystem: "npm"
+    directory: "/website"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      docusaurus:
+        patterns:
+          - "@docusaurus/*"
+          - "@mdx-js/*"
+          - "react"
+          - "react-dom"
+          - "prism-react-renderer"
+          - "clsx"
+      website-minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
