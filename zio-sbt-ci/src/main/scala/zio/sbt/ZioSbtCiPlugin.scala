@@ -438,6 +438,14 @@ object ZioSbtCiPlugin extends AutoPlugin {
                 "title"          -> Json.Str("Update README.md"),
                 "commit-message" -> Json.Str("Update README.md"),
                 "branch"         -> Json.Str("zio-sbt-website/update-readme"),
+                // Scope the pull request to the file this job is about.
+                //
+                // `generateReadme` sequences `compileDocs`, which writes mdoc output to
+                // `website/docs`. Without add-paths, create-pull-request commits everything left
+                // in the working tree, so the generated PR carries that output too. On such a PR
+                // the build job then fails: `installWebsite` finds a `website/` directory and
+                // skips scaffolding, leaving no package.json for `npm install`.
+                "add-paths" -> Json.Str("README.md"),
                 // A `release`-triggered run checks out the tag, leaving HEAD detached, and
                 // `create-pull-request` can't infer a base branch from a detached HEAD without
                 // this — without it the step fails with "the 'base' input must be supplied".
