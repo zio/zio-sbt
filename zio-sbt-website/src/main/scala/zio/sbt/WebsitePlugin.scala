@@ -248,18 +248,30 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
         exit(s"rm -rvf ${websiteDirPath.toString}/.git/".!)
 
-        // Docusaurus 2.1.0 uses ProgressPlugin options removed in webpack >=5.76.
-        // Pin webpack to 5.75.0 via npm overrides and reinstall until Docusaurus is upgraded.
+        // Docusaurus 2.x uses ProgressPlugin options that webpack >=5.76 removed, so a site
+        // scaffolded on 2.x must pin webpack to 5.75.0 or `npm run build` breaks.
+        //
+        // The pin is applied only when the scaffold really is on 2.x. Docusaurus 3.x depends on
+        // webpack ^5.95.0, where pinning 5.75.0 is unsatisfiable and fails `npm install` with
+        // ERESOLVE. Keying the override off the scaffolded version lets the pin retire itself
+        // when create-zio-website moves to Docusaurus 3, instead of turning into a broken
+        // constraint for every project that scaffolds a new site.
         val pkgJsonFile    = new File(s"${websiteDirPath}/package.json")
         val pkgJsonContent = IO.read(pkgJsonFile)
-        val patched        = pkgJsonContent.fromJson[Json.Obj] match {
-          case Right(obj) =>
-            Json
-              .Obj(obj.fields :+ ("overrides" -> Json.Obj(Chunk("webpack" -> Json.Str("5.75.0")))))
-              .toJsonPretty + "\n"
-          case Left(err) => sys.error(s"Failed to parse package.json: $err")
+        val pkgJson        = pkgJsonContent.fromJson[Json.Obj] match {
+          case Right(obj) => obj
+          case Left(err)  => sys.error(s"Failed to parse package.json: $err")
         }
-        IO.write(pkgJsonFile, patched)
+
+        if (docusaurusMajorOf(pkgJson).exists(_ < 3)) {
+          logger.info("Docusaurus 2.x scaffold detected, pinning webpack to 5.75.0.")
+          val patched =
+            Json
+              .Obj(pkgJson.fields :+ ("overrides" -> Json.Obj(Chunk("webpack" -> Json.Str("5.75.0")))))
+              .toJsonPretty + "\n"
+          IO.write(pkgJsonFile, patched)
+        }
+
         exit(Process("npm install", new File(s"${websiteDirPath}")).!)
       }
 
@@ -385,6 +397,24 @@ object WebsitePlugin extends sbt.AutoPlugin {
     exit(Process(s"npm pkg set repository.url=$repoUrl", docsDir).!)
     exit("npm config set access public".!)
     exit(Process(s"npm publish $npmTag".trim, docsDir).!)
+  }
+
+  /**
+   * Major version of `@docusaurus/core` declared in a scaffolded site's
+   * package.json, if it can be determined. Returns None when the dependency is
+   * absent or the version is not a plain number, in which case callers should
+   * not assume anything about the Docusaurus generation in use.
+   */
+  private[sbt] def docusaurusMajorOf(pkgJson: Json.Obj): Option[Int] = {
+    def field(obj: Json.Obj, key: String): Option[Json] =
+      obj.fields.collectFirst { case (k, v) if k == key => v }
+
+    for {
+      deps    <- field(pkgJson, "dependencies").collect { case o: Json.Obj => o }
+      version <- field(deps, "@docusaurus/core").collect { case Json.Str(v) => v }
+      digits   = version.dropWhile(!_.isDigit).takeWhile(_.isDigit)
+      major   <- scala.util.Try(digits.toInt).toOption
+    } yield major
   }
 
   private def hashVersion: Option[String] =
