@@ -12,7 +12,11 @@ const config = {
   url: 'http://localhost:3000',
   baseUrl: '/',
   onBrokenLinks: 'throw',
-  onBrokenMarkdownLinks: 'throw',
+  markdown: {
+    hooks: {
+      onBrokenMarkdownLinks: 'throw',
+    },
+  },
   favicon: 'img/favicon.png',
 
   organizationName: 'zio', 
