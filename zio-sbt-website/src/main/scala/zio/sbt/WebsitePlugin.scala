@@ -334,7 +334,26 @@ object WebsitePlugin extends sbt.AutoPlugin {
         case _                      => None
       }
     }
-    val npmTag = prereleaseTag.map(tag => s"--tag $tag").getOrElse("")
+
+    // Sideline a prerelease under its own dist-tag only when a stable release
+    // already holds `latest`. For a project that has never released a stable
+    // version the prerelease *is* the current release, and parking it under
+    // `rc` freezes `latest` on an older version - which hides the docs from
+    // dependency bots, since Renovate's respectLatest will not go past `latest`.
+    val packageName: String =
+      """"name"\s*:\s*"([^"]+)"""".r
+        .findFirstMatchIn(IO.read(new File(docsDir, "package.json")))
+        .map(_.group(1))
+        .getOrElse(sys.error(s"Could not read the package name from ${docsDir / "package.json"}"))
+
+    val currentLatest: Option[String] = {
+      val out  = new mutable.StringBuilder
+      val code = Process(s"npm view $packageName dist-tags.latest", docsDir)
+        .!(ProcessLogger(line => { out.append(line); () }, _ => ()))
+      Some(out.toString.trim).filter(_.nonEmpty && code == 0)
+    }
+    val latestIsStable = currentLatest.exists(!_.contains("-"))
+    val npmTag         = prereleaseTag.filter(_ => latestIsStable).map(tag => s"--tag $tag").getOrElse("")
 
     exit(Process(s"npm version $version --no-git-tag-version", docsDir).!)
     exit(Process(s"npm pkg set repository.url=$repoUrl", docsDir).!)
