@@ -514,7 +514,7 @@ test:
     with:
       fetch-depth: '0'
   - name: Test
-    run: sbt +test
+    run: sbt --no-colors +test
 ```
 
 The `sbt +test` command will run the `test` task for all submodules in the project against all Scala versions defined in the `crossScalaVersions` setting.
@@ -583,7 +583,7 @@ test:
     with:
       fetch-depth: '0'
   - name: Test
-    run: sbt ${{ matrix.scala-project }}/test
+    run: sbt --no-colors ${{ matrix.scala-project }}/test
 ```
 
 ## Documentation
