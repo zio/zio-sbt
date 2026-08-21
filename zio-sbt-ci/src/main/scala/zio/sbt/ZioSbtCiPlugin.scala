@@ -30,6 +30,17 @@ object ZioSbtCiPlugin extends AutoPlugin {
   override def requires = plugins.CorePlugin
   override def trigger  = allRequirements
 
+  /**
+   * How every generated step invokes sbt.
+   *
+   * `--no-colors` matters more in CI than it looks: with colour on, sbt wraps
+   * its `[error]` and `[warn]` prefixes in ANSI escapes, so a run log cannot be
+   * searched for them. `gh run view --log-failed | grep '[error]'` comes back
+   * empty on a job that failed with sbt errors, and GitHub's own log search has
+   * the same blind spot.
+   */
+  private val SbtCommand = "sbt --no-colors"
+
   object autoImport {
     val ciDocsVersioningScheme: SettingKey[DocsVersioning] = settingKey[DocsVersioning]("Docs versioning style")
     val ciEnabledBranches: SettingKey[Seq[String]]         = settingKey[Seq[String]]("Publish branch for documentation")
@@ -224,7 +235,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
                       name = "Test",
                       condition = Some(Condition.Expression(s"matrix.scala == '$scalaVersion'")),
                       run = Some(
-                        prefixJobs + "sbt ++${{ matrix.scala }}" + makeTests(
+                        prefixJobs + SbtCommand + " ++${{ matrix.scala }}" + makeTests(
                           scalaVersion
                         )
                       )
@@ -251,7 +262,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
                             )
                           ),
                           run = Some(
-                            prefixJobs + "sbt ++${{ matrix.scala }}" ++ s" ${projects.map(_ + "/test ").mkString(" ")}"
+                            prefixJobs + SbtCommand + " ++${{ matrix.scala }}" ++ s" ${projects.map(_ + "/test ").mkString(" ")}"
                           )
                         )
                       )
@@ -302,7 +313,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
             if (javaPlatformMatrix.values.toSet.isEmpty) {
               Step.SingleStep(
                 name = "Test",
-                run = Some(prefixJobs + "sbt ${{ matrix.scala-project }}/test")
+                run = Some(prefixJobs + SbtCommand + " ${{ matrix.scala-project }}/test")
               )
             } else {
               Step.StepSequence(
@@ -311,7 +322,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
                     name = s"Java $javaPlatform Tests",
                     condition = Some(Condition.Expression(s"matrix.java == '$javaPlatform'")),
                     run = Some(
-                      prefixJobs + s"sbt $${{ matrix.scala-project-java$javaPlatform }}/test"
+                      prefixJobs + SbtCommand + s" $${{ matrix.scala-project-java$javaPlatform }}/test"
                     )
                   )
                 }
@@ -341,7 +352,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
             checkout,
             Step.SingleStep(
               name = "Test",
-              run = Some(prefixJobs + "sbt +test")
+              run = Some(prefixJobs + SbtCommand + " +test")
             )
           )
       )
@@ -804,21 +815,21 @@ object ZioSbtCiPlugin extends AutoPlugin {
         Seq(
           Step.SingleStep(
             name = "Check artifacts build process",
-            run = Some("sbt +publishLocal")
+            run = Some(SbtCommand + " +publishLocal")
           )
         ),
       ciCheckWebsiteBuildProcess       := CheckWebsiteBuildProcess.value,
       ciCheckArtifactsCompilationSteps := Seq(
         Step.SingleStep(
           name = "Check all code compiles",
-          run = Some(makePrefixJobs(ciBackgroundJobs.value) + "sbt +Test/compile")
+          run = Some(makePrefixJobs(ciBackgroundJobs.value) + SbtCommand + " +Test/compile")
         )
       ),
       ciCheckGithubWorkflowSteps := Seq(
         Step.SingleStep(
           name = "Check if the site workflow is up to date",
           run = Some(
-            makePrefixJobs(ciBackgroundJobs.value) + "sbt ciCheckGithubWorkflow"
+            makePrefixJobs(ciBackgroundJobs.value) + SbtCommand + " ciCheckGithubWorkflow"
           )
         )
       ),
@@ -953,7 +964,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
       Seq(
         Step.SingleStep(
           name = "Check website build process",
-          run = Some(prefixJobs + "sbt docs/clean; sbt docs/buildWebsite")
+          run = Some(prefixJobs + SbtCommand + " docs/clean; " + SbtCommand + " docs/buildWebsite")
         )
       )
     }
@@ -964,7 +975,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
 
     Step.SingleStep(
       name = "Lint",
-      run = Some(prefixJobs + "sbt lint")
+      run = Some(prefixJobs + SbtCommand + " lint")
     )
   }
 
@@ -975,7 +986,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
 
     Step.SingleStep(
       name = "Release",
-      run = Some(prefixJobs + "sbt ci-release"),
+      run = Some(prefixJobs + SbtCommand + " ci-release"),
       env = Map(
         "PGP_PASSPHRASE"    -> "${{ secrets.PGP_PASSPHRASE }}",
         "PGP_SECRET"        -> "${{ secrets.PGP_SECRET }}",
@@ -1002,7 +1013,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
 
     Step.SingleStep(
       name = "Publish Docs to NPM Registry",
-      run = Some(prefixJobs + s"sbt docs/${docsVersioning.npmCommand}")
+      run = Some(prefixJobs + SbtCommand + s" docs/${docsVersioning.npmCommand}")
     )
   }
 
@@ -1013,7 +1024,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
 
     Step.SingleStep(
       name = "Generate Readme",
-      run = Some(prefixJobs + "sbt docs/generateReadme")
+      run = Some(prefixJobs + SbtCommand + " docs/generateReadme")
     )
   }
 
@@ -1024,7 +1035,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
 
     Step.SingleStep(
       name = "Check if the README file is up to date",
-      run = Some(prefixJobs + "sbt docs/checkReadme")
+      run = Some(prefixJobs + SbtCommand + " docs/checkReadme")
     )
   }
 
