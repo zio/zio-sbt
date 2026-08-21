@@ -88,6 +88,20 @@ ZIO SBT Website is an SBT plugin that has the following tasks:
 - `sbt publishToNpm`— publishes documentation inside the `docs` directory to the npm registry.
 - `sbt generateReadme`— generate README.md file from `docs/index.md` and sbt setting keys.
 
+`website/docs` is generated output, not source. `mdocOut` points there, so `compileDocs` — and
+anything that sequences it, including `generateReadme` — writes compiled documentation into it.
+Add it to `.gitignore`:
+
+```gitignore
+/website/docs
+/website/build
+/website/node_modules
+/website/.docusaurus
+```
+
+Committing `website/docs` leaves a `website` directory that holds generated output but no
+Docusaurus scaffold, and `buildWebsite` then has no `package.json` to install from.
+
 ## ZIO SBT CI Plugin
 
 ZIO SBT CI is an sbt plugin which generates a GitHub workflow for a project, making it easier to set up continuous integration (CI) pipelines for Scala projects. With this plugin, developers can streamline their development workflow by automating the testing and deployment process, reducing manual effort and errors. The plugin is designed to work seamlessly with sbt, the popular build tool for Scala projects, and integrates smoothly with GitHub Actions, the CI/CD platform provided by GitHub.
