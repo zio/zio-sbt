@@ -412,6 +412,13 @@ object ZioSbtCiPlugin extends AutoPlugin {
       Job(
         id = "update-readme",
         name = "Update README",
+        // The "Approve PR" and "Enable Auto-Merge" steps call `gh` with GITHUB_TOKEN, which
+        // needs `pull-requests: write`. The workflow-level default is `contents: read` plus
+        // `id-token: write`, so without this the approve step fails with
+        // "GraphQL: Resource not accessible by integration (addPullRequestReview)" after the
+        // pull request has already been opened. Job-level permissions replace the
+        // workflow-level set, so `contents: read` has to be repeated here for the checkout.
+        permissions = Map("contents" -> "read", "pull-requests" -> "write"),
         condition = updateReadmeCondition orElse Some(
           Condition.Expression("github.event_name == 'release'") &&
             Condition.Expression("github.event.action == 'published'")
