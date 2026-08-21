@@ -206,7 +206,12 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
       val websiteDirPath = websiteDir.value
 
-      if (Files.exists(websiteDirPath)) {
+      // Keyed on package.json, not on the directory itself. `mdocOut` writes generated docs to
+      // `website/docs`, so a repository that commits that output -- or simply ran `compileDocs`
+      // first -- has a `website/` directory containing no Docusaurus scaffold at all. Treating
+      // that as "already installed" leaves nothing for `npm install` to read, which is the
+      // failure reported in #749.
+      if (Files.exists(websiteDirPath.resolve("package.json"))) {
         logger.warn(
           s"""|
               |Website directory already exists, skipping installation: $websiteDirPath
@@ -231,7 +236,15 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
         exit(Process(task, target.value).!)
 
-        exit(Process(s"mv ${target.value}/${normalizedName.value}-website ${websiteDirPath}").!)
+        // `mv` moves the source *into* an existing destination directory rather than becoming
+        // it, so a pre-existing `website/` (holding mdoc output, say) would end up with a nested
+        // `website/<name>-website`. Copy the scaffold's contents in instead, which merges with
+        // whatever is already there.
+        if (Files.exists(websiteDirPath)) {
+          exit(Process(s"cp -a $siteTarget/. ${websiteDirPath}/").!)
+          exit(Process(s"rm -rf $siteTarget").!)
+        } else
+          exit(Process(s"mv $siteTarget ${websiteDirPath}").!)
 
         exit(s"rm -rvf ${websiteDirPath.toString}/.git/".!)
 
@@ -259,11 +272,24 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
       // The website directory may already exist (e.g. committed to the repository) so
       // installWebsiteTask skips installation, but its dependencies are not versioned.
-      if (!Files.exists(websiteDir.value.resolve("node_modules")))
+      if (!Files.exists(websiteDir.value.resolve("node_modules"))) {
+        // Say what is actually wrong. `npm install` reports only "Could not read package.json",
+        // which gives no hint that the real problem is a website directory without a scaffold.
+        if (!Files.exists(websiteDir.value.resolve("package.json")))
+          sys.error(
+            s"""|${websiteDir.value} exists but contains no package.json, so there is no website to build.
+                |
+                |This usually means the directory holds only generated output -- `mdocOut` writes
+                |compiled docs to `website/docs` -- rather than a Docusaurus site. Add `website/docs`
+                |to .gitignore so the generated output is not committed, then rerun `installWebsite`.
+                |""".stripMargin
+          )
+
         exit(
           Process("npm install", new File(s"${websiteDir.value}")).!,
           "Failed to install website dependencies!"
         )
+      }
 
       val p = Process("npm run build", new File(s"${websiteDir.value}")).!
       exit(p, "Failed to build the website!")
