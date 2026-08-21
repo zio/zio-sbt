@@ -1017,15 +1017,4 @@ object ZioSbtCiPlugin extends AutoPlugin {
     )
   }
 
-  val CheckReadme: Def.Initialize[SingleStep] = Def.setting {
-    val backgroundJobs = ciBackgroundJobs.value
-
-    val prefixJobs = makePrefixJobs(backgroundJobs)
-
-    Step.SingleStep(
-      name = "Check if the README file is up to date",
-      run = Some(prefixJobs + "sbt docs/checkReadme")
-    )
-  }
-
 }
