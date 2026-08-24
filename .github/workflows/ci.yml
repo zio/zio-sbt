@@ -107,6 +107,9 @@ jobs:
   update-readme:
     name: Update README
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     continue-on-error: false
     if: ${{ (github.event_name == 'release') && (github.event.action == 'published') }}
     steps:
