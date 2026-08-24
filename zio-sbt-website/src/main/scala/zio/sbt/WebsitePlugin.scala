@@ -151,7 +151,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
       ciWorkflowName          := "CI",
       docsVersioningScheme    := VersioningScheme.SemanticVersioning,
       docsVersion             := docsVersionTask.value,
-      createZioWebsiteVersion := "0.0.1-alpha.14"
+      createZioWebsiteVersion := "0.1.0"
     )
 
   private def exit(exitCode: Int, errorMessage: String = "") = if (exitCode != 0) sys.error(errorMessage: String)
