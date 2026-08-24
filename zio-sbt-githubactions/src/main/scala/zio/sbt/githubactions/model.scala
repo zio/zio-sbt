@@ -425,7 +425,8 @@ case class Job private (
   services: Chunk[Service],
   condition: Option[Condition],
   jobTimeout: Option[Int],
-  concurrency: Option[Concurrency]
+  concurrency: Option[Concurrency],
+  permissions: Map[String, String]
 ) {
   def withStrategy(strategy: Strategy): Job =
     copy(strategy = Some(strategy))
@@ -438,6 +439,9 @@ case class Job private (
 
   def withTimeout(minutes: Int): Job =
     copy(jobTimeout = Some(minutes))
+
+  def withPermissions(permissions: (String, String)*): Job =
+    copy(permissions = permissions.toMap)
 }
 
 object Job {
@@ -465,7 +469,8 @@ object Job {
     services: Seq[Service] = Seq.empty,
     condition: Option[Condition] = None,
     jobTimeout: Option[Int] = None,
-    concurrency: Option[Concurrency] = None
+    concurrency: Option[Concurrency] = None,
+    permissions: Map[String, String] = Map.empty
   ): Job = Job(
     id = id,
     name = name,
@@ -478,7 +483,8 @@ object Job {
     services = Chunk.fromIterable(services),
     condition = condition,
     jobTimeout = jobTimeout,
-    concurrency = concurrency
+    concurrency = concurrency,
+    permissions = permissions
   )
 
   /**
@@ -506,6 +512,10 @@ object Job {
         ("timeout-minutes", timeoutOf(job).toJsonAST.getOrElse(Json.Null)),
         ("concurrency", job.concurrency.toJsonAST.getOrElse(Json.Null)),
         ("continue-on-error", Json.Bool(job.continueOnError)),
+        (
+          "permissions",
+          if (job.permissions.nonEmpty) job.permissions.toJsonAST.getOrElse(Json.Null) else Json.Null
+        ),
         ("strategy", job.strategy.toJsonAST.getOrElse(Json.Null)),
         ("needs", if (job.need.nonEmpty) job.need.toJsonAST.getOrElse(Json.Null) else Json.Null),
         ("services", servicesJson),
