@@ -414,10 +414,11 @@ object ZioSbtCiPlugin extends AutoPlugin {
         name = "Update README",
         // The workflow-level `permissions` block only grants `id-token`/`contents: read`, so
         // without this, `Approve PR`/`Enable Auto-Merge` below fail with "Resource not
-        // accessible by integration": an explicit `permissions` block replaces the repo's
-        // default grants entirely rather than adding to them, and GITHUB_TOKEN ends up with no
-        // pull-requests scope at all.
-        permissions = Map("contents" -> "write", "pull-requests" -> "write"),
+        // accessible by integration": a job-level `permissions` block replaces the workflow's
+        // grants entirely rather than adding to them, so `contents: read` has to be repeated
+        // here for the checkout step - the job never pushes with GITHUB_TOKEN, the actual
+        // commit/PR push uses the separate GitHub App token from `Generate Token` below.
+        permissions = Map("contents" -> "read", "pull-requests" -> "write"),
         condition = updateReadmeCondition orElse Some(
           Condition.Expression("github.event_name == 'release'") &&
             Condition.Expression("github.event.action == 'published'")

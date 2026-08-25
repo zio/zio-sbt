@@ -116,7 +116,7 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: false
     permissions:
-      contents: write
+      contents: read
       pull-requests: write
     if: ${{ (github.event_name == 'release') && (github.event.action == 'published') }}
     steps:
