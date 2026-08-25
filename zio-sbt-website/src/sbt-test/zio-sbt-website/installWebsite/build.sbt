@@ -8,9 +8,10 @@ lazy val root = (project in file("."))
     mainModuleName := "test-project",
     projectStage   := ProjectStage.ProductionReady,
 
-    // create-zio-website still scaffolds Docusaurus 2.1.0, which needs webpack pinned to 5.75.0.
-    // The pin is conditional on the scaffolded major version, so assert it is actually applied
-    // here; if the scaffold ever moves to Docusaurus 3, this expectation flips to `absent`.
+    // create-zio-website 0.1.0 scaffolds Docusaurus 3.10.2, which depends on webpack ^5.95.0 and
+    // must NOT carry the 5.75.0 pin -- that constraint is unsatisfiable and fails `npm install`
+    // with ERESOLVE. The pin is conditional on the scaffolded major version, so this asserts it
+    // is absent here, and would flip back to requiring it on a Docusaurus 2 scaffold.
     TaskKey[Unit]("checkWebpackPin") := {
       val pkgJson = IO.read(baseDirectory.value / "website" / "package.json")
       val obj     = pkgJson.fromJson[Json.Obj].fold(err => sys.error(s"bad package.json: $err"), identity)
