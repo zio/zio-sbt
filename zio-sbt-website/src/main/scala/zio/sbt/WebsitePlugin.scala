@@ -137,7 +137,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
       },
       readmeDocumentation := readmeDocumentationSection(
         projectName.value,
-        homepage.value.getOrElse(url(s"https://zio.dev/ecosystem/"))
+        homepage.value.map(_.toString).getOrElse("https://zio.dev/ecosystem/")
       ),
       readmeContribution      := readmeContributionSection,
       readmeSupport           := readmeSupportSection,
@@ -573,7 +573,11 @@ object WebsitePlugin extends sbt.AutoPlugin {
       }
     }
 
-  def readmeDocumentationSection(projectName: String, projectHomepageUrl: URL): String =
+  // `projectHomepageUrl` is a String, not `URL`/`URI`: `homepage`'s value type differs between sbt
+  // lines (`Option[java.net.URL]` on sbt 1.x, `Option[java.net.URI]` on sbt 2.x), and this method
+  // only ever interpolates it into markdown, so taking the pre-rendered String sidesteps that
+  // divergence entirely instead of needing per-axis source.
+  def readmeDocumentationSection(projectName: String, projectHomepageUrl: String): String =
     s"""Learn more on the [$projectName homepage]($projectHomepageUrl)!""".stripMargin
 
   def readmeContributionSection: String =

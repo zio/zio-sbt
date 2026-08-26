@@ -9,13 +9,47 @@ enablePlugins(ZioSbtEcosystemPlugin, ZioSbtCiPlugin)
 // alias like `addCommandAlias("test", "scripted")` is not enough: the `+`
 // cross command runs the `test` *task* directly without expanding command
 // aliases, so CI's `sbt +test` used to skip the scripted tests entirely.
+// `SbtPlugin`'s own default for `pluginCrossBuild / sbtVersion` maps the Scala-3 axis to
+// `sbtVersion.value`, i.e. whatever sbt is *currently running the build* - correct only when the
+// meta-build itself has moved to sbt 2.x. Since this repo's meta-build stays on sbt 1.13.0 (see
+// project/build.properties) while its plugins dual-cross-build for sbt-2.x consumers, the
+// Scala-3 axis must instead be pinned to a real sbt 2.x release explicitly.
+lazy val Sbt2Version = "2.0.7"
+
+lazy val pluginCrossBuildSettings = Seq(
+  // Only overridden for the Scala-3 axis; every other axis falls through to whatever
+  // `SbtPlugin`'s own default (or anything else already in the settings sequence) already
+  // computed, rather than a value hardcoded here that could drift out of sync with it.
+  pluginCrossBuild / sbtVersion := {
+    if (scalaBinaryVersion.value == "3") Sbt2Version
+    else (pluginCrossBuild / sbtVersion).value
+  }
+)
+
+// Scala 3.8.4 (see project/Versions.scala) rejects `-release:11`, the flag `stdSettings()` bakes in
+// from its `javaPlatform` *parameter* default (a plain String captured at settings-definition time,
+// not a dynamic key read, so overriding the `javaPlatform` SettingKey itself has no effect on it).
+// Scoped to the Scala-3 axis only by rewriting `scalacOptions` after the fact - the sbt-1.x/2.12 axis
+// keeps its existing `-release:11` untouched.
+lazy val scala3JavaPlatformSettings = Seq(
+  scalacOptions := {
+    val opts = scalacOptions.value
+    if (scalaBinaryVersion.value == "3") opts.filterNot(_.startsWith("-release:")) :+ "-release:17"
+    else opts
+  }
+)
+
 lazy val scriptedTestSettings = Seq(
   scriptedLaunchOpts := {
     scriptedLaunchOpts.value ++
       Seq("-Xmx1024M", "-Dplugin.version=" + version.value)
   },
   scriptedBufferLog := false,
-  Test / test       := scripted.toTask("").value
+  // Scripted fixtures are sbt-1.x consumers today, so only run them on the 2.12 axis; running
+  // them again under `++3.3.8` would just re-exercise the same sbt-1.x fixtures a second time.
+  Test / test       := Def.taskDyn {
+    if (scalaBinaryVersion.value == "3") Def.task(()) else scripted.toTask("")
+  }.value
 )
 
 inThisBuild(
@@ -59,7 +93,10 @@ lazy val `zio-sbt-website` =
   project
     .settings(stdSettings())
     .settings(
-      headerEndYear := Some(2023),
+      headerEndYear      := Some(2023),
+      crossScalaVersions := Seq(Scala212, Scala3),
+      pluginCrossBuildSettings,
+      scala3JavaPlatformSettings,
       scriptedTestSettings
     )
     .enablePlugins(SbtPlugin)
@@ -68,7 +105,10 @@ lazy val `zio-sbt-ecosystem` =
   project
     .settings(stdSettings())
     .settings(
-      headerEndYear := Some(2023),
+      headerEndYear      := Some(2023),
+      crossScalaVersions := Seq(Scala212, Scala3),
+      pluginCrossBuildSettings,
+      scala3JavaPlatformSettings,
       scriptedTestSettings
     )
     .enablePlugins(SbtPlugin)
@@ -77,7 +117,10 @@ lazy val `zio-sbt-ci` =
   project
     .settings(stdSettings())
     .settings(
-      headerEndYear := Some(2023),
+      headerEndYear      := Some(2023),
+      crossScalaVersions := Seq(Scala212, Scala3),
+      pluginCrossBuildSettings,
+      scala3JavaPlatformSettings,
       scriptedTestSettings,
       // The `bothPlugins` fixture puts zio-sbt-website on the same build classpath, which is the
       // configuration that used to fail to load because both plugins declared `ciWorkflowName`.
@@ -93,7 +136,9 @@ lazy val `zio-sbt-githubactions` =
   project
     .settings(
       stdSettings(),
-      headerEndYear := Some(2023)
+      headerEndYear      := Some(2023),
+      crossScalaVersions := Seq(Scala212, Scala3),
+      scala3JavaPlatformSettings
     )
 
 lazy val `zio-sbt-source` =

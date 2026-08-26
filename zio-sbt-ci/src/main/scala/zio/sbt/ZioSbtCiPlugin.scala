@@ -15,8 +15,7 @@
  */
 
 package zio.sbt
-import scala.language.experimental.macros
-import scala.sys.process._
+import scala.sys.process.{Process, ProcessLogger}
 
 import sbt.{Def, io => _, _}
 
@@ -133,11 +132,38 @@ object ZioSbtCiPlugin extends AutoPlugin {
     val ciReleaseJobs: SettingKey[Seq[Job]]       = settingKey[Seq[Job]]("CI Release Jobs")
     val ciPostReleaseJobs: SettingKey[Seq[Job]]   = settingKey[Seq[Job]]("CI Post Release Jobs")
 
+    // Neither a `val` nor a `def` for the shared `ScopeFilter` survives being referenced from two
+    // separate `.all(...).value` call sites in the same `Def.setting {}` block: sbt 1.x's macro
+    // rejects a `val` ("Could not find proxy for val filter"), and sbt 2.x's rejects a `def`
+    // ("reference to method filter was used outside the scope where it was defined") - so the
+    // filter expression is simply repeated inline at each call site instead.
     def targetScalaVersionsFor(projects: Project*): sbt.Def.Initialize[Map[String, Seq[String]]] =
-      macro CiTargetMap.macroMakeTargetScalaMapImpl
+      Def.setting {
+        Keys.thisProject
+          .all(ScopeFilter(inProjects(projects.map(p => LocalProject(p.id))*)))
+          .value
+          .map(_.id)
+          .zip(Keys.crossScalaVersions.all(ScopeFilter(inProjects(projects.map(p => LocalProject(p.id))*))).value)
+          .toMap
+      }
 
-    def minTargetJavaVersionsFor(projects: Project*): sbt.Def.Initialize[Map[String, String]] =
-      macro CiTargetMap.macroMakeJavaVersionMapImpl
+    def minTargetJavaVersionsFor(projects: Project*): sbt.Def.Initialize[Map[String, String]] = {
+      // Referenced by label rather than importing `ZioSbtEcosystemPlugin` (which zio-sbt-ci does not
+      // otherwise depend on): sbt resolves same-labelled settingKeys as the same key without
+      // requiring a compile-time module dependency on whichever plugin first declared it. Defined
+      // outside the `Def.setting {}` block - a plain `val` referenced across a `.value` call *inside*
+      // that block fails both sbt 1.x's and sbt 2.x's macro (see comment on `targetScalaVersionsFor`
+      // above), but capturing an outer val from an enclosing method scope is fine.
+      val javaPlatformKey = SettingKey[String]("javaPlatform")
+      Def.setting {
+        Keys.thisProject
+          .all(ScopeFilter(inProjects(projects.map(p => LocalProject(p.id))*)))
+          .value
+          .map(_.id)
+          .zip(javaPlatformKey.all(ScopeFilter(inProjects(projects.map(p => LocalProject(p.id))*))).value)
+          .toMap
+      }
+    }
   }
 
   import autoImport.*
@@ -230,7 +256,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
             CacheDependencies,
             checkout
           ) ++ (if (javaPlatformMatrix.values.toSet.isEmpty) {
-                  scalaVersionMatrix.values.toSeq.flatten.distinct.map { scalaVersion: String =>
+                  scalaVersionMatrix.values.toSeq.flatten.distinct.map { (scalaVersion: String) =>
                     Step.SingleStep(
                       name = "Test",
                       condition = Some(Condition.Expression(s"matrix.scala == '$scalaVersion'")),
