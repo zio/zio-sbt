@@ -47,6 +47,8 @@ jobs:
       run: sbt --no-colors +Test/compile
     - name: Check artifacts build process
       run: sbt --no-colors +publishLocal
+    - name: Check sbt-2.x scripted fixtures
+      run: sbt --no-colors "zio-sbt-ecosystem/scripted zio-sbt-ecosystem/verifySettings-sbt2" "zio-sbt-website/scripted zio-sbt-website/installWebsite-sbt2" "zio-sbt-ci/scripted zio-sbt-ci/defaults-sbt2"
     - name: Check website build process
       run: sbt --no-colors docs/clean; sbt --no-colors docs/buildWebsite
   lint:

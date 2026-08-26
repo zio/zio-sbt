@@ -1,4 +1,5 @@
 import Versions._
+import _root_.zio.sbt.githubactions.Step
 
 sbtPlugin         := true
 publishMavenStyle := true
@@ -62,6 +63,25 @@ inThisBuild(
       Developer("khajavi", "Milad Khajavi", "khajavi@gmail.com", url("https://github.com/khajavi"))
     ),
     ciEnabledBranches := Seq("main")
+  )
+)
+
+// `ciCheckArtifactsBuildSteps` comes from `ZioSbtCiPlugin.buildSettings`, which is a ThisBuild-
+// scoped (not per-project) setting; `generateGithubWorkflowTask` reads it unscoped from within
+// another ThisBuild-scoped setting, so an override placed inside `root`'s own `.settings(...)`
+// (project scope) is silently never read - it must be scoped to `ThisBuild` explicitly here.
+//
+// `+publishLocal` (the default `ciCheckArtifactsBuildSteps` step) already publishes every
+// cross-built module's sbt-2.x/Scala-3 artifacts, so this step just proves a real sbt 2.0.7
+// process can resolve and use them - the `-sbt2` scripted fixtures added alongside the existing
+// sbt-1.x ones in zio-sbt-ecosystem/zio-sbt-website/zio-sbt-ci.
+ThisBuild / ciCheckArtifactsBuildSteps += Step.SingleStep(
+  name = "Check sbt-2.x scripted fixtures",
+  run = Some(
+    "sbt --no-colors " +
+      "\"zio-sbt-ecosystem/scripted zio-sbt-ecosystem/verifySettings-sbt2\" " +
+      "\"zio-sbt-website/scripted zio-sbt-website/installWebsite-sbt2\" " +
+      "\"zio-sbt-ci/scripted zio-sbt-ci/defaults-sbt2\""
   )
 )
 
