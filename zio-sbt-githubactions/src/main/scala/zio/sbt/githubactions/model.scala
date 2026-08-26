@@ -431,6 +431,9 @@ case class Job private (
   def withStrategy(strategy: Strategy): Job =
     copy(strategy = Some(strategy))
 
+  def withRunsOn(runsOn: String): Job =
+    copy(runsOn = runsOn)
+
   def withSteps(steps: Step*): Job =
     copy(steps = Chunk.fromIterable(steps))
 

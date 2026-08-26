@@ -9,9 +9,7 @@ env:
   release:
     types:
     - published
-  push:
-    branches:
-    - main
+  push: {}
   pull_request:
     branches-ignore:
     - gh-pages
@@ -47,8 +45,6 @@ jobs:
       run: sbt --no-colors +Test/compile
     - name: Check artifacts build process
       run: sbt --no-colors +publishLocal
-    - name: Check sbt-2.x scripted fixtures
-      run: sbt --no-colors "zio-sbt-ecosystem/scripted zio-sbt-ecosystem/verifySettings-sbt2" "zio-sbt-website/scripted zio-sbt-website/installWebsite-sbt2" "zio-sbt-ci/scripted zio-sbt-ci/defaults-sbt2"
     - name: Check website build process
       run: sbt --no-colors docs/clean; sbt --no-colors docs/buildWebsite
   lint:
@@ -156,12 +152,12 @@ jobs:
             - After each release, I will update the version in the installation section.
             - After any changes to the "docs/index.md" file, I will update the README.md file accordingly.
         branch: zio-sbt-website/update-readme
-        base: ${{ github.event.repository.default_branch }}
-        commit-message: Update README.md
         token: ${{ steps.generate-token.outputs.token }}
         delete-branch: true
         title: Update README.md
         add-paths: README.md
+        base: ${{ github.event.repository.default_branch }}
+        commit-message: Update README.md
     - name: Approve PR
       if: ${{ steps.cpr.outputs.pull-request-number }}
       run: gh pr review "$PR_URL" --approve

@@ -26,6 +26,19 @@ addSbtPlugin("pl.project13.scala" % "sbt-jcstress" % "0.2.0")
 // Binary Compatibility Plugin
 addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "1.1.6")
 
+// None of sbt-explicit-dependencies, sbt-platform-deps, or sbt-jcstress has an sbt-2.x / Scala-3
+// release yet. sbt-jcstress is unused in this module's own source (dropped outright); the other
+// two ARE used (see zio-sbt/PlatformCompat.scala's scala-2.12/scala-3 split for how the code
+// copes), so they are simply omitted here on the Scala-3 axis rather than blocking the whole
+// module's sbt-2.x cross-build on them.
+libraryDependencies := {
+  if (scalaBinaryVersion.value == "3")
+    libraryDependencies.value
+      .filterNot(m => Set("sbt-explicit-dependencies", "sbt-platform-deps", "sbt-jcstress").contains(m.name))
+  else
+    libraryDependencies.value
+}
+
 libraryDependencies += "org.snakeyaml" % "snakeyaml-engine" % "3.1.1"
 libraryDependencies += "dev.zio"      %% "zio"              % "2.1.26"
 libraryDependencies += "dev.zio"      %% "zio-json"         % "0.9.2"

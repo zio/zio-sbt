@@ -239,8 +239,8 @@ object ScalaWorkflow {
       operatingSystems: Seq[OS] = Seq(OS.UbuntuLatest),
       javaVersions: Seq[JavaVersion] = Seq(JDK11)
     ): Job =
-      job.copy(
-        strategy = Some(
+      job
+        .withStrategy(
           Strategy(
             matrix = Map(
               "os"    -> operatingSystems.map(_.asString).toList,
@@ -248,9 +248,8 @@ object ScalaWorkflow {
               "java"  -> javaVersions.map(_.asString).toList
             )
           )
-        ),
-        runsOn = "${{ matrix.os }}"
-      )
+        )
+        .withRunsOn("${{ matrix.os }}")
   }
 
 }

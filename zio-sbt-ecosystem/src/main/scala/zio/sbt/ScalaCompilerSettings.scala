@@ -16,8 +16,6 @@
 
 package zio.sbt
 
-import explicitdeps.ExplicitDepsPlugin.autoImport._
-import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
 import sbt.Keys._
 import sbt.{Def, _}
 import sbtbuildinfo.BuildInfoPlugin.autoImport.{BuildInfoKey, buildInfoKeys, buildInfoPackage}
@@ -192,9 +190,9 @@ trait ScalaCompilerSettings {
         },
         Test / parallelExecution := scalaBinaryVersion.value != "3",
         incOptions ~= (_.withLogRecompileOnMacro(false)),
-        autoAPIMappings := true,
-        unusedCompileDependenciesFilter -= moduleFilter("org.scala-js", "scalajs-library")
-      ) ++ (if (enableCrossProject) crossProjectSettings else Seq.empty) ++ {
+        autoAPIMappings := true
+      ) ++ PlatformCompat.unusedCompileDependenciesFilterSettings ++
+      (if (enableCrossProject) crossProjectSettings else Seq.empty) ++ {
         packageName match {
           case Some(name) => buildInfoSettings(name)
           case None       => Seq.empty
@@ -227,24 +225,20 @@ trait ScalaCompilerSettings {
     enableStreaming: Boolean = false,
     enableTesting: Boolean = true
   ): Seq[Def.Setting[_]] =
-    Seq(libraryDependencies += "dev.zio" %%% "zio" % ZioSbtEcosystemPlugin.autoImport.zioVersion.value) ++
-      (if (enableTesting)
-         Seq(
-           libraryDependencies ++= Seq(
-             "dev.zio" %%% "zio-test"     % ZioSbtEcosystemPlugin.autoImport.zioVersion.value % Test,
-             "dev.zio" %%% "zio-test-sbt" % ZioSbtEcosystemPlugin.autoImport.zioVersion.value % Test
-           ),
-           testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
-         )
-       else Seq.empty) ++ {
-        if (enableStreaming)
-          libraryDependencies += "dev.zio" %%% "zio-streams" % ZioSbtEcosystemPlugin.autoImport.zioVersion.value
-        else Seq.empty
-      }
+    PlatformCompat.enableZIO(enableStreaming, enableTesting)
 
   def buildInfoSettings(packageName: String): Seq[Setting[_]] =
     Seq(
-      buildInfoKeys    := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion, isSnapshot),
+      // Wrapped explicitly with `BuildInfoKey(...)` rather than relying on its implicit
+      // `SettingKey[T] => BuildInfoKey` conversion applying automatically inside a `Seq[BuildInfoKey](...)`
+      // literal: Scala 3 does not apply it there the way Scala 2 does.
+      buildInfoKeys := Seq[BuildInfoKey](
+        BuildInfoKey(name),
+        BuildInfoKey(version),
+        BuildInfoKey(scalaVersion),
+        BuildInfoKey(sbtVersion),
+        BuildInfoKey(isSnapshot)
+      ),
       buildInfoPackage := packageName
     )
 
@@ -280,8 +274,12 @@ trait ScalaCompilerSettings {
   def nativeSettings: Seq[Setting[_]] = Seq(
     doc / skip              := true,
     Compile / doc / sources := Seq.empty,
-    Test / test             := { val _ = (Test / compile).value; () },
-    Test / fork             := crossProjectPlatform.value == JVMPlatform // set fork to `true` on JVM to improve log readability, JS and Native need `false`
+    // `Test / test`'s own value type is `Unit` on sbt 1.x but `sbt.protocol.testing.TestResult` on
+    // sbt 2.x, so the replacement value - not just an expression discarding to a common type, since
+    // `:=`'s RHS must match the key's own declared type - has to come from the scala-2.12/scala-3
+    // PlatformCompat split.
+    PlatformCompat.skippedTestSetting,
+    Test / fork := crossProjectPlatform.value == JVMPlatform // set fork to `true` on JVM to improve log readability, JS and Native need `false`
   )
 
   lazy val scalajs: Seq[Setting[_]] =
