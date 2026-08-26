@@ -13,9 +13,9 @@ _ZIO SBT_ contains multiple sbt plugins that are useful for ZIO projects. It pro
 Add the following lines to your `project/plugins.sbt` file:
 
 ```scala
-addSbtPlugin("dev.zio" % "zio-sbt-ecosystem" % "0.7.1")
-addSbtPlugin("dev.zio" % "zio-sbt-ci"        % "0.7.1")
-addSbtPlugin("dev.zio" % "zio-sbt-website"   % "0.7.1")
+addSbtPlugin("dev.zio" % "zio-sbt-ecosystem" % "0.7.2")
+addSbtPlugin("dev.zio" % "zio-sbt-ci"        % "0.7.2")
+addSbtPlugin("dev.zio" % "zio-sbt-website"   % "0.7.2")
 ```
 
 Then you can enable them by using the following code in your `build.sbt` file:
@@ -116,7 +116,7 @@ ZIO SBT CI plugin generates a default GitHub workflow that includes common CI ta
 To use ZIO SBT CI plugin, add the following lines to your `plugins.sbt` file:
 
 ```scala
-addSbtPlugin("dev.zio" % "zio-sbt-ci" % "0.7.1")
+addSbtPlugin("dev.zio" % "zio-sbt-ci" % "0.7.2")
 
 resolvers ++= Resolver.sonatypeOssRepos("public")
 ```
@@ -181,6 +181,10 @@ The default value mirrors the bots used by the `zio/zio` repository: `Seq(Depend
 > **Note:**
 >
 > For `gh pr merge --auto` to actually merge a PR (rather than just queue it), the target repository needs "Allow auto-merge" enabled under **Settings → General**, and branch protection with required status checks configured on the target branch.
+
+> **Note:**
+>
+> `GITHUB_TOKEN` can never be granted the "workflows" scope needed to auto-merge a bot PR that touches `.github/workflows/**`, so `auto-merge.yml` mints a GitHub App token for that case instead, falling back to `GITHUB_TOKEN` when no app is configured (which still auto-merges ordinary, non-workflow-touching PRs fine). This needs the same `APP_ID`/`APP_PRIVATE_KEY` secrets as `update-readme`, and the [ZIO Assistant](https://github.com/apps/zio-assistant) app installation must additionally have the **Workflows** repository permission granted and accepted — without it, workflow-touching PRs still fail to auto-merge and need a manual merge.
 
 ### Keeping the Workflow in Sync
 
@@ -395,7 +399,7 @@ ZIO SBT Source is a Scala 2.13 + Scala 3 cross-compiled library that provides ut
 Add the following line to your `libraryDependencies` in `build.sbt`:
 
 ```scala
-libraryDependencies += "dev.zio" %% "zio-sbt-source" % "0.7.1"
+libraryDependencies += "dev.zio" %% "zio-sbt-source" % "0.7.2"
 ```
 
 ### Features

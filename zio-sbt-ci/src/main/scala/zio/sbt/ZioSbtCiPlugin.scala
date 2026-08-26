@@ -738,6 +738,20 @@ object ZioSbtCiPlugin extends AutoPlugin {
     "GH_REPO"  -> "${{ github.repository }}"
   )
 
+  // GITHUB_TOKEN can never be granted the "workflows" scope GitHub's `enablePullRequestAutoMerge`
+  // mutation needs for a PR that touches .github/workflows/** - no `permissions:` grant fixes
+  // that, `actions: write` included, despite the error message asking for a "workflows"
+  // permission that isn't a valid permissions key at all (see #744). A GitHub App token can hold
+  // that scope, so the "Generate Token" step below mints one and this falls back to GITHUB_TOKEN
+  // when no app is configured: `steps.generate-token.outputs.token` is empty both when that step
+  // is skipped (no APP_ID secret) and when it fails, so `||` reaches the fallback either way.
+  // GITHUB_TOKEN alone still auto-merges ordinary, non-workflow-touching dependency PRs fine -
+  // only PRs that touch workflow files need the app's scope.
+  private val mergeTokenEnv: Map[String, String] = Map(
+    "GH_TOKEN" -> "${{ steps.generate-token.outputs.token || secrets.GITHUB_TOKEN }}",
+    "GH_REPO"  -> "${{ github.repository }}"
+  )
+
   lazy val autoApproveWorkflow: Def.Initialize[Workflow] = Def.setting {
     val bots = ciDependencyUpdateBots.value.map(_.login)
 
@@ -775,11 +789,10 @@ object ZioSbtCiPlugin extends AutoPlugin {
     Workflow(
       name = "Auto-merge bot dependency PRs",
       triggers = dependencyBotPRTriggers,
-      // "actions: write" is required for `gh pr merge --auto` to succeed on PRs that touch
-      // .github/workflows/**, per https://github.com/cli/cli/issues/11493 — GitHub's
-      // enablePullRequestAutoMerge mutation otherwise rejects with a "workflows permission"
-      // error, even though "workflows" isn't a valid permissions key at all.
-      permissions = Map("contents" -> "write", "pull-requests" -> "write", "actions" -> "write"),
+      // `contents`/`pull-requests: write` are for the GITHUB_TOKEN fallback path (see
+      // `mergeTokenEnv`); the app-token path doesn't need this block at all, the app's own
+      // installation permissions govern what its token can do.
+      permissions = Map("contents" -> "write", "pull-requests" -> "write"),
       jobs = Seq(
         Job(
           id = "auto-merge",
@@ -787,16 +800,29 @@ object ZioSbtCiPlugin extends AutoPlugin {
           condition = Some(dependencyBotPRCondition(bots)),
           steps = Seq(
             Step.SingleStep(
+              name = "Generate Token",
+              id = Some("generate-token"),
+              // Skipped (rather than left to fail on empty secrets) on repos that never
+              // configured APP_ID/APP_PRIVATE_KEY, so no action run is wasted on the doomed API
+              // calls that would otherwise make.
+              condition = Some(Condition.Expression("secrets.APP_ID != ''")),
+              uses = Some(ActionRef(V("zio/generate-github-app-token"))),
+              parameters = Map(
+                "app_id"          -> Json.Str("${{ secrets.APP_ID }}"),
+                "app_private_key" -> Json.Str("${{ secrets.APP_PRIVATE_KEY }}")
+              )
+            ),
+            Step.SingleStep(
               name = "Enable auto-merge for bot PR",
               condition = Some(Condition.Expression("github.event_name == 'pull_request_target'")),
               run = Some("gh pr merge --auto --squash ${{ github.event.number }}"),
-              env = botTokenEnv
+              env = mergeTokenEnv
             ),
             Step.SingleStep(
               name = "Backfill auto-merge for existing bot PRs",
               condition = Some(Condition.Expression("github.event_name == 'workflow_dispatch'")),
               run = Some(backfillBotPRsScript(bots, "gh pr merge --auto --squash")),
-              env = botTokenEnv
+              env = mergeTokenEnv
             )
           )
         )
