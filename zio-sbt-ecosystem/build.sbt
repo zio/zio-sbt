@@ -33,9 +33,8 @@ addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "1.1.6")
 // module's sbt-2.x cross-build on them.
 libraryDependencies := {
   if (scalaBinaryVersion.value == "3")
-    libraryDependencies.value.filterNot(m =>
-      Set("sbt-explicit-dependencies", "sbt-platform-deps", "sbt-jcstress").contains(m.name)
-    )
+    libraryDependencies.value
+      .filterNot(m => Set("sbt-explicit-dependencies", "sbt-platform-deps", "sbt-jcstress").contains(m.name))
   else
     libraryDependencies.value
 }

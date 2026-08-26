@@ -20,11 +20,13 @@ import sbt.Keys._
 import sbt._
 
 /**
- * `scala-3` counterpart of the `scala-2.12` [[PlatformCompat]] - see that file for why this split
- * exists. Neither `sbt-explicit-dependencies` nor `sbt-platform-deps` has an sbt-2.x / Scala-3
- * release yet, so on this axis `stdSettings()` skips the unused-dependency filter tweak, and
- * `enableZIO()` depends on the plain (JVM-only) `%%` operator instead of `%%%`
- * (cross-platform JS/Native support is unavailable here until upstream catches up).
+ * `scala-3` counterpart of the `scala-2.12` [[PlatformCompat]] - see that file
+ * for why this split exists. Neither `sbt-explicit-dependencies` nor
+ * `sbt-platform-deps` has an sbt-2.x / Scala-3 release yet, so on this axis
+ * `stdSettings()` skips the unused-dependency filter tweak, and `enableZIO()`
+ * depends on the plain (JVM-only) `%%` operator instead of `%%%`
+ * (cross-platform JS/Native support is unavailable here until upstream catches
+ * up).
  */
 private[sbt] object PlatformCompat {
   def unusedCompileDependenciesFilterSettings: Seq[Setting[_]] = Seq.empty

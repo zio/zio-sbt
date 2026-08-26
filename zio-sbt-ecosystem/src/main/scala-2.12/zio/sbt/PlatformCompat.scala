@@ -22,14 +22,16 @@ import sbt.Keys._
 import sbt._
 
 /**
- * The `sbt-explicit-dependencies`/`sbt-platform-deps`-dependent half of [[ScalaCompilerSettings]],
- * split into a `scala-2.12`/`scala-3` cross-source pair because neither plugin has an sbt-2.x /
- * Scala-3 release yet - see the `scala-3` sibling of this file for what that axis loses.
+ * The `sbt-explicit-dependencies`/`sbt-platform-deps`-dependent half of
+ * [[ScalaCompilerSettings]], split into a `scala-2.12`/`scala-3` cross-source
+ * pair because neither plugin has an sbt-2.x / Scala-3 release yet - see the
+ * `scala-3` sibling of this file for what that axis loses.
  *
- * `enableZIO`'s body (not just the `%%%` operator alone) has to live in this cross-source split,
- * not behind a plain helper method taking `%%%`'s result as a parameter: `%%%`, like `.value`, is
- * itself a macro that only expands when it appears directly inside a recognized settings-DSL
- * expression (`libraryDependencies += ...`), not behind an ordinary function call.
+ * `enableZIO`'s body (not just the `%%%` operator alone) has to live in this
+ * cross-source split, not behind a plain helper method taking `%%%`'s result as
+ * a parameter: `%%%`, like `.value`, is itself a macro that only expands when
+ * it appears directly inside a recognized settings-DSL expression
+ * (`libraryDependencies += ...`), not behind an ordinary function call.
  */
 private[sbt] object PlatformCompat {
   def unusedCompileDependenciesFilterSettings: Seq[Setting[_]] = Seq(

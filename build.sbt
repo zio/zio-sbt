@@ -47,7 +47,7 @@ lazy val scriptedTestSettings = Seq(
   scriptedBufferLog := false,
   // Scripted fixtures are sbt-1.x consumers today, so only run them on the 2.12 axis; running
   // them again under `++3.3.8` would just re-exercise the same sbt-1.x fixtures a second time.
-  Test / test       := Def.taskDyn {
+  Test / test := Def.taskDyn {
     if (scalaBinaryVersion.value == "3") Def.task(()) else scripted.toTask("")
   }.value
 )

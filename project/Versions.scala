@@ -5,6 +5,6 @@ object Versions {
   // Scala 3 release): Scala 3.3.8 hits a dotc compiler crash ("module class X$ has non-class
   // parent") when a downstream module cross-module-TASTy-references a sealed trait's companion,
   // which 3.8.4 does not reproduce.
-  val Scala3   = "3.8.4"
-  val zio      = "2.1.26"
+  val Scala3 = "3.8.4"
+  val zio    = "2.1.26"
 }

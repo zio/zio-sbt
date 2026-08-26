@@ -232,7 +232,7 @@ trait ScalaCompilerSettings {
       // Wrapped explicitly with `BuildInfoKey(...)` rather than relying on its implicit
       // `SettingKey[T] => BuildInfoKey` conversion applying automatically inside a `Seq[BuildInfoKey](...)`
       // literal: Scala 3 does not apply it there the way Scala 2 does.
-      buildInfoKeys    := Seq[BuildInfoKey](
+      buildInfoKeys := Seq[BuildInfoKey](
         BuildInfoKey(name),
         BuildInfoKey(version),
         BuildInfoKey(scalaVersion),
@@ -279,7 +279,7 @@ trait ScalaCompilerSettings {
     // `:=`'s RHS must match the key's own declared type - has to come from the scala-2.12/scala-3
     // PlatformCompat split.
     PlatformCompat.skippedTestSetting,
-    Test / fork             := crossProjectPlatform.value == JVMPlatform // set fork to `true` on JVM to improve log readability, JS and Native need `false`
+    Test / fork := crossProjectPlatform.value == JVMPlatform // set fork to `true` on JVM to improve log readability, JS and Native need `false`
   )
 
   lazy val scalajs: Seq[Setting[_]] =
