@@ -610,14 +610,30 @@ object ZioSbtCiPlugin extends AutoPlugin {
         condition = releaseCondition,
         steps = Seq(
           checkout,
+          // Unlike the auto-merge app-token fallback, this has no GITHUB_TOKEN path to fall back
+          // to: the dispatch below targets zio/zio, a different repository, and GITHUB_TOKEN is
+          // scoped to only the repository the workflow is running in. A minted app token works
+          // only if that app is installed on zio/zio too; PAT_TOKEN remains the fallback for repos
+          // relying on it (or where the app lacks that installation).
+          SingleStep(
+            name = "Generate Token",
+            id = Some("generate-token"),
+            condition = Some(Condition.Expression("secrets.APP_ID != ''")),
+            uses = Some(ActionRef(V("zio/generate-github-app-token"))),
+            parameters = Map(
+              "app_id"          -> Json.Str("${{ secrets.APP_ID }}"),
+              "app_private_key" -> Json.Str("${{ secrets.APP_PRIVATE_KEY }}")
+            )
+          ),
           SingleStep(
             name = "notify the main repo about the new release of docs package",
+            env = Map("NOTIFY_TOKEN" -> "${{ steps.generate-token.outputs.token || secrets.PAT_TOKEN }}"),
             run = Some("""|PACKAGE_NAME=$(cat docs/package.json | grep '"name"' | awk -F'"' '{print $4}')
                           |PACKAGE_VERSION=$(npm view $PACKAGE_NAME version)
                           |curl -L \
                           |  -X POST \
                           |  -H "Accept: application/vnd.github+json" \
-                          |  -H "Authorization: token ${{ secrets.PAT_TOKEN }}"\
+                          |  -H "Authorization: token $NOTIFY_TOKEN"\
                           |    https://api.github.com/repos/zio/zio/dispatches \
                           |    -d '{
                           |          "event_type":"update-docs",
