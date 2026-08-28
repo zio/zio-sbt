@@ -60,6 +60,21 @@ There are also some other settings that are useful for configuring the projects:
 - `enableZIO`- a set of ZIO related settings such as enabling zio streams and ZIO test framework.
 - `jsSettings`, `nativeSettings`- common platform specific settings for Scala.js and Scala Native.
 
+`enableZIO` adds ZIO as a dependency using the `zioVersion` setting, which the plugin gives a
+default value to. Always override it explicitly in your own `build.sbt`:
+
+```scala
+ThisBuild / zioVersion := "2.1.22"
+```
+
+:::note
+Don't rely on `zioVersion`'s default. It's baked into whichever version of zio-sbt-ecosystem you
+depend on, so upgrading the plugin—including via an automated dependency-update PR—can silently
+change your project's own ZIO version along with it. Setting `zioVersion` explicitly keeps that a
+deliberate decision you make, not a side effect of a plugin bump. Every ZIO ecosystem project
+(zio-logging, zio-kafka, zio-cache, and others) already follows this practice.
+:::
+
 It also provides some helper methods that are useful for configuring a compiler option for a specific Scala version:
 
 - `optionsOn`
