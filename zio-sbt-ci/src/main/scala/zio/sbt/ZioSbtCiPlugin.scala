@@ -615,10 +615,11 @@ object ZioSbtCiPlugin extends AutoPlugin {
           // scoped to only the repository the workflow is running in. A minted app token works
           // only if that app is installed on zio/zio too; PAT_TOKEN remains the fallback for repos
           // relying on it (or where the app lacks that installation).
+          checkAppTokenStep,
           SingleStep(
             name = "Generate Token",
             id = Some("generate-token"),
-            condition = Some(Condition.Expression("secrets.APP_ID != ''")),
+            condition = Some(appTokenConfigured),
             uses = Some(ActionRef(V("zio/generate-github-app-token"))),
             parameters = Map(
               "app_id"          -> Json.Str("${{ secrets.APP_ID }}"),
@@ -768,6 +769,28 @@ object ZioSbtCiPlugin extends AutoPlugin {
     "GH_REPO"  -> "${{ github.repository }}"
   )
 
+  // GitHub rejects the `secrets` context in any `if:` - job or step - with "Unrecognized
+  // named-value: 'secrets'", failing the *entire* workflow file (every job, every trigger), not
+  // just the step that used it. `secrets` is readable in `env:`/`run:` though, so this step reads
+  // it there and exposes the result as a step output, which `if:` conditions may reference freely.
+  private val checkAppTokenStep: Step.SingleStep =
+    Step.SingleStep(
+      name = "Check App Token",
+      id = Some("check-app-token"),
+      env = Map("APP_ID" -> "${{ secrets.APP_ID }}"),
+      run = Some(
+        """|if [ -n "$APP_ID" ]; then
+           |  echo "configured=true" >> "$GITHUB_OUTPUT"
+           |else
+           |  echo "configured=false" >> "$GITHUB_OUTPUT"
+           |fi
+           |""".stripMargin
+      )
+    )
+
+  private val appTokenConfigured: Condition =
+    Condition.Expression("steps.check-app-token.outputs.configured == 'true'")
+
   lazy val autoApproveWorkflow: Def.Initialize[Workflow] = Def.setting {
     val bots = ciDependencyUpdateBots.value.map(_.login)
 
@@ -815,13 +838,14 @@ object ZioSbtCiPlugin extends AutoPlugin {
           name = "auto-merge",
           condition = Some(dependencyBotPRCondition(bots)),
           steps = Seq(
+            checkAppTokenStep,
             Step.SingleStep(
               name = "Generate Token",
               id = Some("generate-token"),
               // Skipped (rather than left to fail on empty secrets) on repos that never
               // configured APP_ID/APP_PRIVATE_KEY, so no action run is wasted on the doomed API
               // calls that would otherwise make.
-              condition = Some(Condition.Expression("secrets.APP_ID != ''")),
+              condition = Some(appTokenConfigured),
               uses = Some(ActionRef(V("zio/generate-github-app-token"))),
               parameters = Map(
                 "app_id"          -> Json.Str("${{ secrets.APP_ID }}"),
