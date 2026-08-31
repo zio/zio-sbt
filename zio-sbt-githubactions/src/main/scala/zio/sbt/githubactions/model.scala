@@ -216,6 +216,25 @@ object Trigger {
         Chunk.fromIterable(ignoredBranches)
       )
   }
+
+  case class WorkflowRun private (
+    workflows: Chunk[String],
+    types: Chunk[String]
+  ) extends Trigger {
+    override def toKeyValuePair: (String, Json) =
+      (
+        "workflow_run",
+        Json.Obj(
+          ("workflows", workflows.toJsonAST.getOrElse(Json.Null)),
+          ("types", types.toJsonAST.getOrElse(Json.Null))
+        )
+      )
+  }
+
+  object WorkflowRun {
+    def apply(workflows: Seq[String], types: Seq[String] = Seq("completed")): WorkflowRun =
+      WorkflowRun(Chunk.fromIterable(workflows), Chunk.fromIterable(types))
+  }
 }
 
 case class Strategy(matrix: Map[String, List[String]], maxParallel: Option[Int] = None, failFast: Boolean = true)

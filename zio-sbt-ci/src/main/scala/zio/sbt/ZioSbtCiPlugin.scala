@@ -95,6 +95,14 @@ object ZioSbtCiPlugin extends AutoPlugin {
       settingKey[Seq[Step]]("Workflow steps for checking artifact build process")
     val ciCheckWebsiteBuildProcess: SettingKey[Seq[Step]] =
       settingKey[Seq[Step]]("Workflow steps for checking website build process")
+    val ciEnableNetlifyDeployPreview: SettingKey[Boolean] =
+      settingKey[Boolean](
+        "When true, adds change-detection and website-artifact upload steps to the build job, " +
+          "and makes `ciGenerateGithubWorkflow` also generate deploy-preview.yml, which deploys " +
+          "website/build to Netlify via a workflow_run-triggered job after a successful CI run " +
+          "on a pull request touching docs/ or website/. Requires the NETLIFY_AUTH_TOKEN and " +
+          "NETLIFY_SITE_ID secrets to be configured on the repository. Default is false"
+      )
     val ciCheckArtifactsCompilationSteps: SettingKey[Seq[Step]] =
       settingKey[Seq[Step]]("Workflow steps for checking compilation of all codes")
     val ciCheckGithubWorkflowSteps: SettingKey[Seq[Step]] =
@@ -176,6 +184,8 @@ object ZioSbtCiPlugin extends AutoPlugin {
     val checkAllCodeCompiles      = ciCheckArtifactsCompilationSteps.value
     val checkArtifactBuildProcess = ciCheckArtifactsBuildSteps.value
     val checkWebsiteBuildProcess  = ciCheckWebsiteBuildProcess.value
+    val netlifyPreviewBuildSteps  =
+      if (ciEnableNetlifyDeployPreview.value) NetlifyPreviewBuildSteps.value else Seq.empty
 
     Seq(
       Job(
@@ -190,7 +200,8 @@ object ZioSbtCiPlugin extends AutoPlugin {
               SetupJava(javaVersion),
               SetupSBT,
               CacheDependencies
-            ) ++ checkAllCodeCompiles ++ checkArtifactBuildProcess ++ checkWebsiteBuildProcess
+            ) ++ checkAllCodeCompiles ++ checkArtifactBuildProcess ++ checkWebsiteBuildProcess ++
+            netlifyPreviewBuildSteps
         }
       )
     )
@@ -876,6 +887,113 @@ object ZioSbtCiPlugin extends AutoPlugin {
   lazy val generateAutoMergeWorkflowTask: Def.Initialize[Task[Unit]] =
     Def.task(writeWorkflowFile((ThisBuild / Keys.baseDirectory).value, autoMergeWorkflow.value, "auto-merge.yml"))
 
+  lazy val netlifyDeployPreviewWorkflow: Def.Initialize[Workflow] = Def.setting {
+    val ciWorkflowName = ciWorkflowTitle.value
+
+    val deployPreviewCondition =
+      Condition.Expression("github.event.workflow_run.event == 'pull_request'") &&
+        Condition.Expression("github.event.workflow_run.conclusion == 'success'")
+
+    Workflow(
+      name = "Deploy Preview",
+      triggers = Seq(Trigger.WorkflowRun(workflows = Seq(ciWorkflowName), types = Seq("completed"))),
+      permissions = Map(
+        "actions"       -> "read",
+        "contents"      -> "read",
+        "deployments"   -> "write",
+        "pull-requests" -> "write",
+        "statuses"      -> "write"
+      ),
+      jobs = Seq(
+        Job(
+          id = "deploy-preview",
+          name = "deploy-preview",
+          condition = Some(deployPreviewCondition),
+          steps = Seq(
+            Step.SingleStep(
+              name = "Download Website Artifact",
+              uses = Some(ActionRef(V("actions/download-artifact"))),
+              parameters = Map(
+                "name"         -> Json.Str("website-artifact"),
+                "path"         -> Json.Str("website-artifact"),
+                "run-id"       -> Json.Str("${{ github.event.workflow_run.id }}"),
+                "github-token" -> Json.Str("${{ secrets.GITHUB_TOKEN }}")
+              )
+            ),
+            Step.SingleStep(
+              name = "Download PR Metadata",
+              uses = Some(ActionRef(V("actions/download-artifact"))),
+              parameters = Map(
+                "name"         -> Json.Str("pr-metadata"),
+                "path"         -> Json.Str("pr-metadata"),
+                "run-id"       -> Json.Str("${{ github.event.workflow_run.id }}"),
+                "github-token" -> Json.Str("${{ secrets.GITHUB_TOKEN }}")
+              )
+            ),
+            Step.SingleStep(
+              name = "Read PR Number",
+              id = Some("pr"),
+              run = Some("echo \"number=$(cat pr-metadata/pr-number.txt)\" >> \"$GITHUB_OUTPUT\"")
+            ),
+            Step.SingleStep(
+              name = "Compute Deployment Metadata",
+              id = Some("meta"),
+              run = Some(
+                """|echo "time=$(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> "$GITHUB_OUTPUT"
+                   |sha="${{ github.event.workflow_run.head_sha }}"
+                   |echo "short_sha=${sha:0:7}" >> "$GITHUB_OUTPUT"
+                   |""".stripMargin
+              )
+            ),
+            Step.SingleStep(
+              name = "Deploy Preview to Netlify",
+              id = Some("netlify-deploy"),
+              uses = Some(ActionRef(V("nwtgck/actions-netlify"))),
+              parameters = Map(
+                "publish-dir"                 -> Json.Str("./website-artifact"),
+                "github-token"                -> Json.Str("${{ secrets.GITHUB_TOKEN }}"),
+                "deploy-message"              -> Json.Str("PR #${{ steps.pr.outputs.number }}"),
+                "alias"                       -> Json.Str("pr-${{ steps.pr.outputs.number }}"),
+                "enable-pull-request-comment" -> Json.Bool(false),
+                "enable-commit-comment"       -> Json.Bool(false)
+              ),
+              env = Map(
+                "NETLIFY_AUTH_TOKEN" -> "${{ secrets.NETLIFY_AUTH_TOKEN }}",
+                "NETLIFY_SITE_ID"    -> "${{ secrets.NETLIFY_SITE_ID }}"
+              )
+            ),
+            Step.SingleStep(
+              name = "Post Preview URL Comment",
+              uses = Some(ActionRef(V("marocchino/sticky-pull-request-comment"))),
+              parameters = Map(
+                "number"  -> Json.Str("${{ steps.pr.outputs.number }}"),
+                "header"  -> Json.Str("netlify-preview"),
+                "message" -> Json.Str(
+                  """|🚀 Preview deployed to Netlify: ${{ steps.netlify-deploy.outputs.deploy-url }}
+                     |
+                     |🕒 Deployed at: ${{ steps.meta.outputs.time }}
+                     |📌 Commit: [`${{ steps.meta.outputs.short_sha }}`](https://github.com/${{ github.repository }}/commit/${{ github.event.workflow_run.head_sha }})""".stripMargin
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  }
+
+  lazy val generateNetlifyDeployPreviewWorkflowTask: Def.Initialize[Task[Unit]] =
+    Def.task {
+      val baseDir  = (ThisBuild / Keys.baseDirectory).value
+      val enabled  = ciEnableNetlifyDeployPreview.value
+      val workflow = netlifyDeployPreviewWorkflow.value
+
+      if (enabled)
+        writeWorkflowFile(baseDir, workflow, "deploy-preview.yml")
+      else
+        IO.delete(baseDir / ".github" / "workflows" / "deploy-preview.yml")
+    }
+
   override lazy val buildSettings: Seq[Setting[_]] =
     Seq(
       ciWorkflowTitle        := "CI",
@@ -891,7 +1009,8 @@ object ZioSbtCiPlugin extends AutoPlugin {
         .sequential(
           generateGithubWorkflowTask,
           generateAutoApproveWorkflowTask,
-          generateAutoMergeWorkflowTask
+          generateAutoMergeWorkflowTask,
+          generateNetlifyDeployPreviewWorkflowTask
         )
         .value,
       ciDocsVersioningScheme  := DocsVersioning.SemanticVersioning,
@@ -926,6 +1045,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
           )
         ),
       ciCheckWebsiteBuildProcess       := CheckWebsiteBuildProcess.value,
+      ciEnableNetlifyDeployPreview     := false,
       ciCheckArtifactsCompilationSteps := Seq(
         Step.SingleStep(
           name = "Check all code compiles",
@@ -1072,6 +1192,64 @@ object ZioSbtCiPlugin extends AutoPlugin {
         Step.SingleStep(
           name = "Check website build process",
           run = Some(prefixJobs + SbtCommand + " docs/clean; " + SbtCommand + " docs/buildWebsite")
+        )
+      )
+    }
+
+  // Only meaningful on a pull_request run: a push or release has no base to diff against, and the
+  // artifact this feeds (`website-artifact`) is only ever consumed by a pull-request-triggered
+  // deploy-preview run.
+  private val isPullRequest: Condition = Condition.Expression("github.event_name == 'pull_request'")
+
+  private val docsOrWebsiteChanged: Condition =
+    Condition.Expression("steps.detect-docs-changes.outputs.changed == 'true'")
+
+  lazy val NetlifyPreviewBuildSteps: Def.Initialize[Seq[Step.SingleStep]] =
+    Def.setting {
+      Seq(
+        Step.SingleStep(
+          name = "Detect docs/website changes",
+          id = Some("detect-docs-changes"),
+          condition = Some(isPullRequest),
+          run = Some(
+            // A continuation line whose first non-space character is `|` is misrendered by the
+            // YAML block-scalar writer (the leading `|` and its indentation are silently
+            // dropped), so the `git diff | grep` pipeline stays on one line rather than
+            // continuing onto the next.
+            """|BASE_SHA=${{ github.event.pull_request.base.sha }}
+               |git fetch origin "$BASE_SHA" --depth=1
+               |if git diff --name-only "$BASE_SHA" ${{ github.sha }} | grep -E '^(docs/|website/)' > /dev/null; then
+               |  echo "changed=true" >> "$GITHUB_OUTPUT"
+               |else
+               |  echo "changed=false" >> "$GITHUB_OUTPUT"
+               |fi
+               |""".stripMargin
+          )
+        ),
+        Step.SingleStep(
+          name = "Upload website build artifact",
+          condition = Some(isPullRequest && docsOrWebsiteChanged),
+          uses = Some(ActionRef(V("actions/upload-artifact"))),
+          parameters = Map(
+            "name"           -> Json.Str("website-artifact"),
+            "path"           -> Json.Str("./website/build"),
+            "retention-days" -> Json.Num(30),
+            "overwrite"      -> Json.Bool(true)
+          )
+        ),
+        Step.SingleStep(
+          name = "Save PR number",
+          condition = Some(isPullRequest),
+          run = Some("mkdir -p pr-metadata && echo ${{ github.event.pull_request.number }} > pr-metadata/pr-number.txt")
+        ),
+        Step.SingleStep(
+          name = "Upload PR metadata",
+          condition = Some(isPullRequest),
+          uses = Some(ActionRef(V("actions/upload-artifact"))),
+          parameters = Map(
+            "name" -> Json.Str("pr-metadata"),
+            "path" -> Json.Str("pr-metadata/pr-number.txt")
+          )
         )
       )
     }
