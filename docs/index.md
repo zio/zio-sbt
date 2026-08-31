@@ -211,7 +211,7 @@ The feature is split across two workflows, decoupled by artifacts rather than tr
 
 Using `workflow_run` instead of triggering directly on `pull_request` means the deploy step only ever runs after CI has actually succeeded, and it runs with read/write access to secrets even for pull requests from forks (where a plain `pull_request` trigger would not have that access).
 
-This requires two repository secrets to be configured on the Netlify site's dashboard: `NETLIFY_AUTH_TOKEN` and `NETLIFY_SITE_ID`. The default value of `ciEnableNetlifyDeployPreview` is `false`, so existing builds see no change until they opt in.
+This requires two GitHub repository secrets: `NETLIFY_AUTH_TOKEN`, a [personal access token](https://docs.netlify.com/api/get-started/#authentication) generated from the Netlify user account that owns the site, and `NETLIFY_SITE_ID`, found under the site's **Site configuration → General → Site details** in the Netlify dashboard. The default value of `ciEnableNetlifyDeployPreview` is `false`, so existing builds see no change until they opt in.
 
 ### Keeping the Workflow in Sync
 
