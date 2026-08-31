@@ -201,6 +201,19 @@ The default value mirrors the bots used by the `zio/zio` repository: `Seq(Depend
 >
 > `GITHUB_TOKEN` can never be granted the "workflows" scope needed to auto-merge a bot PR that touches `.github/workflows/**`, so `auto-merge.yml` mints a GitHub App token for that case instead, falling back to `GITHUB_TOKEN` when no app is configured (which still auto-merges ordinary, non-workflow-touching PRs fine). This needs the same `APP_ID`/`APP_PRIVATE_KEY` secrets as `update-readme`, and the [ZIO Assistant](https://github.com/apps/zio-assistant) app installation must additionally have the **Workflows** repository permission granted and accepted — without it, workflow-touching PRs still fail to auto-merge and need a manual merge.
 
+### Netlify Deploy Previews
+
+Setting `ciEnableNetlifyDeployPreview := true` makes `ciGenerateGithubWorkflow` also generate `deploy-preview.yml`, which deploys the built Docusaurus site to Netlify for every pull request that touches `docs/` or `website/`.
+
+The feature is split across two workflows, decoupled by artifacts rather than triggering the deploy directly from a pull request event:
+
+- The `build` job gains a few extra steps: it detects whether the pull request touched `docs/` or `website/`, and if so uploads `website/build` as a `website-artifact`, plus the PR number as a `pr-metadata` artifact.
+- `deploy-preview.yml` triggers on `workflow_run` once the CI workflow completes, downloads those two artifacts, deploys `website-artifact` to Netlify with [`nwtgck/actions-netlify`](https://github.com/nwtgck/actions-netlify) under a deterministic `pr-<number>` alias, and posts (or updates) a sticky comment on the pull request with the preview URL via [`marocchino/sticky-pull-request-comment`](https://github.com/marocchino/sticky-pull-request-comment).
+
+Using `workflow_run` instead of triggering directly on `pull_request` means the deploy step only ever runs after CI has actually succeeded, and it runs with read/write access to secrets even for pull requests from forks (where a plain `pull_request` trigger would not have that access).
+
+This requires two repository secrets to be configured on the Netlify site's dashboard: `NETLIFY_AUTH_TOKEN` and `NETLIFY_SITE_ID`. The default value of `ciEnableNetlifyDeployPreview` is `false`, so existing builds see no change until they opt in.
+
 ### Keeping the Workflow in Sync
 
 The generated files are meant to be committed and never edited by hand. To stop them drifting from the build, run the check in CI — the default `lint` job already does:
@@ -227,6 +240,7 @@ All settings are `ThisBuild`-scoped.
 | `ciConcurrency` | `Option[Concurrency]` | one run per branch, cancelling in progress | Concurrency group, or `None` to omit the block |
 | `ciSwapSizeGB` | `Int` | `0` | Adds a swap-space step to every job when greater than zero |
 | `ciBackgroundJobs` | `Seq[String]` | `Seq.empty` | Commands prefixed to each `run`, for daemons a job needs |
+| `ciEnableNetlifyDeployPreview` | `Boolean` | `false` | Adds website-artifact upload steps to `build` and generates `deploy-preview.yml`. Requires `NETLIFY_AUTH_TOKEN`/`NETLIFY_SITE_ID` secrets |
 
 **Test matrix**
 
@@ -269,7 +283,7 @@ All settings are `ThisBuild`-scoped.
 
 | Task | Description |
 | --- | --- |
-| `ciGenerateGithubWorkflow` | Writes `ci.yml`, `auto-approve.yml` and `auto-merge.yml` |
+| `ciGenerateGithubWorkflow` | Writes `ci.yml`, `auto-approve.yml` and `auto-merge.yml`, plus `deploy-preview.yml` when `ciEnableNetlifyDeployPreview` is `true` |
 | `ciCheckGithubWorkflow` | Regenerates and fails if the committed files are stale |
 | `ciGenerateAutoApproveWorkflow` | Writes `auto-approve.yml` only |
 | `ciGenerateAutoMergeWorkflow` | Writes `auto-merge.yml` only |
