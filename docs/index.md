@@ -206,10 +206,12 @@ Setting `ciEnableNetlifyDeployPreview := true` makes `ciGenerateGithubWorkflow` 
 
 The feature is split across two workflows, decoupled by artifacts rather than triggering the deploy directly from a pull request event:
 
-- The `build` job gains a few extra steps: it detects whether the pull request touched `docs/` or `website/`, and if so uploads `website/build` as a `website-artifact`, plus the PR number as a `pr-metadata` artifact.
+- The `build` job gains a few extra steps: it first checks whether the website is actually installed, then — only if so — detects whether the pull request touched `docs/` or `website/`, and if so uploads `website/build` as a `website-artifact`, plus the PR number as a `pr-metadata` artifact.
 - `deploy-preview.yml` triggers on `workflow_run` once the CI workflow completes, downloads those two artifacts, deploys `website-artifact` to Netlify with [`nwtgck/actions-netlify`](https://github.com/nwtgck/actions-netlify) under a deterministic `pr-<number>` alias, and posts (or updates) a sticky comment on the pull request with the preview URL via [`marocchino/sticky-pull-request-comment`](https://github.com/marocchino/sticky-pull-request-comment).
 
 Using `workflow_run` instead of triggering directly on `pull_request` means the deploy step only ever runs after CI has actually succeeded, and it runs with read/write access to secrets even for pull requests from forks (where a plain `pull_request` trigger would not have that access).
+
+Enabling `ciEnableNetlifyDeployPreview` does not by itself require a Docusaurus site to exist: the `build` job's first new step, `Check website is installed`, checks for `website/package.json` and `website/docusaurus.config.js` — the same signal [`installWebsite`](#zio-sbt-website) itself uses to decide whether a real scaffold is present, as opposed to a `website/` directory holding nothing but `mdocOut`'s generated output. If either file is missing, every later step in this feature is skipped: no artifacts are uploaded, and `deploy-preview.yml`'s downloads then fail softly (`continue-on-error`), which in turn skips its deploy and comment steps too. So the setting is safe to turn on before the docs site is ready — nothing runs until `website/` is a real Docusaurus installation.
 
 This requires two repository secrets to be configured on the Netlify site's dashboard: `NETLIFY_AUTH_TOKEN` and `NETLIFY_SITE_ID`. The default value of `ciEnableNetlifyDeployPreview` is `false`, so existing builds see no change until they opt in.
 

@@ -51,9 +51,18 @@ jobs:
       run: sbt --no-colors "zio-sbt-ecosystem/scripted zio-sbt-ecosystem/verifySettings-sbt2" "zio-sbt-website/scripted zio-sbt-website/installWebsite-sbt2" "zio-sbt-ci/scripted zio-sbt-ci/defaults-sbt2"
     - name: Check website build process
       run: sbt --no-colors docs/clean; sbt --no-colors docs/buildWebsite
+    - name: Check website is installed
+      id: check-website-installed
+      if: ${{ github.event_name == 'pull_request' }}
+      run: |
+        if [ -f website/package.json ] && [ -f website/docusaurus.config.js ]; then
+          echo "installed=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "installed=false" >> "$GITHUB_OUTPUT"
+        fi
     - name: Detect docs/website changes
       id: detect-docs-changes
-      if: ${{ github.event_name == 'pull_request' }}
+      if: ${{ (github.event_name == 'pull_request') && (steps.check-website-installed.outputs.installed == 'true') }}
       run: |
         BASE_SHA=${{ github.event.pull_request.base.sha }}
         git fetch origin "$BASE_SHA" --depth=1
@@ -64,18 +73,18 @@ jobs:
         fi
     - name: Upload website build artifact
       uses: actions/upload-artifact@v4
-      if: ${{ (github.event_name == 'pull_request') && (steps.detect-docs-changes.outputs.changed == 'true') }}
+      if: ${{ ((github.event_name == 'pull_request') && (steps.check-website-installed.outputs.installed == 'true')) && (steps.detect-docs-changes.outputs.changed == 'true') }}
       with:
         name: website-artifact
         path: ./website/build
         retention-days: 30
         overwrite: true
     - name: Save PR number
-      if: ${{ github.event_name == 'pull_request' }}
+      if: ${{ (github.event_name == 'pull_request') && (steps.check-website-installed.outputs.installed == 'true') }}
       run: mkdir -p pr-metadata && echo ${{ github.event.pull_request.number }} > pr-metadata/pr-number.txt
     - name: Upload PR metadata
       uses: actions/upload-artifact@v4
-      if: ${{ github.event_name == 'pull_request' }}
+      if: ${{ (github.event_name == 'pull_request') && (steps.check-website-installed.outputs.installed == 'true') }}
       with:
         name: pr-metadata
         path: pr-metadata/pr-number.txt

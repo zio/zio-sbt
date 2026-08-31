@@ -309,7 +309,12 @@ object Step {
     condition: Option[Condition] = None,
     parameters: Map[String, Json] = Map.empty,
     run: Option[String] = None,
-    env: Map[String, String] = Map.empty
+    env: Map[String, String] = Map.empty,
+    // Kept boolean (rather than an `Option`) to match GitHub's own field, but only ever rendered
+    // when `true` - a step that never sets it must not gain a `continue-on-error: false` line, or
+    // every existing generated workflow (and its checked-in golden fixtures) picks up a spurious
+    // diff on every step, for every consumer of this DSL.
+    continueOnError: Boolean = false
   ) extends Step {
     override def when(condition: Condition): Step =
       copy(condition = Some(condition))
@@ -339,7 +344,8 @@ object Step {
         ("if", s.condition.toJsonAST.getOrElse(Json.Null)),
         ("with", if (s.parameters.nonEmpty) s.parameters.toJsonAST.getOrElse(Json.Null) else Json.Null),
         ("run", s.run.toJsonAST.getOrElse(Json.Null)),
-        ("env", if (s.env.nonEmpty) s.env.toJsonAST.getOrElse(Json.Null) else Json.Null)
+        ("env", if (s.env.nonEmpty) s.env.toJsonAST.getOrElse(Json.Null) else Json.Null),
+        ("continue-on-error", if (s.continueOnError) Json.Bool(true) else Json.Null)
       )
     }
 }
