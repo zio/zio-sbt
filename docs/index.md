@@ -204,6 +204,10 @@ The default value mirrors the bots used by the `zio/zio` repository: `Seq(Depend
 
 Setting `ciEnableNetlifyDeployPreview := true` makes `ciGenerateGithubWorkflow` also generate `deploy-preview.yml`, which deploys the built Docusaurus site to Netlify for every pull request that touches `docs/` or `website/`.
 
+```scala
+ThisBuild / ciEnableNetlifyDeployPreview := true
+```
+
 The feature is split across two workflows, decoupled by artifacts rather than triggering the deploy directly from a pull request event:
 
 - The `build` job gains a few extra steps. `Check website is installed` runs first, checking that `website/package.json` and `website/docusaurus.config.js` both exist — the same signal [`installWebsite`](#zio-sbt-website) itself uses to tell a real Docusaurus scaffold apart from a `website/` directory holding only `mdocOut`'s generated output. Only when the website is installed does the job go on to detect whether the pull request touched `docs/` or `website/`, and if so upload `website/build` as a `website-artifact`, plus the PR number as a `pr-metadata` artifact.
