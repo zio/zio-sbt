@@ -26,24 +26,30 @@ jobs:
     if: ${{ (github.event.workflow_run.event == 'pull_request') && (github.event.workflow_run.conclusion == 'success') }}
     steps:
     - name: Download Website Artifact
+      id: download-website
       uses: actions/download-artifact@v8
       with:
         name: website-artifact
         path: website-artifact
         run-id: ${{ github.event.workflow_run.id }}
         github-token: ${{ secrets.GITHUB_TOKEN }}
+      continue-on-error: true
     - name: Download PR Metadata
+      id: download-pr-metadata
       uses: actions/download-artifact@v8
       with:
         name: pr-metadata
         path: pr-metadata
         run-id: ${{ github.event.workflow_run.id }}
         github-token: ${{ secrets.GITHUB_TOKEN }}
+      continue-on-error: true
     - name: Read PR Number
       id: pr
+      if: ${{ (steps.download-website.outcome == 'success') && (steps.download-pr-metadata.outcome == 'success') }}
       run: echo "number=$(cat pr-metadata/pr-number.txt)" >> "$GITHUB_OUTPUT"
     - name: Compute Deployment Metadata
       id: meta
+      if: ${{ (steps.download-website.outcome == 'success') && (steps.download-pr-metadata.outcome == 'success') }}
       run: |
         echo "time=$(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> "$GITHUB_OUTPUT"
         sha="${{ github.event.workflow_run.head_sha }}"
@@ -51,6 +57,7 @@ jobs:
     - name: Deploy Preview to Netlify
       id: netlify-deploy
       uses: nwtgck/actions-netlify@v4.0
+      if: ${{ (steps.download-website.outcome == 'success') && (steps.download-pr-metadata.outcome == 'success') }}
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         alias: pr-${{ steps.pr.outputs.number }}
@@ -63,6 +70,7 @@ jobs:
         NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
     - name: Post Preview URL Comment
       uses: marocchino/sticky-pull-request-comment@v3
+      if: ${{ (steps.download-website.outcome == 'success') && (steps.download-pr-metadata.outcome == 'success') }}
       with:
         number: ${{ steps.pr.outputs.number }}
         header: netlify-preview

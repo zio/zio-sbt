@@ -894,6 +894,17 @@ object ZioSbtCiPlugin extends AutoPlugin {
       Condition.Expression("github.event.workflow_run.event == 'pull_request'") &&
         Condition.Expression("github.event.workflow_run.conclusion == 'success'")
 
+    // The build job only uploads these artifacts when the website is actually installed (see
+    // `websiteInstalled` in `NetlifyPreviewBuildSteps`); this workflow triggers on every
+    // successful pull-request CI run regardless. `continueOnError` on the two downloads turns a
+    // missing artifact into a soft failure instead of a hard one, and every later step is then
+    // gated on both downloads having actually succeeded, so a repo with no website installed gets
+    // a job with two skipped-looking (continued-past) steps and nothing else - no deploy attempt,
+    // no comment - rather than a failing required check.
+    val artifactsDownloaded =
+      Condition.Expression("steps.download-website.outcome == 'success'") &&
+        Condition.Expression("steps.download-pr-metadata.outcome == 'success'")
+
     Workflow(
       name = "Deploy Preview",
       triggers = Seq(Trigger.WorkflowRun(workflows = Seq(ciWorkflowName), types = Seq("completed"))),
@@ -912,6 +923,8 @@ object ZioSbtCiPlugin extends AutoPlugin {
           steps = Seq(
             Step.SingleStep(
               name = "Download Website Artifact",
+              id = Some("download-website"),
+              continueOnError = true,
               uses = Some(ActionRef(V("actions/download-artifact"))),
               parameters = Map(
                 "name"         -> Json.Str("website-artifact"),
@@ -922,6 +935,8 @@ object ZioSbtCiPlugin extends AutoPlugin {
             ),
             Step.SingleStep(
               name = "Download PR Metadata",
+              id = Some("download-pr-metadata"),
+              continueOnError = true,
               uses = Some(ActionRef(V("actions/download-artifact"))),
               parameters = Map(
                 "name"         -> Json.Str("pr-metadata"),
@@ -933,11 +948,13 @@ object ZioSbtCiPlugin extends AutoPlugin {
             Step.SingleStep(
               name = "Read PR Number",
               id = Some("pr"),
+              condition = Some(artifactsDownloaded),
               run = Some("echo \"number=$(cat pr-metadata/pr-number.txt)\" >> \"$GITHUB_OUTPUT\"")
             ),
             Step.SingleStep(
               name = "Compute Deployment Metadata",
               id = Some("meta"),
+              condition = Some(artifactsDownloaded),
               run = Some(
                 """|echo "time=$(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> "$GITHUB_OUTPUT"
                    |sha="${{ github.event.workflow_run.head_sha }}"
@@ -948,6 +965,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
             Step.SingleStep(
               name = "Deploy Preview to Netlify",
               id = Some("netlify-deploy"),
+              condition = Some(artifactsDownloaded),
               uses = Some(ActionRef(V("nwtgck/actions-netlify"))),
               parameters = Map(
                 "publish-dir"                 -> Json.Str("./website-artifact"),
@@ -964,6 +982,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
             ),
             Step.SingleStep(
               name = "Post Preview URL Comment",
+              condition = Some(artifactsDownloaded),
               uses = Some(ActionRef(V("marocchino/sticky-pull-request-comment"))),
               parameters = Map(
                 "number"  -> Json.Str("${{ steps.pr.outputs.number }}"),
@@ -1204,13 +1223,34 @@ object ZioSbtCiPlugin extends AutoPlugin {
   private val docsOrWebsiteChanged: Condition =
     Condition.Expression("steps.detect-docs-changes.outputs.changed == 'true'")
 
+  // `website/package.json` is the exact signal `WebsitePlugin.installWebsiteTask` itself keys off
+  // of to decide whether a Docusaurus site is actually scaffolded there, as opposed to a
+  // `website/` directory holding nothing but `mdocOut`'s generated `website/docs` output (see its
+  // comment referencing #749). `docusaurus.config.js` is checked too, so a `website/` with some
+  // other, non-Docusaurus package.json isn't mistaken for an installed site.
+  private val websiteInstalled: Condition =
+    Condition.Expression("steps.check-website-installed.outputs.installed == 'true'")
+
   lazy val NetlifyPreviewBuildSteps: Def.Initialize[Seq[Step.SingleStep]] =
     Def.setting {
       Seq(
         Step.SingleStep(
+          name = "Check website is installed",
+          id = Some("check-website-installed"),
+          condition = Some(isPullRequest),
+          run = Some(
+            """|if [ -f website/package.json ] && [ -f website/docusaurus.config.js ]; then
+               |  echo "installed=true" >> "$GITHUB_OUTPUT"
+               |else
+               |  echo "installed=false" >> "$GITHUB_OUTPUT"
+               |fi
+               |""".stripMargin
+          )
+        ),
+        Step.SingleStep(
           name = "Detect docs/website changes",
           id = Some("detect-docs-changes"),
-          condition = Some(isPullRequest),
+          condition = Some(isPullRequest && websiteInstalled),
           run = Some(
             // A continuation line whose first non-space character is `|` is misrendered by the
             // YAML block-scalar writer (the leading `|` and its indentation are silently
@@ -1228,7 +1268,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
         ),
         Step.SingleStep(
           name = "Upload website build artifact",
-          condition = Some(isPullRequest && docsOrWebsiteChanged),
+          condition = Some(isPullRequest && websiteInstalled && docsOrWebsiteChanged),
           uses = Some(ActionRef(V("actions/upload-artifact"))),
           parameters = Map(
             "name"           -> Json.Str("website-artifact"),
@@ -1239,12 +1279,12 @@ object ZioSbtCiPlugin extends AutoPlugin {
         ),
         Step.SingleStep(
           name = "Save PR number",
-          condition = Some(isPullRequest),
+          condition = Some(isPullRequest && websiteInstalled),
           run = Some("mkdir -p pr-metadata && echo ${{ github.event.pull_request.number }} > pr-metadata/pr-number.txt")
         ),
         Step.SingleStep(
           name = "Upload PR metadata",
-          condition = Some(isPullRequest),
+          condition = Some(isPullRequest && websiteInstalled),
           uses = Some(ActionRef(V("actions/upload-artifact"))),
           parameters = Map(
             "name" -> Json.Str("pr-metadata"),
