@@ -1,9 +1,12 @@
 version: 2
 updates:
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: "weekly"
+  # GitHub Actions versions are pinned in zio-sbt-ci's `V.scala` and baked into
+  # `.github/workflows/*.yml` by `sbt ciGenerateGithubWorkflow`. Dependabot's
+  # github-actions ecosystem can only edit the generated workflow files, never
+  # `V.scala` (it has no custom/regex-manager support), so a Dependabot PR here
+  # always reverts on the next `ciCheckGithubWorkflow` regeneration and fails
+  # Lint (see #773). Bump pinned action versions manually: edit `V.scala`,
+  # run `sbt ciGenerateGithubWorkflow`, commit both together.
 
   # The Docusaurus site under website/ is built with npm by WebsitePlugin
   # (`npm install` / `npm run build`). Without this entry only Dependabot
