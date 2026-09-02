@@ -95,7 +95,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
       settingKey[Seq[Step]]("Workflow steps for checking artifact build process")
     val ciCheckWebsiteBuildProcess: SettingKey[Seq[Step]] =
       settingKey[Seq[Step]]("Workflow steps for checking website build process")
-    val ciEnableNetlifyDeployPreview: SettingKey[Boolean] =
+    val ciEnableDeployPreview: SettingKey[Boolean] =
       settingKey[Boolean](
         "When true, adds change-detection and website-artifact upload steps to the build job, " +
           "and makes `ciGenerateGithubWorkflow` also generate deploy-preview.yml, which deploys " +
@@ -185,7 +185,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
     val checkArtifactBuildProcess = ciCheckArtifactsBuildSteps.value
     val checkWebsiteBuildProcess  = ciCheckWebsiteBuildProcess.value
     val netlifyPreviewBuildSteps  =
-      if (ciEnableNetlifyDeployPreview.value) NetlifyPreviewBuildSteps.value else Seq.empty
+      if (ciEnableDeployPreview.value) NetlifyPreviewBuildSteps.value else Seq.empty
 
     Seq(
       Job(
@@ -1004,7 +1004,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
   lazy val generateNetlifyDeployPreviewWorkflowTask: Def.Initialize[Task[Unit]] =
     Def.task {
       val baseDir  = (ThisBuild / Keys.baseDirectory).value
-      val enabled  = ciEnableNetlifyDeployPreview.value
+      val enabled  = ciEnableDeployPreview.value
       val workflow = netlifyDeployPreviewWorkflow.value
 
       if (enabled)
@@ -1064,7 +1064,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
           )
         ),
       ciCheckWebsiteBuildProcess       := CheckWebsiteBuildProcess.value,
-      ciEnableNetlifyDeployPreview     := false,
+      ciEnableDeployPreview            := false,
       ciCheckArtifactsCompilationSteps := Seq(
         Step.SingleStep(
           name = "Check all code compiles",

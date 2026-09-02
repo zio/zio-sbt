@@ -1,10 +1,10 @@
-// Pins the workflows generated with `ciEnableNetlifyDeployPreview := true`: the build job gains
+// Pins the workflows generated with `ciEnableDeployPreview := true`: the build job gains
 // the website-artifact/PR-metadata upload steps, and a fourth workflow file, deploy-preview.yml,
 // is generated alongside the usual three.
 
 ThisBuild / name := "Test Project"
 
-ThisBuild / ciEnableNetlifyDeployPreview := true
+ThisBuild / ciEnableDeployPreview := true
 
 lazy val root = (project in file("."))
   .settings(
