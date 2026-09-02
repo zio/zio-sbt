@@ -16,6 +16,66 @@
       ],
       "datasourceTemplate": "github-tags",
       "versioningTemplate": "semver-coerced"
+    },
+    {
+      "description": "KindProjectorVersion in zio-sbt-ecosystem's Versions.scala (consumed by ScalaCompilerSettings.scala). It lives under src/main/scala, outside the sbt manager's file scope, so it goes stale silently without an explicit regex manager.",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^zio-sbt-ecosystem/src/main/scala/zio/sbt/Versions\\.scala$/"
+      ],
+      "matchStrings": [
+        "val KindProjectorVersion\\s*=\\s*\"(?<currentValue>[\\w.-]+)\""
+      ],
+      "depNameTemplate": "org.typelevel:kind-projector",
+      "datasourceTemplate": "sbt-package"
+    },
+    {
+      "description": "ScaluzziVersion in zio-sbt-ecosystem's Versions.scala (consumed by ScalaCompilerSettings.scala). Same blind spot as KindProjectorVersion above.",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^zio-sbt-ecosystem/src/main/scala/zio/sbt/Versions\\.scala$/"
+      ],
+      "matchStrings": [
+        "val ScaluzziVersion\\s*=\\s*\"(?<currentValue>[\\w.-]+)\""
+      ],
+      "depNameTemplate": "com.github.vovapolu:scaluzzi",
+      "datasourceTemplate": "sbt-package"
+    },
+    {
+      "description": "zioVersion in zio-sbt-ecosystem's Versions.scala, the ZIO version used for the generated test-lib settings. Same blind spot as KindProjectorVersion above.",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^zio-sbt-ecosystem/src/main/scala/zio/sbt/Versions\\.scala$/"
+      ],
+      "matchStrings": [
+        "val zioVersion\\s*=\\s*\"(?<currentValue>[\\w.-]+)\""
+      ],
+      "depNameTemplate": "dev.zio:zio",
+      "datasourceTemplate": "sbt-package"
+    },
+    {
+      "description": "better-monadic-for pin in zio-sbt-ecosystem's Versions.scala. It's already inline coordinates, but the file itself is outside the sbt manager's scan scope (not build.sbt/project/*.sbt), so it's never picked up.",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^zio-sbt-ecosystem/src/main/scala/zio/sbt/Versions\\.scala$/"
+      ],
+      "matchStrings": [
+        "\"com\\.olegpy\"\\s*%%\\s*\"better-monadic-for\"\\s*%\\s*\"(?<currentValue>[\\w.-]+)\""
+      ],
+      "depNameTemplate": "com.olegpy:better-monadic-for",
+      "datasourceTemplate": "sbt-package"
+    },
+    {
+      "description": "zio in project/Versions.scala, imported into the root build.sbt for zio-sbt-source's test deps. project/*.scala isn't in the sbt manager's default scan, and this val is only ever consumed via a cross-file import, so Renovate never resolves it (no PR has ever bumped it - dev.zio:zio here has stayed frozen through multiple ZIO releases).",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^project/Versions\\.scala$/"
+      ],
+      "matchStrings": [
+        "val zio\\s*=\\s*\"(?<currentValue>[\\w.-]+)\""
+      ],
+      "depNameTemplate": "dev.zio:zio",
+      "datasourceTemplate": "sbt-package"
     }
   ],
   "packageRules": [
@@ -52,6 +112,9 @@
       "description": "A pin bumped in V.scala leaves the committed workflows stale until `sbt ciGenerateGithubWorkflow` is run, so these need a follow-up commit before they can merge.",
       "matchManagers": [
         "custom.regex"
+      ],
+      "matchFileNames": [
+        "zio-sbt-ci/src/main/scala/zio/sbt/V.scala"
       ],
       "labels": [
         "dependencies",
