@@ -993,7 +993,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
               uses = Some(ActionRef(V("actions/github-script"))),
               parameters = Map(
                 "script" -> Json.Str(
-                  """|const { data: comments } = await github.rest.issues.listComments({
+                  """|const comments = await github.paginate(github.rest.issues.listComments, {
                      |  owner: context.repo.owner,
                      |  repo: context.repo.repo,
                      |  issue_number: ${{ steps.pr.outputs.number }},
