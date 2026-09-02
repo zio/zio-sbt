@@ -912,6 +912,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
         "actions"       -> "read",
         "contents"      -> "read",
         "deployments"   -> "write",
+        "issues"        -> "write",
         "pull-requests" -> "write",
         "statuses"      -> "write"
       ),
@@ -980,15 +981,50 @@ object ZioSbtCiPlugin extends AutoPlugin {
                 "NETLIFY_SITE_ID"    -> "${{ secrets.NETLIFY_SITE_ID }}"
               )
             ),
+            // A plain re-deploy (e.g. a follow-up push to the same PR) used to overwrite the one
+            // sticky comment in place, so pushing twice silently discarded the first deploy's
+            // record. Posting a fresh comment per deploy keeps that history, but leaves stale
+            // comments cluttering the thread - so before posting the new one, every earlier
+            // preview comment (tagged by the same marker) gets collapsed as outdated instead of
+            // deleted, keeping the audit trail without the noise.
+            Step.SingleStep(
+              name = "Mark previous preview comments as outdated",
+              condition = Some(artifactsDownloaded),
+              uses = Some(ActionRef(V("actions/github-script"))),
+              parameters = Map(
+                "script" -> Json.Str(
+                  """|const comments = await github.paginate(github.rest.issues.listComments, {
+                     |  owner: context.repo.owner,
+                     |  repo: context.repo.repo,
+                     |  issue_number: ${{ steps.pr.outputs.number }},
+                     |  per_page: 100,
+                     |});
+                     |const stale = comments.filter(
+                     |  (c) => c.user.type === 'Bot' && c.body.includes('<!-- netlify-preview-comment -->')
+                     |);
+                     |for (const comment of stale) {
+                     |  await github.graphql(
+                     |    `mutation($id: ID!) {
+                     |      minimizeComment(input: { subjectId: $id, classifier: OUTDATED }) {
+                     |        minimizedComment { isMinimized }
+                     |      }
+                     |    }`,
+                     |    { id: comment.node_id }
+                     |  );
+                     |}
+                     |""".stripMargin
+                )
+              )
+            ),
             Step.SingleStep(
               name = "Post Preview URL Comment",
               condition = Some(artifactsDownloaded),
-              uses = Some(ActionRef(V("marocchino/sticky-pull-request-comment"))),
+              uses = Some(ActionRef(V("peter-evans/create-or-update-comment"))),
               parameters = Map(
-                "number"  -> Json.Str("${{ steps.pr.outputs.number }}"),
-                "header"  -> Json.Str("netlify-preview"),
-                "message" -> Json.Str(
-                  """|🚀 Preview deployed to Netlify: ${{ steps.netlify-deploy.outputs.deploy-url }}
+                "issue-number" -> Json.Str("${{ steps.pr.outputs.number }}"),
+                "body"         -> Json.Str(
+                  """|<!-- netlify-preview-comment -->
+                     |🚀 New preview deployed to Netlify: ${{ steps.netlify-deploy.outputs.deploy-url }}
                      |
                      |🕒 Deployed at: ${{ steps.meta.outputs.time }}
                      |📌 Commit: [`${{ steps.meta.outputs.short_sha }}`](https://github.com/${{ github.repository }}/commit/${{ github.event.workflow_run.head_sha }})""".stripMargin
