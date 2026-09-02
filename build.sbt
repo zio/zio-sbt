@@ -65,7 +65,7 @@ inThisBuild(
     ciEnabledBranches := Seq("main"),
     // The docs site already has NETLIFY_AUTH_TOKEN/NETLIFY_SITE_ID secrets configured, so this
     // repo dogfoods deploy previews for its own Docusaurus site (website/build).
-    ciEnableNetlifyDeployPreview := true
+    ciEnableDeployPreview := true
   )
 )
 

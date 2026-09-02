@@ -203,7 +203,11 @@ The default value mirrors the bots used by the `zio/zio` repository: `Seq(Depend
 
 ### Netlify Deploy Previews
 
-Setting `ciEnableNetlifyDeployPreview := true` makes `ciGenerateGithubWorkflow` also generate `deploy-preview.yml`, which deploys the built Docusaurus site to Netlify for every pull request that touches `docs/` or `website/`.
+Setting `ciEnableDeployPreview := true` makes `ciGenerateGithubWorkflow` also generate `deploy-preview.yml`, which deploys the built Docusaurus site to Netlify for every pull request that touches `docs/` or `website/`.
+
+```scala
+ThisBuild / ciEnableDeployPreview := true
+```
 
 The feature is split across two workflows, decoupled by artifacts rather than triggering the deploy directly from a pull request event:
 
@@ -214,9 +218,9 @@ Using `workflow_run` instead of triggering directly on `pull_request` means the 
 
 `deploy-preview.yml` triggers on *every* successful pull-request CI run, not only the ones where `build` actually uploaded artifacts — a PR that doesn't touch `docs/`/`website/`, or a repo with no website installed yet, never produces `website-artifact`/`pr-metadata` at all. To handle that, the two `actions/download-artifact` steps set `continue-on-error: true`, since a missing artifact there is an expected outcome, not a failure worth stopping the job over; every step after them then checks `steps.download-website.outcome == 'success' && steps.download-pr-metadata.outcome == 'success'` before running. So a run with nothing to deploy ends with two soft-failed downloads and nothing else — no deploy call, no PR comment — instead of a hard job failure.
 
-Put together, this makes `ciEnableNetlifyDeployPreview` safe to turn on before the Docusaurus site exists: neither workflow does any real work until `website/` is a genuine installation and a pull request actually changes it.
+Put together, this makes `ciEnableDeployPreview` safe to turn on before the Docusaurus site exists: neither workflow does any real work until `website/` is a genuine installation and a pull request actually changes it.
 
-This requires two repository secrets: `NETLIFY_AUTH_TOKEN`, a [personal access token](https://docs.netlify.com/api/get-started/#authentication) generated from the Netlify user account that owns the site, and `NETLIFY_SITE_ID`, found under the site's **Site configuration → General → Site details** in the Netlify dashboard. The default value of `ciEnableNetlifyDeployPreview` is `false`, so existing builds see no change until they opt in.
+This requires two repository secrets: `NETLIFY_AUTH_TOKEN`, a [personal access token](https://docs.netlify.com/api/get-started/#authentication) generated from the Netlify user account that owns the site, and `NETLIFY_SITE_ID`, found under the site's **Site configuration → General → Site details** in the Netlify dashboard. The default value of `ciEnableDeployPreview` is `false`, so existing builds see no change until they opt in.
 
 ### Keeping the Workflow in Sync
 
@@ -244,7 +248,7 @@ All settings are `ThisBuild`-scoped.
 | `ciConcurrency` | `Option[Concurrency]` | one run per branch, cancelling in progress | Concurrency group, or `None` to omit the block |
 | `ciSwapSizeGB` | `Int` | `0` | Adds a swap-space step to every job when greater than zero |
 | `ciBackgroundJobs` | `Seq[String]` | `Seq.empty` | Commands prefixed to each `run`, for daemons a job needs |
-| `ciEnableNetlifyDeployPreview` | `Boolean` | `false` | Adds website-artifact upload steps to `build` and generates `deploy-preview.yml`. Requires `NETLIFY_AUTH_TOKEN`/`NETLIFY_SITE_ID` secrets |
+| `ciEnableDeployPreview` | `Boolean` | `false` | Adds website-artifact upload steps to `build` and generates `deploy-preview.yml`. Requires `NETLIFY_AUTH_TOKEN`/`NETLIFY_SITE_ID` secrets |
 
 **Test matrix**
 
@@ -287,7 +291,7 @@ All settings are `ThisBuild`-scoped.
 
 | Task | Description |
 | --- | --- |
-| `ciGenerateGithubWorkflow` | Writes `ci.yml`, `auto-approve.yml` and `auto-merge.yml`, plus `deploy-preview.yml` when `ciEnableNetlifyDeployPreview` is `true` |
+| `ciGenerateGithubWorkflow` | Writes `ci.yml`, `auto-approve.yml` and `auto-merge.yml`, plus `deploy-preview.yml` when `ciEnableDeployPreview` is `true` |
 | `ciCheckGithubWorkflow` | Regenerates and fails if the committed files are stale |
 | `ciGenerateAutoApproveWorkflow` | Writes `auto-approve.yml` only |
 | `ciGenerateAutoMergeWorkflow` | Writes `auto-merge.yml` only |
