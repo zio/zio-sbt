@@ -8,7 +8,7 @@ addSbtPlugin("com.eed3si9n"   % "sbt-buildinfo"  % "0.13.1")
 addSbtPlugin("com.github.sbt" % "sbt-ci-release" % "1.12.1")
 
 // Docs Plugins
-addSbtPlugin("org.scalameta"  % "sbt-mdoc"   % "2.9.1")
+addSbtPlugin("org.scalameta"  % "sbt-mdoc"   % "2.9.2")
 addSbtPlugin("com.github.sbt" % "sbt-unidoc" % "0.6.1")
 addSbtPlugin("com.github.sbt" % "sbt-header" % "5.11.0")
 
