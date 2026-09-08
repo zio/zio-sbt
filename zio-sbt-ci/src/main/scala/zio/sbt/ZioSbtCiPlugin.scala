@@ -191,7 +191,6 @@ object ZioSbtCiPlugin extends AutoPlugin {
       Job(
         id = "build",
         name = "Build",
-        continueOnError = true,
         steps = {
           (if (swapSizeGB > 0) Seq(setSwapSpace) else Seq.empty) ++
             Seq(
