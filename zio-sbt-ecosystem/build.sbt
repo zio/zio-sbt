@@ -24,7 +24,7 @@ addSbtPlugin("pl.project13.scala" % "sbt-jmh"      % "0.4.8")
 addSbtPlugin("pl.project13.scala" % "sbt-jcstress" % "0.2.0")
 
 // Binary Compatibility Plugin
-addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "1.1.6")
+addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "1.2.0")
 
 // None of sbt-explicit-dependencies, sbt-platform-deps, or sbt-jcstress has an sbt-2.x / Scala-3
 // release yet. sbt-jcstress is unused in this module's own source (dropped outright); the other
