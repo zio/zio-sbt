@@ -156,7 +156,7 @@ trait ScalaCompilerSettings {
   def stdSettings(
     name: Option[String] = None,
     packageName: Option[String] = None,
-    javaPlatform: String = "11",
+    javaPlatform: String = "17",
     enableKindProjector: Boolean = true,
     enableCrossProject: Boolean = false,
     enableScalafix: Boolean = true,

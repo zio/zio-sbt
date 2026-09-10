@@ -17,7 +17,7 @@
 package zio.sbt.githubactions
 
 import zio.json.ast.Json
-import zio.sbt.githubactions.ScalaWorkflow.JavaVersion.JDK11
+import zio.sbt.githubactions.ScalaWorkflow.JavaVersion.JDK17
 
 // The original code of the githubactions package was originally copied from the zio-aws-codegen project:
 // https://github.com/zio/zio-aws/tree/master/zio-aws-codegen/src/main/scala/zio/aws/codegen/githubactions
@@ -227,7 +227,6 @@ object ScalaWorkflow {
       override val asString: String = s"corretto:$javaVersion"
     }
 
-    val JDK11: JavaVersion = CorrettoJDK("11")
     val JDK17: JavaVersion = CorrettoJDK("17")
     val JDK21: JavaVersion = CorrettoJDK("21")
     val JDK25: JavaVersion = CorrettoJDK("25")
@@ -237,7 +236,7 @@ object ScalaWorkflow {
     def matrix(
       scalaVersions: Seq[ScalaVersion],
       operatingSystems: Seq[OS] = Seq(OS.UbuntuLatest),
-      javaVersions: Seq[JavaVersion] = Seq(JDK11)
+      javaVersions: Seq[JavaVersion] = Seq(JDK17)
     ): Job =
       job
         .withStrategy(
