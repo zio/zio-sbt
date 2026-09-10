@@ -245,7 +245,7 @@ Both forms emit `showLineNumbers` in the code fence header, enabling line number
 
 ### Default Testing Strategy
 
-The default testing strategy for ZIO SBT CI plugin is to run `sbt +test` on Corretto Java 11, 17 and 21. So this will generate the following job:
+The default testing strategy for ZIO SBT CI plugin is to run `sbt +test` on Corretto Java 17, 21 and 25. So this will generate the following job:
 
 ```yaml
 test:
@@ -255,7 +255,7 @@ test:
   strategy:
     fail-fast: false
     matrix:
-      java: ['11', '17', '21']
+      java: ['17', '21', '25']
   steps:
   - name: Install libuv
     run: sudo apt-get update && sudo apt-get install -y libuv1-dev
@@ -319,7 +319,7 @@ test:
   strategy:
     fail-fast: false
     matrix:
-      java: ['11', '17', '21']
+      java: ['17', '21', '25']
       scala-project:
       - ++2.12.20 submoduleA
       - ++2.12.20 submoduleB

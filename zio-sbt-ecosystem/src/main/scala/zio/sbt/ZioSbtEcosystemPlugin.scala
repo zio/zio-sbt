@@ -109,7 +109,7 @@ object ZioSbtEcosystemPlugin extends AutoPlugin {
     scalaVersion       := scala213.value,
     crossScalaVersions := Seq(scala212.value, scala213.value, scala3.value),
     zioVersion         := Versions.zioVersion,
-    javaPlatform       := "11"
+    javaPlatform       := "17"
   )
 
   override def globalSettings: Seq[Def.Setting[_]] =
