@@ -1,6 +1,6 @@
 addSbtPlugin("org.scalameta"                     % "sbt-mdoc"         % "2.9.2")
 addSbtPlugin("com.github.sbt"                    % "sbt-unidoc"       % "0.6.1")
-addSbtPlugin("com.thoughtworks.sbt-api-mappings" % "sbt-api-mappings" % "3.0.3")
+addSbtPlugin("com.thoughtworks.sbt-api-mappings" % "sbt-api-mappings" % "3.1.0")
 
 // No Scala 3 / sbt 2.x build of sbt-api-mappings exists yet, and it is not referenced anywhere in
 // this module's own source - only declared for downstream sbt-1.x consumers' convenience - so it is
