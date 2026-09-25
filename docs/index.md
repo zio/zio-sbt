@@ -221,6 +221,20 @@ Put together, this makes `ciEnableDeployPreview` safe to turn on before the Docu
 
 This requires two repository secrets: `NETLIFY_AUTH_TOKEN`, a [personal access token](https://docs.netlify.com/api/get-started/#authentication) generated from the Netlify user account that owns the site, and `NETLIFY_SITE_ID`, found under the site's **Site configuration → General → Site details** in the Netlify dashboard. The default value of `ciEnableDeployPreview` is `false`, so existing builds see no change until they opt in.
 
+### Release Drafter
+
+Setting `ciEnableReleaseDrafter := true` makes `ciGenerateGithubWorkflow` also generate `release-drafter.yml`, which runs [`release-drafter/release-drafter`](https://github.com/release-drafter/release-drafter) on every push to the release branch to keep a draft GitHub Release up to date with categorized notes for each merged pull request.
+
+```scala
+ThisBuild / ciEnableReleaseDrafter := true
+```
+
+The first time the feature is enabled, `ciGenerateGithubWorkflow` also scaffolds `.github/release-drafter.yml` — release-drafter's own config file — from `ciReleaseDrafterCategories`/`ciReleaseDrafterExcludeLabels`/`ciReleaseDrafterAutolabeler`/`ciReleaseDrafterVersionResolver`, if that file doesn't already exist. Unlike every other generated file, it is **never rewritten or deleted afterward**, even if those settings change or `ciEnableReleaseDrafter` is turned back off: category/label taxonomy is inherently per-repo and meant to be hand-customized once scaffolded, so `ciCheckGithubWorkflow`'s drift check does not cover it either — only `.github/workflows/release-drafter.yml` (the workflow file) participates in that check, the same as `ci.yml`/`auto-approve.yml`/`auto-merge.yml`/`deploy-preview.yml`.
+
+`release-drafter.yml`'s `push` trigger runs on `ciReleaseDrafterBranch` when set, otherwise the first entry of `ciEnabledBranches`, otherwise `main` — GitHub Actions' static `on.push.branches` list can't use the same `default_branch` runtime expression this plugin uses elsewhere, so a literal branch name is always required. Repos maintaining multiple release series (e.g. `series/2.x`) should set `ciReleaseDrafterBranch` explicitly.
+
+This is purely additive: it does not change `ci.yml`'s own triggers or jobs, and it does not publish the draft release automatically — a human still does that, which is what fires the existing `release: published`-gated release jobs. The default value of `ciEnableReleaseDrafter` is `false`, so existing builds see no change until they opt in; the plugin also takes care never to delete a `release-drafter.yml` it didn't generate itself, so adopting this plugin version is safe even for a repo that already hand-maintains that file.
+
 ### Keeping the Workflow in Sync
 
 The generated files are meant to be committed and never edited by hand. To stop them drifting from the build, run the check in CI — the default `lint` job already does:
@@ -248,6 +262,12 @@ All settings are `ThisBuild`-scoped.
 | `ciSwapSizeGB` | `Int` | `0` | Adds a swap-space step to every job when greater than zero |
 | `ciBackgroundJobs` | `Seq[String]` | `Seq.empty` | Commands prefixed to each `run`, for daemons a job needs |
 | `ciEnableDeployPreview` | `Boolean` | `false` | Adds website-artifact upload steps to `build` and generates `deploy-preview.yml`. Requires `NETLIFY_AUTH_TOKEN`/`NETLIFY_SITE_ID` secrets |
+| `ciEnableReleaseDrafter` | `Boolean` | `false` | Generates `release-drafter.yml` and scaffolds `.github/release-drafter.yml` (once). Never deletes a `release-drafter.yml` it didn't generate itself |
+| `ciReleaseDrafterCategories` | `Seq[ReleaseDrafterCategory]` | Features/Bug Fixes/Maintenance/Dependency Updates | Categories written into the scaffolded config on first generation only |
+| `ciReleaseDrafterVersionResolver` | `Option[ReleaseDrafterVersionResolver]` | `None` | Optional `version-resolver` block for the scaffolded config |
+| `ciReleaseDrafterAutolabeler` | `Seq[ReleaseDrafterAutolabelerRule]` | `Seq.empty` | Optional `autolabeler` rules for the scaffolded config |
+| `ciReleaseDrafterExcludeLabels` | `Seq[String]` | `Seq("skip-changelog")` | `exclude-labels` for the scaffolded config |
+| `ciReleaseDrafterBranch` | `Option[Branch]` | `None` | Branch `release-drafter.yml`'s `push` trigger runs on. Falls back to the first of `ciEnabledBranches`, then `"main"` |
 
 **Test matrix**
 
@@ -290,7 +310,7 @@ All settings are `ThisBuild`-scoped.
 
 | Task | Description |
 | --- | --- |
-| `ciGenerateGithubWorkflow` | Writes `ci.yml`, `auto-approve.yml` and `auto-merge.yml`, plus `deploy-preview.yml` when `ciEnableDeployPreview` is `true` |
+| `ciGenerateGithubWorkflow` | Writes `ci.yml`, `auto-approve.yml` and `auto-merge.yml`, plus `deploy-preview.yml` when `ciEnableDeployPreview` is `true` and `release-drafter.yml` (and scaffolds `.github/release-drafter.yml` once) when `ciEnableReleaseDrafter` is `true` |
 | `ciCheckGithubWorkflow` | Regenerates and fails if the committed files are stale |
 | `ciGenerateAutoApproveWorkflow` | Writes `auto-approve.yml` only |
 | `ciGenerateAutoMergeWorkflow` | Writes `auto-merge.yml` only |
