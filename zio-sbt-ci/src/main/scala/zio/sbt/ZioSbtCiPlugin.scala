@@ -103,6 +103,37 @@ object ZioSbtCiPlugin extends AutoPlugin {
           "on a pull request touching docs/ or website/. Requires the NETLIFY_AUTH_TOKEN and " +
           "NETLIFY_SITE_ID secrets to be configured on the repository. Default is false"
       )
+    val ciEnableReleaseDrafter: SettingKey[Boolean] =
+      settingKey[Boolean](
+        "When true, makes `ciGenerateGithubWorkflow` also generate release-drafter.yml, which runs " +
+          "release-drafter/release-drafter on pushes to the release branch to maintain a draft " +
+          "GitHub Release with auto-generated notes, and scaffolds .github/release-drafter.yml " +
+          "(the action's own config file) the first time the feature is enabled, if it does not " +
+          "already exist. Turning it back off deletes the workflow file only, not the scaffolded " +
+          "config. Default is false"
+      )
+    val ciReleaseDrafterCategories: SettingKey[Seq[ReleaseDrafterCategory]] =
+      settingKey[Seq[ReleaseDrafterCategory]](
+        "Categories written into the scaffolded .github/release-drafter.yml. Only takes effect the " +
+          "first time the file is generated"
+      )
+    val ciReleaseDrafterVersionResolver: SettingKey[Option[ReleaseDrafterVersionResolver]] =
+      settingKey[Option[ReleaseDrafterVersionResolver]](
+        "Optional version-resolver block for the scaffolded .github/release-drafter.yml. Default is None"
+      )
+    val ciReleaseDrafterAutolabeler: SettingKey[Seq[ReleaseDrafterAutolabelerRule]] =
+      settingKey[Seq[ReleaseDrafterAutolabelerRule]](
+        "Optional autolabeler rules for the scaffolded .github/release-drafter.yml. Default is empty"
+      )
+    val ciReleaseDrafterExcludeLabels: SettingKey[Seq[String]] =
+      settingKey[Seq[String]](
+        "exclude-labels for the scaffolded .github/release-drafter.yml. Default is Seq(\"skip-changelog\")"
+      )
+    val ciReleaseDrafterBranch: SettingKey[Option[Branch]] =
+      settingKey[Option[Branch]](
+        "Branch release-drafter.yml's push trigger runs on. None resolves at generation time to the " +
+          "first of ciEnabledBranches if non-empty, else the literal branch \"main\""
+      )
     val ciCheckArtifactsCompilationSteps: SettingKey[Seq[Step]] =
       settingKey[Seq[Step]]("Workflow steps for checking compilation of all codes")
     val ciCheckGithubWorkflowSteps: SettingKey[Seq[Step]] =
@@ -680,6 +711,16 @@ object ZioSbtCiPlugin extends AutoPlugin {
         |$yaml""".stripMargin
   }
 
+  def renderReleaseDrafterConfig(config: ReleaseDrafterConfig): String =
+    config.toJsonAST
+      .getOrElse(Json.Null)
+      .toYaml(
+        YamlOptions.default.copy(dropNulls = true, sequenceIndentation = 0, maxScalarWidth = None)
+      ) match {
+      case Right(yaml) => yaml
+      case Left(err)   => throw new Exception(s"Failed to convert release-drafter config to YAML: $err")
+    }
+
   /**
    * Turns a workflow name into a file name.
    *
@@ -1048,6 +1089,68 @@ object ZioSbtCiPlugin extends AutoPlugin {
         IO.delete(baseDir / ".github" / "workflows" / "deploy-preview.yml")
     }
 
+  lazy val releaseDrafterWorkflow: Def.Initialize[Workflow] = Def.setting {
+    // GitHub Actions' `on: push: branches:` list takes literal branch names, not runtime
+    // expressions - unlike `if:` conditions elsewhere in this plugin, it cannot reference
+    // `github.event.repository.default_branch`. So an explicit fallback branch name is needed
+    // here, unlike e.g. `releaseOrSnapshotCondition`'s use of that expression.
+    val branch: Branch = ciReleaseDrafterBranch.value.getOrElse {
+      ciEnabledBranches.value.headOption.map(Branch.Named).getOrElse(Branch.Named("main"))
+    }
+
+    Workflow(
+      name = "Release Drafter",
+      triggers = Seq(Trigger.Push(branches = Seq(branch))),
+      // Least-privilege and explicit, per decision 3 - the community norm (surveyed repos set no
+      // `permissions:` block at all) relies on the repo's default token permissions, which newer
+      // repos increasingly default to read-only, causing a 403 creating the draft release.
+      permissions = Map("contents" -> "write", "pull-requests" -> "read"),
+      jobs = Seq(
+        Job(
+          // Matches release-drafter's own README example and every surveyed repo's job id, so a
+          // repo migrating from a hand-maintained file to this generator sees the same job name
+          // in its Actions run history.
+          id = "update_release_draft",
+          name = "update_release_draft",
+          steps = Seq(
+            Step.SingleStep(
+              name = "Update Release Draft",
+              uses = Some(ActionRef(V("release-drafter/release-drafter"))),
+              env = Map("GITHUB_TOKEN" -> "${{ secrets.GITHUB_TOKEN }}")
+            )
+          )
+        )
+      )
+    )
+  }
+
+  lazy val releaseDrafterConfig: Def.Initialize[ReleaseDrafterConfig] = Def.setting {
+    ReleaseDrafterConfig(
+      categories = ciReleaseDrafterCategories.value,
+      excludeLabels = ciReleaseDrafterExcludeLabels.value,
+      autolabeler = ciReleaseDrafterAutolabeler.value,
+      versionResolver = ciReleaseDrafterVersionResolver.value
+    )
+  }
+
+  lazy val generateReleaseDrafterWorkflowTask: Def.Initialize[Task[Unit]] =
+    Def.task {
+      val baseDir  = (ThisBuild / Keys.baseDirectory).value
+      val enabled  = ciEnableReleaseDrafter.value
+      val workflow = releaseDrafterWorkflow.value
+      val config   = releaseDrafterConfig.value
+
+      if (enabled) {
+        writeWorkflowFile(baseDir, workflow, "release-drafter.yml")
+
+        val configFile = baseDir / ".github" / "release-drafter.yml"
+        if (!configFile.exists) IO.write(configFile, renderReleaseDrafterConfig(config))
+      } else {
+        IO.delete(baseDir / ".github" / "workflows" / "release-drafter.yml")
+        // .github/release-drafter.yml (the config) is deliberately left alone here - see §5.2/decision 5.
+      }
+    }
+
   override lazy val buildSettings: Seq[Setting[_]] =
     Seq(
       ciWorkflowTitle        := "CI",
@@ -1064,7 +1167,8 @@ object ZioSbtCiPlugin extends AutoPlugin {
           generateGithubWorkflowTask,
           generateAutoApproveWorkflowTask,
           generateAutoMergeWorkflowTask,
-          generateNetlifyDeployPreviewWorkflowTask
+          generateNetlifyDeployPreviewWorkflowTask,
+          generateReleaseDrafterWorkflowTask
         )
         .value,
       ciDocsVersioningScheme  := DocsVersioning.SemanticVersioning,
@@ -1098,8 +1202,19 @@ object ZioSbtCiPlugin extends AutoPlugin {
             run = Some(SbtCommand + " +publishLocal")
           )
         ),
-      ciCheckWebsiteBuildProcess       := CheckWebsiteBuildProcess.value,
-      ciEnableDeployPreview            := false,
+      ciCheckWebsiteBuildProcess := CheckWebsiteBuildProcess.value,
+      ciEnableDeployPreview      := false,
+      ciEnableReleaseDrafter     := false,
+      ciReleaseDrafterCategories := Seq(
+        ReleaseDrafterCategory("🚀 Features", Seq("feature")),
+        ReleaseDrafterCategory("🐛 Bug Fixes", Seq("bug")),
+        ReleaseDrafterCategory("🧰 Maintenance", Seq("build")),
+        ReleaseDrafterCategory("🌱 Dependency Updates", Seq("dependency-update"))
+      ),
+      ciReleaseDrafterVersionResolver  := None,
+      ciReleaseDrafterAutolabeler      := Seq.empty,
+      ciReleaseDrafterExcludeLabels    := Seq("skip-changelog"),
+      ciReleaseDrafterBranch           := None,
       ciCheckArtifactsCompilationSteps := Seq(
         Step.SingleStep(
           name = "Check all code compiles",
