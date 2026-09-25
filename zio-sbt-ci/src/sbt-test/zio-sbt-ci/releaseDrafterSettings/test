@@ -1,0 +1,8 @@
+# Generate the workflows and scaffold the config with every release-drafter setting overridden.
+> ciGenerateGithubWorkflow
+
+# Compare the generated release-drafter.yml workflow against its recorded golden copy.
+> checkWorkflows
+
+# Compare the scaffolded config against its recorded golden copy.
+> checkConfig
