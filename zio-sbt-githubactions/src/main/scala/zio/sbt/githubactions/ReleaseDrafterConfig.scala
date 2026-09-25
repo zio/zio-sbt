@@ -38,7 +38,7 @@ object ReleaseDrafterCategory {
 /**
  * Maps PR labels present since the last release to a semver bump, used to
  * compute
- * `$RESOLVED_VERSION`/`$NEXT_MAJOR_VERSION`/`$NEXT_MINOR_VERSION`/`$NEXT_PATCH_VERSION`.
+ * `\$RESOLVED_VERSION`/`\$NEXT_MAJOR_VERSION`/`\$NEXT_MINOR_VERSION`/`\$NEXT_PATCH_VERSION`.
  * `default` is release-drafter's own fallback ("patch") when no labelled bump
  * matches.
  */
