@@ -4,3 +4,6 @@
 > writeHandMaintainedWorkflow
 > ciGenerateGithubWorkflow
 > checkWorkflowHandMaintainedPreserved
+> set ThisBuild / ciEnableScalaSteward := false
+> ciGenerateGithubWorkflow
+> checkWorkflowHandMaintainedPreserved
