@@ -86,6 +86,18 @@ object Trigger {
       WorkflowDispatch(Chunk.fromIterable(inputs))
   }
 
+  case class Schedule private (crons: Chunk[String]) extends Trigger {
+    override def toKeyValuePair: (String, Json) =
+      (
+        "schedule",
+        crons.map(cron => Json.Obj(("cron", Json.Str(cron)))).toJsonAST.getOrElse(Json.Null)
+      )
+  }
+
+  object Schedule {
+    def apply(crons: Seq[String]): Schedule = Schedule(Chunk.fromIterable(crons))
+  }
+
   case class Release private (
     releaseTypes: Chunk[String]
   ) extends Trigger {
