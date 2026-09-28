@@ -1328,12 +1328,12 @@ object ZioSbtCiPlugin extends AutoPlugin {
       ciReleaseDrafterAutolabeler      := Seq.empty,
       ciReleaseDrafterExcludeLabels    := Seq("skip-changelog"),
       ciReleaseDrafterBranch           := None,
-      ciEnableScalaSteward         := true,
-      ciScalaStewardSchedule       := "0 0 * * *",
-      ciScalaStewardTimeoutMinutes := 45,
-      ciScalaStewardPermissions    := Map("contents" -> "write", "pull-requests" -> "write"),
-      ciScalaStewardWorkflowEnv    := Map.empty,
-      ciScalaStewardConfig         := ScalaStewardConfig(),
+      ciEnableScalaSteward             := true,
+      ciScalaStewardSchedule           := "0 0 * * *",
+      ciScalaStewardTimeoutMinutes     := 45,
+      ciScalaStewardPermissions        := Map("contents" -> "write", "pull-requests" -> "write"),
+      ciScalaStewardWorkflowEnv        := Map.empty,
+      ciScalaStewardConfig             := ScalaStewardConfig(),
       ciCheckArtifactsCompilationSteps := Seq(
         Step.SingleStep(
           name = "Check all code compiles",
