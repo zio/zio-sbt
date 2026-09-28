@@ -17,9 +17,10 @@
 package zio.sbt.githubactions
 
 /**
- * One dependency filter used by `updates.pin` / `updates.allow` / `updates.ignore` in the
- * scaffolded `.scala-steward.conf`. `artifactId`/`version` are optional: an entry with only
- * `groupId` matches every artifact in that group. `pin`/`ignore` conventionally also give
+ * One dependency filter used by `updates.pin` / `updates.allow` /
+ * `updates.ignore` in the scaffolded `.scala-steward.conf`.
+ * `artifactId`/`version` are optional: an entry with only `groupId` matches
+ * every artifact in that group. `pin`/`ignore` conventionally also give
  * `version` (a prefix to lock to, or exclude); `allow` conventionally does not.
  */
 case class ScalaStewardDependency(
@@ -29,24 +30,28 @@ case class ScalaStewardDependency(
 )
 
 /**
- * One `pullRequests.grouping` match criterion. `version` is one of "major"/"minor"/"patch";
- * `group` is a groupId (glob-capable, e.g. `"org.typelevel"` or `"*"`). An entry setting both
- * requires both to match; multiple entries in a rule's `filter` list are OR'd together.
+ * One `pullRequests.grouping` match criterion. `version` is one of
+ * "major"/"minor"/"patch"; `group` is a groupId (glob-capable, e.g.
+ * `"org.typelevel"` or `"*"`). An entry setting both requires both to match;
+ * multiple entries in a rule's `filter` list are OR'd together.
  */
 case class ScalaStewardGroupFilter(group: Option[String] = None, version: Option[String] = None)
 
 /**
- * One named `pullRequests.grouping` rule: updates matching any filter in `filter` are bundled
- * into a single pull request named `name`, instead of one PR per dependency.
+ * One named `pullRequests.grouping` rule: updates matching any filter in
+ * `filter` are bundled into a single pull request named `name`, instead of one
+ * PR per dependency.
  */
 case class ScalaStewardGroupingRule(name: String, filter: Seq[ScalaStewardGroupFilter])
 
 /**
- * Full `.scala-steward.conf` document. Unlike `ReleaseDrafterConfig`, every field defaults to
- * empty/`None`: research across the ZIO ecosystem (zio/zio, zio-schema, zio-json, zio-kafka,
- * zio-http, zio-config) found only one non-trivial config in six repos (a single `updates.ignore`
- * entry), and this repo's own file has only an `updates.pin`. `render` reflects that by returning
- * `None` for an all-default config, so the generator can skip scaffolding a file nobody asked for.
+ * Full `.scala-steward.conf` document. Unlike `ReleaseDrafterConfig`, every
+ * field defaults to empty/`None`: research across the ZIO ecosystem (zio/zio,
+ * zio-schema, zio-json, zio-kafka, zio-http, zio-config) found only one
+ * non-trivial config in six repos (a single `updates.ignore` entry), and this
+ * repo's own file has only an `updates.pin`. `render` reflects that by
+ * returning `None` for an all-default config, so the generator can skip
+ * scaffolding a file nobody asked for.
  */
 case class ScalaStewardConfig(
   pins: Seq[ScalaStewardDependency] = Seq.empty,
@@ -68,7 +73,7 @@ object ScalaStewardConfig {
 
   private def renderDependency(d: ScalaStewardDependency): String = {
     val fields = Seq(
-      Some("groupId"    -> hoconStr(d.groupId)),
+      Some("groupId" -> hoconStr(d.groupId)),
       d.artifactId.map(a => "artifactId" -> hoconStr(a)),
       d.version.map(v => "version" -> hoconStr(v))
     ).flatten
@@ -93,9 +98,10 @@ object ScalaStewardConfig {
     "[" + values.map(hoconStr).mkString(", ") + "]"
 
   /**
-   * Renders the HOCON document, omitting every field left at its default/empty value.
-   * Returns `None` (rather than `Some("")`) when the whole config is default, so
-   * `ZioSbtCiPlugin.generateScalaStewardWorkflowTask` can skip writing the file entirely.
+   * Renders the HOCON document, omitting every field left at its default/empty
+   * value. Returns `None` (rather than `Some("")`) when the whole config is
+   * default, so `ZioSbtCiPlugin.generateScalaStewardWorkflowTask` can skip
+   * writing the file entirely.
    */
   def render(config: ScalaStewardConfig): Option[String] = {
     val lines = Seq(
