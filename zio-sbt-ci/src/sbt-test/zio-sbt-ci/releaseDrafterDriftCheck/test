@@ -1,0 +1,18 @@
+# Baseline: generate everything (including release-drafter.yml + its config), commit it.
+> ciGenerateGithubWorkflow
+> gitInit
+
+# A clean tree is up to date - release-drafter.yml participates like any other workflow.
+> ciCheckGithubWorkflow
+
+# Hand-edit + commit release-drafter.yml (the WORKFLOW file, under .github/workflows/):
+# this must be caught, same as a hand-edit to ci.yml/auto-approve.yml/auto-merge.yml today.
+> commitHandEditWorkflow
+-> ciCheckGithubWorkflow
+
+# Reset to a clean baseline, then hand-edit + commit .github/release-drafter.yml (the CONFIG
+# file, outside .github/workflows/): this must NOT be caught - proving the exclusion from
+# decision 5. This is the key scenario proving the config file sits outside the drift-check.
+> gitResetToBaseline
+> commitHandEditConfig
+> ciCheckGithubWorkflow

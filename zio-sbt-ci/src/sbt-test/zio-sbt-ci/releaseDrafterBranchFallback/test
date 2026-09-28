@@ -1,0 +1,6 @@
+# Generate release-drafter.yml with ciReleaseDrafterBranch unset but ciEnabledBranches set.
+> ciGenerateGithubWorkflow
+
+# Compare against the recorded golden - must trigger on "series/2.x" (first of
+# ciEnabledBranches), not "main".
+> checkWorkflows

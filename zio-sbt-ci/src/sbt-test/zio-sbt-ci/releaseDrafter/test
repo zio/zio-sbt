@@ -1,0 +1,9 @@
+# Generate ci.yml, auto-approve.yml, auto-merge.yml and release-drafter.yml with the
+# release-drafter feature enabled, plus scaffold .github/release-drafter.yml.
+> ciGenerateGithubWorkflow
+
+# Compare the generated workflows against the recorded golden copies.
+> checkWorkflows
+
+# Compare the scaffolded config against its recorded golden copy.
+> checkConfig

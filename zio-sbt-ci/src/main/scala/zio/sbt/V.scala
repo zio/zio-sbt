@@ -15,6 +15,7 @@ object V {
       "actions/download-artifact"            -> "v8",
       "nwtgck/actions-netlify"               -> "v4.0",
       "actions/github-script"                -> "v7",
-      "peter-evans/create-or-update-comment" -> "v4"
+      "peter-evans/create-or-update-comment" -> "v4",
+      "release-drafter/release-drafter"      -> "v7"
     ).map { case (k, v) => (k, s"$k@$v") }.apply(packageName)
 }

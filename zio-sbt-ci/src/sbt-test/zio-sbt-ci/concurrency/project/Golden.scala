@@ -13,33 +13,56 @@ import sbt._
   */
 object Golden {
 
+  /** Compares each `.github/workflows/<name>` against `expected/<name>` (flat, no `.github/workflows`
+    * prefix under `expected/`) - the original, still-used shape for every pre-existing fixture.
+    */
   def check(base: File, fixture: String, names: String*): Unit = {
-    val generatedDir = base / ".github" / "workflows"
-    val goldenDir    = base / "expected"
+    val recorded = names.flatMap(name => checkOne(base, fixture, ".github/workflows/" + name, name))
+    reportRecorded(fixture, recorded)
+  }
+
+  /** Compares an arbitrary file, at `relativePath` under `base`, against `expected/<relativePath>`
+    * (golden files nested to mirror the generated path, e.g. a config file outside
+    * `.github/workflows/` golden-checked at `expected/.github/release-drafter.yml`). Generalizes
+    * `check` beyond its hard-coded `.github/workflows/` assumption.
+    */
+  def checkFile(base: File, fixture: String, relativePath: String): Unit = {
+    val recorded = checkOne(base, fixture, relativePath, relativePath)
+    reportRecorded(fixture, recorded.toSeq)
+  }
+
+  /** Compares one generated file (at `generatedRelPath` under `base`) against its golden copy (at
+    * `expected/<goldenRelPath>`), recording it (rather than failing closed) when the golden copy is
+    * missing.
+    */
+  private def checkOne(
+    base: File,
+    fixture: String,
+    generatedRelPath: String,
+    goldenRelPath: String
+  ): Option[String] = {
+    val generated = base / generatedRelPath
+    val golden    = base / "expected" / goldenRelPath
 
     // Scripted runs in a temporary copy of the fixture and deletes it afterwards, so a recorded
     // golden written next to the test would be lost. Drop it somewhere stable instead.
-    val recordDir = file(sys.props("java.io.tmpdir")) / "zio-sbt-golden" / fixture
+    val record = file(sys.props("java.io.tmpdir")) / "zio-sbt-golden" / fixture / goldenRelPath
 
-    val recorded = names.flatMap { name =>
-      val generated = generatedDir / name
-      val golden    = goldenDir / name
+    if (!generated.exists)
+      sys.error(s"'$generatedRelPath' was not generated; expected it at $generated")
 
-      if (!generated.exists)
-        sys.error(s"'$name' was not generated; expected it at $generated")
-
-      if (golden.exists) {
-        val actual   = IO.read(generated)
-        val expected = IO.read(golden)
-        if (actual != expected) sys.error(report(name, expected, actual))
-        None
-      } else {
-        val record = recordDir / name
-        IO.copyFile(generated, record)
-        Some(record.getAbsolutePath)
-      }
+    if (golden.exists) {
+      val actual   = IO.read(generated)
+      val expected = IO.read(golden)
+      if (actual != expected) sys.error(report(goldenRelPath, expected, actual))
+      None
+    } else {
+      IO.copyFile(generated, record)
+      Some(record.getAbsolutePath)
     }
+  }
 
+  private def reportRecorded(fixture: String, recorded: Seq[String]): Unit =
     if (recorded.nonEmpty)
       sys.error(
         s"""|Recorded ${recorded.length} golden file(s) for fixture '$fixture'. Copy them into
@@ -48,7 +71,6 @@ object Golden {
             |${recorded.mkString("\n")}
             |""".stripMargin
       )
-  }
 
   /** Points at the first differing line, with a little context on either side. */
   private def report(name: String, expected: String, actual: String): String = {
