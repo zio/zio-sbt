@@ -1,0 +1,32 @@
+# 1. false -> true: enabling generates the workflow and scaffolds the config (a non-empty
+#    ciScalaStewardConfig is required here, or nothing would ever be scaffolded to hand-edit).
+> set ThisBuild / ciEnableScalaSteward := true
+> set ThisBuild / ciScalaStewardConfig := zio.sbt.githubactions.ScalaStewardConfig(updatesLimit = Some(3))
+> ciGenerateGithubWorkflow
+> checkWorkflowExists
+> checkConfigExists
+
+# 2. Hand-edit the config, then regenerate: content must NOT be overwritten.
+> handEditConfig
+> ciGenerateGithubWorkflow
+> checkConfigHandEditPreserved
+
+# 3. Change a config setting, then regenerate: still no effect on the existing config file.
+> set ThisBuild / ciScalaStewardConfig := zio.sbt.githubactions.ScalaStewardConfig(updatesLimit = Some(99))
+> ciGenerateGithubWorkflow
+> checkConfigHandEditPreserved
+
+# 4. true -> false: disabling deletes the workflow file...
+> set ThisBuild / ciEnableScalaSteward := false
+> ciGenerateGithubWorkflow
+> checkWorkflowAbsent
+
+# ...but leaves the hand-edited config alone.
+> checkConfigHandEditPreserved
+
+# 5. false -> true again: re-enabling regenerates the workflow, but still does not touch the
+#    existing (hand-edited) config.
+> set ThisBuild / ciEnableScalaSteward := true
+> ciGenerateGithubWorkflow
+> checkWorkflowExists
+> checkConfigHandEditPreserved
