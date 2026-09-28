@@ -157,8 +157,9 @@ object ZioSbtCiPlugin extends AutoPlugin {
       settingKey[Int]("`timeout-minutes` for the scala-steward job, default is 45")
     val ciScalaStewardPermissions: SettingKey[Map[String, String]] =
       settingKey[Map[String, String]](
-        "Permissions block for scala-steward.yml, default is Map(\"contents\" -> \"write\", " +
-          "\"pull-requests\" -> \"write\")"
+        "Permissions block for scala-steward.yml, default is Map(\"contents\" -> \"read\") - the " +
+          "action authenticates via the GitHub App's installation token (github-app-auth-only is " +
+          "always true), not GITHUB_TOKEN, so no write scope is needed by default"
       )
     val ciScalaStewardWorkflowEnv: SettingKey[Map[String, String]] =
       settingKey[Map[String, String]](
@@ -1331,7 +1332,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
       ciEnableScalaSteward             := true,
       ciScalaStewardSchedule           := "0 0 * * *",
       ciScalaStewardTimeoutMinutes     := 45,
-      ciScalaStewardPermissions        := Map("contents" -> "write", "pull-requests" -> "write"),
+      ciScalaStewardPermissions        := Map("contents" -> "read"),
       ciScalaStewardWorkflowEnv        := Map.empty,
       ciScalaStewardConfig             := ScalaStewardConfig(),
       ciCheckArtifactsCompilationSteps := Seq(

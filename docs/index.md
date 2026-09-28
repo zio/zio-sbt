@@ -243,7 +243,7 @@ This is purely additive: it does not change `ci.yml`'s own triggers or jobs, and
 ThisBuild / ciEnableScalaSteward := false
 ```
 
-`ciScalaStewardTimeoutMinutes` (default `45`), `ciScalaStewardPermissions` (default `contents`/`pull-requests: write`) and `ciScalaStewardWorkflowEnv` (default empty; a repo needing JVM tuning during dependency resolution sets `JDK_JAVA_OPTIONS`/similar here) all override the generated job.
+`ciScalaStewardTimeoutMinutes` (default `45`), `ciScalaStewardPermissions` (default `contents: read` — the action authenticates via the GitHub App's installation token, since `github-app-auth-only` is always set, so no write scope is needed by default) and `ciScalaStewardWorkflowEnv` (default empty; a repo needing JVM tuning during dependency resolution sets `JDK_JAVA_OPTIONS`/similar here) all override the generated job.
 
 The first time this feature renders a non-empty `.scala-steward.conf` from `ciScalaStewardConfig`, it scaffolds that file at the repository root, if it does not already exist. Like `.github/release-drafter.yml`, it is **never rewritten or deleted afterward**, even if `ciScalaStewardConfig` changes or `ciEnableScalaSteward` is turned back off — repo-specific pins/ignores/grouping are meant to be hand-customized once scaffolded, and `ciCheckGithubWorkflow`'s drift check does not cover it either, only `.github/workflows/scala-steward.yml` does. An all-default `ciScalaStewardConfig` renders to nothing, so most repos never see this file at all unless they set it.
 
@@ -285,7 +285,7 @@ All settings are `ThisBuild`-scoped.
 | `ciEnableScalaSteward` | `Boolean` | `true` | Generates `scala-steward.yml` and scaffolds `.scala-steward.conf` (once, only if non-empty). Only writes/deletes a `scala-steward.yml` it generated itself, whether on or off |
 | `ciScalaStewardSchedule` | `String` | `"0 0 * * *"` | Cron schedule for `scala-steward.yml`'s `schedule` trigger |
 | `ciScalaStewardTimeoutMinutes` | `Int` | `45` | `timeout-minutes` for the scala-steward job |
-| `ciScalaStewardPermissions` | `Map[String, String]` | `contents`/`pull-requests: write` | Permissions block for `scala-steward.yml` |
+| `ciScalaStewardPermissions` | `Map[String, String]` | `contents: read` | Permissions block for `scala-steward.yml`; the action authenticates via the GitHub App's installation token, not `GITHUB_TOKEN`, so no write scope is needed by default |
 | `ciScalaStewardWorkflowEnv` | `Map[String, String]` | `Map.empty` | Extra env vars for the scala-steward job |
 | `ciScalaStewardConfig` | `ScalaStewardConfig` | `ScalaStewardConfig()` | Settings scaffolded into `.scala-steward.conf` on first non-empty render |
 
