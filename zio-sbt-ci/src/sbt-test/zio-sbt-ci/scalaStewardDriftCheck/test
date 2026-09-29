@@ -1,0 +1,20 @@
+# Baseline: generate everything (including scala-steward.yml + its config), commit it.
+> ciGenerateGithubWorkflow
+> gitInit
+
+# A clean tree is up to date - scala-steward.yml participates like any other workflow.
+> ciCheckGithubWorkflow
+
+# Hand-edit + commit scala-steward.yml (the WORKFLOW file, under .github/workflows/):
+# this must be caught, same as a hand-edit to ci.yml/auto-approve.yml/auto-merge.yml/
+# release-drafter.yml today.
+> commitHandEditWorkflow
+-> ciCheckGithubWorkflow
+
+# Reset to a clean baseline, then hand-edit + commit .scala-steward.conf (the CONFIG
+# file, outside .github/workflows/): this must NOT be caught - proving the exclusion,
+# exactly like .github/release-drafter.yml already does. This is the key scenario proving
+# the config file sits outside the drift-check.
+> gitResetToBaseline
+> commitHandEditConfig
+> ciCheckGithubWorkflow

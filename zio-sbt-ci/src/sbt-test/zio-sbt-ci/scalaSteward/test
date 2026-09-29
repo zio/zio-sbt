@@ -1,0 +1,9 @@
+# Generate ci.yml, auto-approve.yml, auto-merge.yml and scala-steward.yml under the plugin's
+# actual defaults.
+> ciGenerateGithubWorkflow
+
+# Compare the generated workflows against the recorded golden copies.
+> checkWorkflows
+
+# An all-default ciScalaStewardConfig must not scaffold .scala-steward.conf at all.
+> checkConfigAbsent
