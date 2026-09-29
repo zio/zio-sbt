@@ -14,7 +14,7 @@ object V {
       "actions/upload-artifact"                -> "v4",
       "actions/download-artifact"              -> "v8",
       "nwtgck/actions-netlify"                 -> "v4.0",
-      "actions/github-script"                  -> "v7",
+      "actions/github-script"                  -> "v9",
       "peter-evans/create-or-update-comment"   -> "v5",
       "release-drafter/release-drafter"        -> "v7",
       "scala-steward-org/scala-steward-action" -> "v2.96.0"
