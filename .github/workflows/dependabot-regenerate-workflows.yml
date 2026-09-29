@@ -79,15 +79,19 @@ jobs:
       - name: Regenerate GitHub workflow files from V.scala
         run: sbt --no-colors ciGenerateGithubWorkflow
 
-      - name: Commit and push V.scala and regenerated workflows if changed
+      - name: Commit and push V.scala, fixtures and regenerated workflows if changed
         run: |
           set -euo pipefail
-          if git diff --quiet -- .github/workflows zio-sbt-ci/src/main/scala/zio/sbt/V.scala; then
+          # Everything the sync script + generator can touch: the generated workflows, the V.scala
+          # pins, and the scripted-test fixtures that hardcode those pins. Leaving one out means
+          # its edits are silently dropped and the corresponding scripted tests fail.
+          SYNCED_PATHS=(.github/workflows zio-sbt-ci/src/main/scala/zio/sbt/V.scala zio-sbt-ci/src/sbt-test)
+          if git diff --quiet -- "${SYNCED_PATHS[@]}"; then
             echo "V.scala and generated workflows already in sync; nothing to do."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add .github/workflows zio-sbt-ci/src/main/scala/zio/sbt/V.scala
+          git add "${SYNCED_PATHS[@]}"
           git commit -m "chore(ci): sync V.scala and regenerate GitHub workflows"
           git push origin "HEAD:${{ github.head_ref }}"
