@@ -7,6 +7,17 @@
 # in the Lint job (this is what made PR #773 unworkable). This is the mirror image of
 # renovate-regenerate-workflows.yml (which goes V.scala -> yml): here we go yml -> V.scala first,
 # then regenerate, so the PR ends up with V.scala and the generated files in sync.
+#
+# Things to know when operating this:
+# - Secrets: workflows triggered by dependabot[bot] read the *Dependabot* secrets store, not the
+#   repo's Actions secrets. Add APP_ID and APP_PRIVATE_KEY under Settings -> Secrets and variables
+#   -> Dependabot. Without them "Generate Token" is skipped and the push falls back to
+#   GITHUB_TOKEN, so CI on the sync commit may sit at `action_required` until someone approves it.
+# - Rebasing: once this workflow has pushed its sync commit, the branch has a commit that is not
+#   Dependabot's, so `@dependabot rebase` is refused ("edited by someone other than Dependabot").
+#   Use `@dependabot recreate` instead; the workflow simply runs again on the fresh branch.
+# - Scope: the sync commit covers every path this job can change (see SYNCED_PATHS below): the
+#   generated workflows, V.scala and the zio-sbt-ci/src/sbt-test fixtures that hardcode the pins.
 name: Regenerate CI workflows for Dependabot
 
 on:
