@@ -593,7 +593,11 @@ object ZioSbtCiPlugin extends AutoPlugin {
               name = "Enable Auto-Merge",
               condition = Some(Condition.Expression("steps.cpr.outputs.pull-request-number")),
               env = Map(
-                "GITHUB_TOKEN" -> "${{ secrets.GITHUB_TOKEN }}",
+                // The App token, not GITHUB_TOKEN: merging (and enabling auto-merge) needs
+                // `contents: write`, which this job deliberately does not grant (see `permissions`
+                // above). `Approve PR` keeps GITHUB_TOKEN: the PR is authored by the App's bot
+                // identity, and a PR's author cannot approve it.
+                "GITHUB_TOKEN" -> "${{ steps.generate-token.outputs.token }}",
                 "PR_URL"       -> "${{ steps.cpr.outputs.pull-request-url }}"
               ),
               run = Some("gh pr merge --auto --squash \"$PR_URL\" || gh pr merge --squash \"$PR_URL\"")
