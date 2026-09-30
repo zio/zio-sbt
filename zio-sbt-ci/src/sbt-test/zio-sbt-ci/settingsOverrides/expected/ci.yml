@@ -165,7 +165,7 @@ jobs:
       if: ${{ steps.cpr.outputs.pull-request-number }}
       run: gh pr merge --auto --squash "$PR_URL" || gh pr merge --squash "$PR_URL"
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
         PR_URL: ${{ steps.cpr.outputs.pull-request-url }}
   ci:
     name: ci
