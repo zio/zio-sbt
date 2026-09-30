@@ -535,14 +535,10 @@ object ZioSbtCiPlugin extends AutoPlugin {
             SetupSBT,
             CacheDependencies,
             generateReadme,
-            Step.SingleStep(
-              name = "Commit Changes",
-              run = Some("""|git config --local user.email "zio-assistant[bot]@users.noreply.github.com"
-                            |git config --local user.name "ZIO Assistant"
-                            |git add README.md
-                            |git commit -m "Update README.md" || echo "No changes to commit"
-                            |""".stripMargin)
-            ),
+            // Deliberately no `git commit` step here. Release events check out the tag (detached
+            // HEAD), and create-pull-request treats an already-committed HEAD as its working base,
+            // finds zero commits to carry over, and reports "not ahead of base" without opening a
+            // PR. Leave README.md as an uncommitted change and let the action commit it.
             Step.SingleStep(
               name = "Generate Token",
               id = Some("generate-token"),
