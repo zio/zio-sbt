@@ -168,7 +168,7 @@ Note that the plugin declares `trigger = allRequirements`, so having it on the c
 
 ### Auto-Approving and Auto-Merging Dependency Update PRs
 
-Besides `ci.yml`, the `ciGenerateGithubWorkflow` task also generates two more workflow files: `auto-approve.yml` and `auto-merge.yml`. These workflows automatically approve and enable GitHub's native auto-merge (squash strategy) on pull requests opened by dependency-update bots, such as [Scala Steward](https://github.com/scala-steward-org/scala-steward), [Dependabot](https://github.com/dependabot), and [Renovate](https://github.com/renovatebot/renovate).
+Besides `ci.yml`, the `ciGenerateGithubWorkflow` task also generates two more workflow files: `auto-approve.yml` and `auto-merge.yml`. These workflows automatically approve, and squash-merge once CI is green, pull requests opened by dependency-update bots, such as [Scala Steward](https://github.com/scala-steward-org/scala-steward), [Dependabot](https://github.com/dependabot), and [Renovate](https://github.com/renovatebot/renovate).
 
 Both workflows trigger on `pull_request_target` and also support `workflow_dispatch`, which backfills the approval/auto-merge on every currently open PR from the configured bots—handy for recovering PRs that were opened before the workflow existed, or after a workflow bug is fixed.
 
@@ -194,7 +194,7 @@ The default value mirrors the bots used by the `zio/zio` repository: `Seq(Depend
 
 > **Note:**
 >
-> For `gh pr merge --auto` to actually merge a PR (rather than just queue it), the target repository needs "Allow auto-merge" enabled under **Settings → General**, and branch protection with required status checks configured on the target branch.
+> `auto-merge.yml` waits for every check on the PR (other than its own bot jobs) to finish and merges with `gh pr merge --squash` only if none failed, so it is safe on branches without required status checks. A red check fails the job and leaves the PR open. The `workflow_dispatch` backfill still uses `gh pr merge --auto`, which merges immediately on a branch with no required status checks, so configure branch protection with required checks before relying on it.
 
 > **Note:**
 >
