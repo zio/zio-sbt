@@ -1,0 +1,11 @@
+# A hand-maintained release-drafter.yml, planted before ciGenerateGithubWorkflow ever runs, is adopted
+# (overwritten by the generated workflow) under the plugin's actual default (ciEnableReleaseDrafter := true) -
+# no setting in this fixture ever mentions it.
+> writeHandMaintainedWorkflow
+> ciGenerateGithubWorkflow
+> checkWorkflowAdopted
+# Disabling the feature must still never delete a hand-written file this plugin didn't generate.
+> writeHandMaintainedWorkflow
+> set ThisBuild / ciEnableReleaseDrafter := false
+> ciGenerateGithubWorkflow
+> checkWorkflowHandMaintainedPreserved

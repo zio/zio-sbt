@@ -1,6 +1,0 @@
-# A hand-maintained release-drafter.yml, planted before ciGenerateGithubWorkflow ever runs, must
-# survive untouched under the plugin's actual default (ciEnableReleaseDrafter := true) - no
-# setting in this fixture ever mentions it.
-> writeHandMaintainedWorkflow
-> ciGenerateGithubWorkflow
-> checkWorkflowHandMaintainedPreserved
