@@ -837,6 +837,38 @@ object ZioSbtCiPlugin extends AutoPlugin {
         |""".stripMargin
   }
 
+  // `gh pr merge --auto` only waits for checks that branch protection *requires*; on a branch
+  // with none it merges at once, before CI has even finished (see zio/zio-process#700). So this
+  // waits for CI itself and merges directly, failing the job - leaving the PR open - on a red
+  // check. The bot workflows' own jobs are excluded, or this would wait on itself forever.
+  // Checks for the new head commit register a few seconds after the push, so "no checks yet" is
+  // treated as pending rather than as success.
+  private def waitForCiScript(ownJobs: Seq[String]): String = {
+    val excluded = ownJobs.map(job => s""".name != "$job"""").mkString(" and ")
+
+    s"""|set -euo pipefail
+        |while true; do
+        |  checks=$$(gh pr checks "$$PR" --json name,bucket \\
+        |    --jq '[.[] | select($excluded)]' 2>/dev/null || true)
+        |  checks=$${checks:-[]}
+        |  total=$$(jq length <<< "$$checks")
+        |  pending=$$(jq '[.[] | select(.bucket == "pending")] | length' <<< "$$checks")
+        |  failed=$$(jq '[.[] | select(.bucket == "fail" or .bucket == "cancel")] | length' <<< "$$checks")
+        |  if [ "$$failed" -gt 0 ]; then
+        |    echo "CI failed, not merging:"
+        |    jq -r '.[] | select(.bucket == "fail" or .bucket == "cancel") | .name' <<< "$$checks"
+        |    exit 1
+        |  fi
+        |  if [ "$$total" -gt 0 ] && [ "$$pending" -eq 0 ]; then
+        |    break
+        |  fi
+        |  echo "Waiting for CI ($$total checks, $$pending pending)..."
+        |  sleep 30
+        |done
+        |gh pr merge --squash "$$PR"
+        |""".stripMargin
+  }
+
   private val dependencyBotPRTriggers: Seq[Trigger] = Seq(
     Trigger.PullRequestTarget(types = Seq("opened", "reopened", "synchronize", "ready_for_review")),
     Trigger.WorkflowDispatch()
@@ -923,12 +955,13 @@ object ZioSbtCiPlugin extends AutoPlugin {
       // `contents`/`pull-requests: write` are for the GITHUB_TOKEN fallback path (see
       // `mergeTokenEnv`); the app-token path doesn't need this block at all, the app's own
       // installation permissions govern what its token can do.
-      permissions = Map("contents" -> "write", "pull-requests" -> "write"),
+      permissions = Map("contents" -> "write", "pull-requests" -> "write", "checks" -> "read"),
       jobs = Seq(
         Job(
           id = "auto-merge",
           name = "auto-merge",
           condition = Some(dependencyBotPRCondition(bots)),
+          jobTimeout = Some(120),
           steps = Seq(
             checkAppTokenStep,
             Step.SingleStep(
@@ -945,10 +978,10 @@ object ZioSbtCiPlugin extends AutoPlugin {
               )
             ),
             Step.SingleStep(
-              name = "Enable auto-merge for bot PR",
+              name = "Merge bot PR once CI passes",
               condition = Some(Condition.Expression("github.event_name == 'pull_request_target'")),
-              run = Some("gh pr merge --auto --squash ${{ github.event.number }}"),
-              env = mergeTokenEnv
+              run = Some(waitForCiScript(Seq("auto-merge", "auto-approve-bot-prs"))),
+              env = mergeTokenEnv + ("PR" -> "${{ github.event.number }}")
             ),
             Step.SingleStep(
               name = "Backfill auto-merge for existing bot PRs",
