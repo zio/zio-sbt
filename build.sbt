@@ -1,5 +1,5 @@
 import Versions._
-import _root_.zio.sbt.githubactions.Step
+import _root_.zio.sbt.githubactions.{DependencyBot, Step}
 
 sbtPlugin         := true
 publishMavenStyle := true
@@ -65,7 +65,15 @@ inThisBuild(
     ciEnabledBranches := Seq("main"),
     // The docs site already has NETLIFY_AUTH_TOKEN/NETLIFY_SITE_ID secrets configured, so this
     // repo dogfoods deploy previews for its own Docusaurus site (website/build).
-    ciEnableDeployPreview := true
+    ciEnableDeployPreview := true,
+    // The README-update PR is opened by the ZIO Assistant app (see `update-readme` in ci.yml), not
+    // by a dependency bot, so without this `auto-merge.yml` skips it and it sits until merged by hand.
+    ciDependencyUpdateBots := Seq(
+      DependencyBot.Dependabot,
+      DependencyBot.Renovate,
+      DependencyBot.ScalaSteward("zio-scala-steward"),
+      DependencyBot.Custom("zio-assistant[bot]")
+    )
   )
 )
 
