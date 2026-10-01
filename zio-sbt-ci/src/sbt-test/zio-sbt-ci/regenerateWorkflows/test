@@ -1,0 +1,5 @@
+# Generate the workflows under the plugin's defaults.
+> ciGenerateGithubWorkflow
+
+# Compare regenerate-workflows.yml against the recorded golden copy.
+> checkWorkflows
