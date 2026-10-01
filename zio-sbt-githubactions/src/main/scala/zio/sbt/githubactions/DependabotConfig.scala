@@ -59,15 +59,20 @@ object DependabotConfig {
     s"      ${g.name}:" +: (list("patterns", g.patterns) ++ list("update-types", g.updateTypes))
   }
 
-  private def renderUpdate(u: DependabotUpdate): Seq[String] =
-    Seq(
+  private def renderUpdate(u: DependabotUpdate): Seq[String] = {
+    val header = Seq(
       s"  - package-ecosystem: ${q(u.ecosystem)}",
       s"    directory: ${q(u.directory)}",
       "    schedule:",
       s"      interval: ${q(u.interval)}"
-    ) ++
-      u.openPullRequestsLimit.map(n => s"    open-pull-requests-limit: $n") ++
-      (if (u.groups.isEmpty) Seq.empty else "    groups:" +: u.groups.flatMap(renderGroup))
+    )
+    val limit  = u.openPullRequestsLimit.fold(Seq.empty[String])(n => Seq(s"    open-pull-requests-limit: $n"))
+    val groups =
+      if (u.groups.isEmpty) Seq.empty[String]
+      else "    groups:" +: u.groups.flatMap(renderGroup)
+
+    header ++ limit ++ groups
+  }
 
   /**
    * Renders the YAML document (without any header comment) with a trailing
