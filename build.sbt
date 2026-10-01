@@ -66,6 +66,10 @@ inThisBuild(
     // The docs site already has NETLIFY_AUTH_TOKEN/NETLIFY_SITE_ID secrets configured, so this
     // repo dogfoods deploy previews for its own Docusaurus site (website/build).
     ciEnableDeployPreview := true,
+    // Dependabot and Renovate PRs here already have hand-written regenerate workflows
+    // (dependabot-/renovate-regenerate-workflows.yml) that first sync V.scala, the source of the
+    // action pins; the generic generated one would just fight them by regenerating from a stale V.scala.
+    ciEnableRegenerateWorkflows := false,
     // The README-update PR is opened by the ZIO Assistant app (see `update-readme` in ci.yml), not
     // by a dependency bot, so without this `auto-merge.yml` skips it and it sits until merged by hand.
     ciDependencyUpdateBots := Seq(
