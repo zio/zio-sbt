@@ -1,0 +1,7 @@
+> ciGenerateGithubWorkflow
+> gitInit
+> ciCheckGithubWorkflow
+
+# A committed hand-edit of dependabot.yml is regenerated away, leaving a diff, so the check fails.
+> commitHandEdit
+-> ciCheckGithubWorkflow

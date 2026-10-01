@@ -1,0 +1,18 @@
+# Enabled (default): generated.
+> ciGenerateGithubWorkflow
+> checkExists
+
+# Disabling deletes a copy the plugin generated itself.
+> set ThisBuild / ciEnableDependabot := false
+> ciGenerateGithubWorkflow
+> checkAbsent
+
+# Disabling never deletes a hand-written file.
+> writeHandWritten
+> ciGenerateGithubWorkflow
+> checkHandWrittenPreserved
+
+# Re-enabling adopts (overwrites) it.
+> set ThisBuild / ciEnableDependabot := true
+> ciGenerateGithubWorkflow
+> checkExists
