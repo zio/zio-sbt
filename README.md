@@ -13,9 +13,9 @@ _ZIO SBT_ contains multiple sbt plugins that are useful for ZIO projects. It pro
 Add the following lines to your `project/plugins.sbt` file:
 
 ```scala
-addSbtPlugin("dev.zio" % "zio-sbt-ecosystem" % "0.8.3")
-addSbtPlugin("dev.zio" % "zio-sbt-ci"        % "0.8.3")
-addSbtPlugin("dev.zio" % "zio-sbt-website"   % "0.8.3")
+addSbtPlugin("dev.zio" % "zio-sbt-ecosystem" % "0.8.4")
+addSbtPlugin("dev.zio" % "zio-sbt-ci"        % "0.8.4")
+addSbtPlugin("dev.zio" % "zio-sbt-website"   % "0.8.4")
 ```
 
 Then you can enable them by using the following code in your `build.sbt` file:
@@ -131,7 +131,7 @@ ZIO SBT CI plugin generates a default GitHub workflow that includes common CI ta
 To use ZIO SBT CI plugin, add the following lines to your `plugins.sbt` file:
 
 ```scala
-addSbtPlugin("dev.zio" % "zio-sbt-ci" % "0.8.3")
+addSbtPlugin("dev.zio" % "zio-sbt-ci" % "0.8.4")
 
 resolvers ++= Resolver.sonatypeOssRepos("public")
 ```
@@ -476,7 +476,7 @@ ZIO SBT Source is a Scala 2.13 + Scala 3 cross-compiled library that provides ut
 Add the following line to your `libraryDependencies` in `build.sbt`:
 
 ```scala
-libraryDependencies += "dev.zio" %% "zio-sbt-source" % "0.8.3"
+libraryDependencies += "dev.zio" %% "zio-sbt-source" % "0.8.4"
 ```
 
 ### Features
