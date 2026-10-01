@@ -1,5 +1,5 @@
 import Versions._
-import _root_.zio.sbt.githubactions.{DependencyBot, Step}
+import _root_.zio.sbt.githubactions.{DependabotConfig, DependabotGroup, DependabotUpdate, DependencyBot, Step}
 
 sbtPlugin         := true
 publishMavenStyle := true
@@ -73,6 +73,27 @@ inThisBuild(
       DependencyBot.Renovate,
       DependencyBot.ScalaSteward("zio-scala-steward"),
       DependencyBot.Custom("zio-assistant[bot]")
+    ),
+    // GitHub Actions versions are pinned in zio-sbt-ci's `V.scala` and baked into the generated
+    // workflows; `dependabot-regenerate-workflows.yml` syncs each Dependabot PR back to `V.scala`.
+    // The Docusaurus site under website/ is built with npm; Docusaurus and its peer packages are
+    // grouped so they always move together in a single PR.
+    ciDependabotConfig := DependabotConfig(
+      Seq(
+        DependabotUpdate("github-actions"),
+        DependabotUpdate(
+          "npm",
+          directory = "/website",
+          openPullRequestsLimit = Some(5),
+          groups = Seq(
+            DependabotGroup(
+              "docusaurus",
+              patterns = Seq("@docusaurus/*", "@mdx-js/*", "react", "react-dom", "prism-react-renderer", "clsx")
+            ),
+            DependabotGroup("website-minor-and-patch", updateTypes = Seq("minor", "patch"))
+          )
+        )
+      )
     )
   )
 )
