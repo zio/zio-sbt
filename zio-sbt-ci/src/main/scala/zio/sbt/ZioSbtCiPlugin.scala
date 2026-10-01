@@ -775,7 +775,30 @@ object ZioSbtCiPlugin extends AutoPlugin {
   }
 
   def writeWorkflowFile(baseDir: File, workflow: Workflow, fileName: String): Unit =
-    IO.write(baseDir / ".github" / "workflows" / fileName, renderWorkflow(workflow))
+    writeGeneratedFile(baseDir, baseDir / ".github" / "workflows" / fileName, renderWorkflow(workflow))
+
+  /**
+   * Writes a generated file, and registers it with git when it is new.
+   *
+   * Scala Steward's post-update hook runs `ciGenerateGithubWorkflow` and then
+   * commits with `git commit --all`, which only stages files git already knows
+   * about. A file the task creates for the first time would otherwise be left
+   * out of the "Regenerate GitHub Actions workflow" commit, and the PR would
+   * fail `ciCheckGithubWorkflow`. Marking it intent-to-add makes `--all` pick
+   * it up, and is harmless for anyone running the task by hand.
+   */
+  private def writeGeneratedFile(baseDir: File, target: File, content: String): Unit = {
+    val isNew = !target.exists
+    IO.write(target, content)
+    if (isNew) markIntentToAdd(baseDir, target)
+  }
+
+  // Best effort: not a git repository, git missing or the path ignored are all fine to skip.
+  private def markIntentToAdd(baseDir: File, target: File): Unit =
+    try {
+      val _ = Process(Seq("git", "add", "--intent-to-add", "--", target.getAbsolutePath), baseDir) !
+        ProcessLogger(_ => (), _ => ())
+    } catch { case _: java.io.IOException => () }
 
   @deprecated("Use the overload taking the build's base directory", "0.6.4")
   def writeWorkflowFile(workflow: Workflow, fileName: String): Unit =
@@ -1228,7 +1251,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
         writeWorkflowFile(baseDir, workflow, "release-drafter.yml")
 
         val configFile = baseDir / ".github" / "release-drafter.yml"
-        if (!configFile.exists) IO.write(configFile, renderReleaseDrafterConfig(config))
+        if (!configFile.exists) writeGeneratedFile(baseDir, configFile, renderReleaseDrafterConfig(config))
       } else {
         if (workflowFile.exists && weOwnTheWorkflow) IO.delete(workflowFile)
         // .github/release-drafter.yml (the config) is deliberately left alone here - see §5.2/decision 5.
@@ -1289,7 +1312,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
         // (verified directly, not from the action's own doc default).
         val configFile = baseDir / ".scala-steward.conf"
         ScalaStewardConfig.render(config).foreach { rendered =>
-          if (!configFile.exists) IO.write(configFile, rendered)
+          if (!configFile.exists) writeGeneratedFile(baseDir, configFile, rendered)
         }
       } else {
         if (workflowFile.exists && weOwnTheWorkflow) IO.delete(workflowFile)
