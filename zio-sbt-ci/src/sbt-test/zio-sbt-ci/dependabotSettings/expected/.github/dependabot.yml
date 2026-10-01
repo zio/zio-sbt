@@ -10,18 +10,14 @@ updates:
   - package-ecosystem: "npm"
     directory: "/website"
     schedule:
-      interval: "weekly"
+      interval: "daily"
     open-pull-requests-limit: 5
     groups:
       docusaurus:
         patterns:
           - "@docusaurus/*"
-          - "@mdx-js/*"
           - "react"
-          - "react-dom"
-          - "prism-react-renderer"
-          - "clsx"
-      website-minor-and-patch:
+      minor-and-patch:
         update-types:
           - "minor"
           - "patch"
