@@ -572,19 +572,31 @@ case class Workflow private (
   jobs: Chunk[Job],
   concurrency: Option[Concurrency]
 )(
-  val permissions: Map[String, String]
+  val permissions: Map[String, String],
+  val renderPermissions: Boolean
 ) {
   def on(triggers: Trigger*): Workflow =
-    copy(triggers = Chunk.fromIterable(triggers))(permissions)
+    copy(triggers = Chunk.fromIterable(triggers))(permissions, renderPermissions)
 
   def withJobs(jobs: Job*): Workflow =
-    copy(jobs = Chunk.fromIterable(jobs))(permissions)
+    copy(jobs = Chunk.fromIterable(jobs))(permissions, renderPermissions)
 
   def addJob(job: Job): Workflow =
-    copy(jobs = jobs :+ job)(permissions)
+    copy(jobs = jobs :+ job)(permissions, renderPermissions)
 
   def addJobs(newJobs: Chunk[Job]): Workflow =
-    copy(jobs = jobs ++ newJobs)(permissions)
+    copy(jobs = jobs ++ newJobs)(permissions, renderPermissions)
+
+  /**
+   * Omits the workflow-level `permissions` block altogether.
+   *
+   * That is not the same as an empty map, which renders `permissions: {}` and
+   * grants the token nothing. With no block, the workflow runs with the
+   * repository's default token permissions, which is what a workflow written
+   * before `permissions` was added to this DSL relies on.
+   */
+  def withoutPermissions: Workflow =
+    copy()(permissions, renderPermissions = false)
 }
 
 object Workflow {
@@ -618,7 +630,7 @@ object Workflow {
     triggers = Chunk.fromIterable(triggers),
     jobs = Chunk.fromIterable(jobs),
     concurrency = concurrency
-  )(permissions)
+  )(permissions, renderPermissions = true)
 
   implicit val encoder: JsonEncoder[Workflow] =
     JsonEncoder[Json].contramap { wf =>
@@ -632,11 +644,14 @@ object Workflow {
 
       val jobsJson = Json.Obj(wf.jobs.map(job => (job.id, job.toJsonAST.getOrElse(Json.Null))): _*)
 
+      val permissionsJson =
+        if (wf.renderPermissions) wf.permissions.toJsonAST.getOrElse(Json.Null) else Json.Null
+
       Json.Obj(
         ("name", Json.Str(wf.name)),
         ("env", wf.env.toJsonAST.getOrElse(Json.Null)),
         ("on", onJson),
-        ("permissions", wf.permissions.toJsonAST.getOrElse(Json.Null)),
+        ("permissions", permissionsJson),
         ("concurrency", concurrencyJson),
         ("jobs", jobsJson)
       )

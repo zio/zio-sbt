@@ -73,6 +73,15 @@ object ZioSbtCiPlugin extends AutoPlugin {
           "branch. `cancelInProgress` accepts an expression via `CancelInProgress.When(...)`, so a " +
           "workflow can cancel superseded pull request runs while letting releases finish"
       )
+    val ciWorkflowPermissions: SettingKey[Option[Map[String, String]]] =
+      settingKey[Option[Map[String, String]]](
+        "Workflow-level `permissions` of the generated CI workflow. Defaults to " +
+          "`Some(Workflow.defaultPermissions)`. `None` omits the block entirely, so the workflow " +
+          "runs with the repository's default token permissions - needed by a job that pushes " +
+          "with GITHUB_TOKEN, such as one tagging a release, since the default block only grants " +
+          "`contents: read`. This is distinct from `Some(Map.empty)`, which renders " +
+          "`permissions: {}` and grants nothing"
+      )
     val ciUpdateReadmeCondition: SettingKey[Option[Condition]] =
       settingKey[Option[Condition]]("condition to update readme")
     val ciTargetJavaVersions: SettingKey[Seq[String]] =
@@ -220,13 +229,19 @@ object ZioSbtCiPlugin extends AutoPlugin {
       settingKey[Boolean](
         "Whether the release job also runs on pushes to enabled branches, publishing SNAPSHOT artifacts via `sbt ci-release`; default is true"
       )
-    val ciBackgroundJobs: SettingKey[Seq[String]] = settingKey[Seq[String]]("Background jobs")
-    val ciBuildJobs: SettingKey[Seq[Job]]         = settingKey[Seq[Job]]("CI Build Jobs")
-    val ciLintJobs: SettingKey[Seq[Job]]          = settingKey[Seq[Job]]("CI Lint Jobs")
-    val ciTestJobs: SettingKey[Seq[Job]]          = settingKey[Seq[Job]]("CI Test Jobs")
-    val ciUpdateReadmeJobs: SettingKey[Seq[Job]]  = settingKey[Seq[Job]]("CI Update Readme Jobs")
-    val ciReleaseJobs: SettingKey[Seq[Job]]       = settingKey[Seq[Job]]("CI Release Jobs")
-    val ciPostReleaseJobs: SettingKey[Seq[Job]]   = settingKey[Seq[Job]]("CI Post Release Jobs")
+    val ciBackgroundJobs: SettingKey[Seq[String]]    = settingKey[Seq[String]]("Background jobs")
+    val ciBuildJobs: SettingKey[Seq[Job]]            = settingKey[Seq[Job]]("CI Build Jobs")
+    val ciLintJobs: SettingKey[Seq[Job]]             = settingKey[Seq[Job]]("CI Lint Jobs")
+    val ciTestJobs: SettingKey[Seq[Job]]             = settingKey[Seq[Job]]("CI Test Jobs")
+    val ciUpdateReadmeJobs: SettingKey[Seq[Job]]     = settingKey[Seq[Job]]("CI Update Readme Jobs")
+    val ciReportSuccessfulJobs: SettingKey[Seq[Job]] =
+      settingKey[Seq[Job]](
+        "CI Report Successful Jobs: by default the single `ci` job that waits on " +
+          "`ciPullRequestApprovalJobs`, for branch protection to require. Set to `Seq.empty` for a " +
+          "workflow made up entirely of custom jobs that has no use for it"
+      )
+    val ciReleaseJobs: SettingKey[Seq[Job]]     = settingKey[Seq[Job]]("CI Release Jobs")
+    val ciPostReleaseJobs: SettingKey[Seq[Job]] = settingKey[Seq[Job]]("CI Post Release Jobs")
 
     // Neither a `val` nor a `def` for the shared `ScopeFilter` survives being referenced from two
     // separate `.all(...).value` call sites in the same `Def.setting {}` block: sbt 1.x's macro
@@ -839,13 +854,14 @@ object ZioSbtCiPlugin extends AutoPlugin {
       val buildJobs        = ciBuildJobs.value
       val lintJobs         = ciLintJobs.value
       val testJobs         = ciTestJobs.value
-      val reportSuccessful = reportSuccessfulJobs.value
+      val reportSuccessful = ciReportSuccessfulJobs.value
       val updateReadmeJobs = ciUpdateReadmeJobs.value
       val releaseJobs      = ciReleaseJobs.value
       val postReleaseJobs  = ciPostReleaseJobs.value
       val workflowEnv      = ciWorkflowEnv.value
       val triggers         = ciWorkflowTriggers.value
       val concurrency      = ciConcurrency.value
+      val permissions      = ciWorkflowPermissions.value
 
       // An empty trigger list encodes as no `on:` block at all, and GitHub rejects a workflow
       // without one. Better to say so here than to emit a file that silently never runs.
@@ -855,14 +871,19 @@ object ZioSbtCiPlugin extends AutoPlugin {
             "GitHub requires at least one trigger."
         )
 
-      val workflow = Workflow(
-        name = workflowName,
-        env = workflowEnv,
-        concurrency = concurrency,
-        triggers = triggers,
-        jobs =
-          buildJobs ++ lintJobs ++ testJobs ++ updateReadmeJobs ++ reportSuccessful ++ releaseJobs ++ postReleaseJobs
-      )
+      val workflow = {
+        val base = Workflow(
+          name = workflowName,
+          env = workflowEnv,
+          concurrency = concurrency,
+          triggers = triggers,
+          permissions = permissions.getOrElse(Workflow.defaultPermissions),
+          jobs =
+            buildJobs ++ lintJobs ++ testJobs ++ updateReadmeJobs ++ reportSuccessful ++ releaseJobs ++ postReleaseJobs
+        )
+
+        if (permissions.isEmpty) base.withoutPermissions else base
+      }
 
       writeWorkflowFile((ThisBuild / Keys.baseDirectory).value, workflow, workflowFileName(workflowName))
     }
@@ -1504,6 +1525,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
         Trigger.PullRequest(ignoredBranches = Seq(Branch.Named("gh-pages")))
       ),
       ciConcurrency              := Some(Workflow.defaultConcurrency),
+      ciWorkflowPermissions      := Some(Workflow.defaultPermissions),
       ciUpdateReadmeCondition    := None,
       ciGroupSimilarTests        := false,
       ciSwapSizeGB               := 0,
@@ -1559,6 +1581,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
       ciLintJobs                := lintJobs.value,
       ciTestJobs                := testJobs.value,
       ciUpdateReadmeJobs        := updateReadmeJobs.value,
+      ciReportSuccessfulJobs    := reportSuccessfulJobs.value,
       ciReleaseJobs             := releaseJobs.value,
       ciPostReleaseJobs         := postReleaseJobs.value,
       ciPullRequestApprovalJobs := Def.setting {

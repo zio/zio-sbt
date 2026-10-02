@@ -308,6 +308,7 @@ All settings are `ThisBuild`-scoped.
 | `ciJvmOptions` | `Seq[String]` | `Seq.empty` | Appended to `JDK_JAVA_OPTIONS` |
 | `ciNodeOptions` | `Seq[String]` | `Seq.empty` | Sets `NODE_OPTIONS` when non-empty |
 | `ciConcurrency` | `Option[Concurrency]` | one run per branch, cancelling in progress | Concurrency group, or `None` to omit the block |
+| `ciWorkflowPermissions` | `Option[Map[String, String]]` | `Some(id-token: write, contents: read)` | Workflow-level `permissions`. `None` omits the block, so the workflow runs with the repository's default token permissions; `Some(Map.empty)` instead renders `permissions: {}`, which grants nothing |
 | `ciSwapSizeGB` | `Int` | `0` | Adds a swap-space step to every job when greater than zero |
 | `ciBackgroundJobs` | `Seq[String]` | `Seq.empty` | Commands prefixed to each `run`, for daemons a job needs |
 | `ciEnableDeployPreview` | `Boolean` | `false` | Adds website-artifact upload steps to `build` and generates `deploy-preview.yml`. Requires `NETLIFY_AUTH_TOKEN`/`NETLIFY_SITE_ID` secrets |
@@ -346,6 +347,7 @@ All settings are `ThisBuild`-scoped.
 | `ciLintJobs` | `Seq[Job]` | one `lint` job | |
 | `ciTestJobs` | `Seq[Job]` | one `test` job | |
 | `ciUpdateReadmeJobs` | `Seq[Job]` | one `update-readme` job | Set to `Seq.empty` if the README is maintained by hand |
+| `ciReportSuccessfulJobs` | `Seq[Job]` | the aggregate `ci` job | Set to `Seq.empty` for a workflow made up entirely of custom jobs that does not want one |
 | `ciReleaseJobs` | `Seq[Job]` | one `release` job | |
 | `ciPostReleaseJobs` | `Seq[Job]` | `release-docs`, `notify-docs-release` | |
 | `ciPullRequestApprovalJobs` | `Seq[String]` | the ids of `ciLintJobs`, `ciTestJobs` and `ciBuildJobs` | Job ids the aggregate `ci` job waits on. Follows the jobs those three settings produce, so renaming or adding one is picked up without touching this |
@@ -424,6 +426,19 @@ ciPullRequestApprovalJobs := Seq("lint", "integration-test")
 ```
 
 `Checkout`, `SetupLibuv`, `SetupJava(version)`, `SetupSBT`, `CacheDependencies`, `SetupNodeJs` and `SetSwapSpace` are all available; the ones defined as settings need `.value`.
+
+### A Workflow of Only Custom Jobs
+
+A build that replaces every stock job, for instance one whose jobs are generated from its module list, can also drop the two things the plugin adds around them: the aggregate `ci` job, and the workflow-level `permissions` block.
+
+```scala
+ciReportSuccessfulJobs := Seq.empty // no aggregate `ci` job
+ciWorkflowPermissions  := None      // inherit the repository's default token permissions
+ciConcurrency          := None
+ciWorkflowEnv          := Map.empty
+```
+
+Omit `permissions` when a job needs more than the default `contents: read`, such as one that pushes a release tag with `GITHUB_TOKEN`. `None` is not the same as `Some(Map.empty)`, which renders `permissions: {}` and grants the token nothing.
 
 ### Job Timeouts
 
