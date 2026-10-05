@@ -17,6 +17,12 @@ object V {
       "actions/github-script"                  -> "v9",
       "peter-evans/create-or-update-comment"   -> "v5",
       "release-drafter/release-drafter"        -> "v7",
-      "scala-steward-org/scala-steward-action" -> "v2.96.0"
+      "scala-steward-org/scala-steward-action" -> "v2.96.0",
+      "actions/cache"                          -> "v6.1.0",
+      "olafurpg/setup-scala"                   -> "v11",
+      "olafurpg/setup-gpg"                     -> "v3",
+      "fregante/setup-git-user"                -> "v1",
+      "softprops/turnstyle"                    -> "v1",
+      "jwalton/gh-docker-logs"                 -> "v1"
     ).map { case (k, v) => (k, s"$k@$v") }.apply(packageName)
 }
