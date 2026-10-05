@@ -3,7 +3,7 @@
 #
 # Why this exists: Dependabot's github-actions ecosystem can only edit the generated
 # `.github/workflows/*.yml` files. The source of truth for those pins is
-# `zio-sbt-ci/src/main/scala/zio/sbt/V.scala`, so a raw Dependabot PR fails `ciCheckGithubWorkflow`
+# `zio-sbt-githubactions/src/main/scala/zio/sbt/V.scala`, so a raw Dependabot PR fails `ciCheckGithubWorkflow`
 # in the Lint job (this is what made PR #773 unworkable). This is the mirror image of
 # renovate-regenerate-workflows.yml (which goes V.scala -> yml): here we go yml -> V.scala first,
 # then regenerate, so the PR ends up with V.scala and the generated files in sync.
@@ -96,7 +96,7 @@ jobs:
           # Everything the sync script + generator can touch: the generated workflows, the V.scala
           # pins, and the scripted-test fixtures that hardcode those pins. Leaving one out means
           # its edits are silently dropped and the corresponding scripted tests fail.
-          SYNCED_PATHS=(.github/workflows zio-sbt-ci/src/main/scala/zio/sbt/V.scala zio-sbt-ci/src/sbt-test)
+          SYNCED_PATHS=(.github/workflows zio-sbt-githubactions/src/main/scala/zio/sbt/V.scala zio-sbt-ci/src/sbt-test)
           if git diff --quiet -- "${SYNCED_PATHS[@]}"; then
             echo "V.scala and generated workflows already in sync; nothing to do."
             exit 0

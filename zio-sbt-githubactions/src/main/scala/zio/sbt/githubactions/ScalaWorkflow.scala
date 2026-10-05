@@ -17,6 +17,7 @@
 package zio.sbt.githubactions
 
 import zio.json.ast.Json
+import zio.sbt.V
 import zio.sbt.githubactions.ScalaWorkflow.JavaVersion.JDK17
 
 // The original code of the githubactions package was originally copied from the zio-aws-codegen project:
@@ -27,7 +28,7 @@ object ScalaWorkflow {
   def checkoutCurrentBranch(fetchDepth: Int = 0): Step =
     SingleStep(
       name = "Checkout current branch",
-      uses = Some(ActionRef("actions/checkout@v6")),
+      uses = Some(ActionRef(V("actions/checkout"))),
       parameters = Map(
         "fetch-depth" -> Json.Num(fetchDepth)
       )
@@ -36,7 +37,7 @@ object ScalaWorkflow {
   def setupScala(javaVersion: Option[JavaVersion] = None): Step =
     SingleStep(
       name = "Setup Java and Scala",
-      uses = Some(ActionRef("olafurpg/setup-scala@v11")),
+      uses = Some(ActionRef(V("olafurpg/setup-scala"))),
       parameters = Map(
         "java-version" -> Json.Str(javaVersion match {
           case None          => "${{ matrix.java }}"
@@ -48,7 +49,7 @@ object ScalaWorkflow {
   def setupNode(javaVersion: Option[JavaVersion] = None): Step =
     SingleStep(
       name = "Setup NodeJS",
-      uses = Some(ActionRef("actions/setup-node@v6")),
+      uses = Some(ActionRef(V("actions/setup-node"))),
       parameters = Map(
         "node-version" -> Json.Str(javaVersion match {
           case None          => "16.x"
@@ -61,7 +62,7 @@ object ScalaWorkflow {
   def setupGPG(): Step =
     SingleStep(
       "Setup GPG",
-      uses = Some(ActionRef("olafurpg/setup-gpg@v3"))
+      uses = Some(ActionRef(V("olafurpg/setup-gpg")))
     )
 
   def cacheSBT(
@@ -73,7 +74,7 @@ object ScalaWorkflow {
 
     SingleStep(
       name = "Cache SBT",
-      uses = Some(ActionRef("actions/cache@v2")),
+      uses = Some(ActionRef(V("actions/cache"))),
       parameters = Map(
         "path" -> Json.Str(
           Seq(
@@ -91,7 +92,7 @@ object ScalaWorkflow {
   def setupGitUser(): Step =
     SingleStep(
       name = "Setup GIT user",
-      uses = Some(ActionRef("fregante/setup-git-user@v1"))
+      uses = Some(ActionRef(V("fregante/setup-git-user")))
     )
 
   def runSBT(
@@ -130,7 +131,7 @@ object ScalaWorkflow {
         ),
         SingleStep(
           s"Upload $id targets",
-          uses = Some(ActionRef("actions/upload-artifact@v2")),
+          uses = Some(ActionRef(V("actions/upload-artifact"))),
           parameters = Map(
             "name" -> Json.Str(s"target-$id-$osS-$scalaS-$javaS"),
             "path" -> Json.Str("targets.tar")
@@ -154,7 +155,7 @@ object ScalaWorkflow {
       Seq(
         SingleStep(
           s"Download stored $id targets",
-          uses = Some(ActionRef("actions/download-artifact@v2")),
+          uses = Some(ActionRef(V("actions/download-artifact"))),
           parameters = Map(
             "name" -> Json.Str(s"target-$id-$osS-$scalaS-$javaS")
           )
@@ -189,7 +190,7 @@ object ScalaWorkflow {
   def turnstyle(): Step =
     SingleStep(
       "Turnstyle",
-      uses = Some(ActionRef("softprops/turnstyle@v1")),
+      uses = Some(ActionRef(V("softprops/turnstyle"))),
       env = Map(
         "GITHUB_TOKEN" -> "${{ secrets.ADMIN_GITHUB_TOKEN }}"
       )
@@ -198,7 +199,7 @@ object ScalaWorkflow {
   def collectDockerLogs(): Step =
     SingleStep(
       "Collect Docker logs",
-      uses = Some(ActionRef("jwalton/gh-docker-logs@v1"))
+      uses = Some(ActionRef(V("jwalton/gh-docker-logs")))
     )
 
   val isMaster: Condition = Condition.Expression(

@@ -9,7 +9,7 @@
       "description": "Action versions the CI generator emits. V.scala is the source of truth for the generated workflows, so bumping a pin here is what actually changes CI.",
       "customType": "regex",
       "managerFilePatterns": [
-        "/^zio-sbt-ci/src/main/scala/zio/sbt/V\\.scala$/"
+        "/^zio-sbt-githubactions/src/main/scala/zio/sbt/V\\.scala$/"
       ],
       "matchStrings": [
         "\"(?<depName>[\\w.-]+/[\\w.-]+)\"\\s*->\\s*\"(?<currentValue>v\\d[\\w.-]*)\""
@@ -115,7 +115,7 @@
         "custom.regex"
       ],
       "matchFileNames": [
-        "zio-sbt-ci/src/main/scala/zio/sbt/V.scala"
+        "zio-sbt-githubactions/src/main/scala/zio/sbt/V.scala"
       ],
       "labels": [
         "dependencies",

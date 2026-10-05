@@ -7,7 +7,7 @@
 # reverting it.
 set -euo pipefail
 
-V_SCALA="zio-sbt-ci/src/main/scala/zio/sbt/V.scala"
+V_SCALA="zio-sbt-githubactions/src/main/scala/zio/sbt/V.scala"
 # scripted tests compare generated output against expected/*.yml fixtures that hardcode the pins
 FIXTURES="zio-sbt-ci/src/sbt-test"
 GENERATED=(ci auto-approve auto-merge deploy-preview)
