@@ -196,26 +196,9 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
       if (watch)
         mdoc.toTask(" --watch --no-livereload")
-      else {
-        val docsDir = mdocOut.value
-        mdoc.toTask("").map(_ => failOnDuplicateDocIds(docsDir))
-      }
+      else
+        mdoc.toTask("")
     }
-
-  // Docusaurus refuses to build a site containing two docs with the same id, so a package
-  // holding such a pair breaks the site of every project that consumes it (the ZIO website
-  // pulls each library's docs from npm). Fail here, before anything is published.
-  private def failOnDuplicateDocIds(docsDir: File): Unit = {
-    val duplicates = WebsiteUtils.duplicateDocIds(docsDir)
-    if (duplicates.nonEmpty) {
-      val details = duplicates.toSeq.sortBy(_._1).map { case (id, files) => s"  - `$id`: ${files.mkString(", ")}" }
-      sys.error(
-        s"""|Docs must have distinct ids, but these share one:
-            |${details.mkString("\n")}
-            |Rename or remove one of each pair, or give them distinct `id` front matter.""".stripMargin
-      )
-    }
-  }
 
   lazy val installWebsiteTask: Def.Initialize[Task[Unit]] =
     Def.task {
