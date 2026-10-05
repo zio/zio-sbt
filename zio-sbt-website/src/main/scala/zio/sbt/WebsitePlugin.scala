@@ -33,10 +33,12 @@ import zio.sbt.WebsiteUtils.{readFile, removeYamlHeader}
 object WebsitePlugin extends sbt.AutoPlugin {
 
   object autoImport {
-    val compileDocs: InputKey[Unit]                 = inputKey[Unit]("Compile docs")
-    val installWebsite: TaskKey[Unit]               = taskKey[Unit]("Install the website for the first time")
-    val buildWebsite: TaskKey[Unit]                 = taskKey[Unit]("Build website (default output: website/build)")
-    val previewWebsite: TaskKey[Unit]               = taskKey[Unit]("preview website")
+    val compileDocs: InputKey[Unit]            = inputKey[Unit]("Compile docs")
+    val installWebsite: TaskKey[Unit]          = taskKey[Unit]("Install the website for the first time")
+    val buildWebsite: TaskKey[Unit]            = taskKey[Unit]("Build website (default output: website/build)")
+    val previewWebsite: TaskKey[Unit]          = taskKey[Unit]("preview website")
+    val checkDocsOnFreshWebsite: TaskKey[Unit] =
+      taskKey[Unit]("Build the docs in a freshly scaffolded ZIO website, the way the ZIO website consumes them")
     val publishToNpm: InputKey[Unit]                = inputKey[Unit]("Publish website to the npm registry")
     val publishSnapshotToNpm: InputKey[Unit]        = inputKey[Unit]("Publish snapshot version of website to the npm registry")
     val publishHashverToNpm: InputKey[Unit]         = inputKey[Unit]("Publish hash version of website to the npm registry")
@@ -86,17 +88,18 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
   override lazy val projectSettings: Seq[Setting[_ <: Object]] =
     Seq(
-      compileDocs          := compileDocsTask.evaluated,
-      websiteDir           := Paths.get((ThisBuild / baseDirectory).value.getPath, "website"),
-      mdocOut              := websiteDir.value.resolve("docs").toFile,
-      installWebsite       := installWebsiteTask.value,
-      buildWebsite         := buildWebsiteTask.value,
-      previewWebsite       := previewWebsiteTask.value,
-      publishToNpm         := publishToNpmTask.value,
-      publishSnapshotToNpm := publishSnapshotToNpmTask.value,
-      publishHashverToNpm  := publishHashverToNpmTask.value,
-      checkReadme          := checkReadmeTask.value,
-      generateReadme       := generateReadmeTask.value,
+      compileDocs             := compileDocsTask.evaluated,
+      websiteDir              := Paths.get((ThisBuild / baseDirectory).value.getPath, "website"),
+      mdocOut                 := websiteDir.value.resolve("docs").toFile,
+      installWebsite          := installWebsiteTask.value,
+      buildWebsite            := buildWebsiteTask.value,
+      checkDocsOnFreshWebsite := checkDocsOnFreshWebsiteTask.value,
+      previewWebsite          := previewWebsiteTask.value,
+      publishToNpm            := publishToNpmTask.value,
+      publishSnapshotToNpm    := publishSnapshotToNpmTask.value,
+      publishHashverToNpm     := publishHashverToNpmTask.value,
+      checkReadme             := checkReadmeTask.value,
+      generateReadme          := generateReadmeTask.value,
       // mdoc only treats a limited set of extensions as markdown by default, so without
       // this, docs/index.mdx would be copied verbatim, leaving @VERSION@ and
       // @PROJECT_BADGES@ unsubstituted. `--markdown-extensions` replaces the defaults and
@@ -225,12 +228,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
           exit(Process(s"rm $siteTarget -Rvf").!)
 
         val task: String =
-          s"""|npx @zio.dev/create-zio-website@${createZioWebsiteVersion.value} ${normalizedName.value}-website \\
-              |  --description="${name.value}" \\
-              |  --author="ZIO Contributors" \\
-              |  --email="email@zio.dev" \\
-              |  --license="Apache-2.0" \\
-              |  --architecture=Linux""".stripMargin
+          scaffoldCommand(createZioWebsiteVersion.value, s"${normalizedName.value}-website", name.value)
 
         logger.info(s"installing website for ${normalizedName.value} ... \n$task")
 
@@ -276,6 +274,51 @@ object WebsitePlugin extends sbt.AutoPlugin {
       }
 
       val _ = Files.createDirectories(websiteDirPath.resolve("docs"))
+    }
+
+  private def scaffoldCommand(createZioWebsiteVersion: String, siteName: String, description: String): String =
+    s"""|npx @zio.dev/create-zio-website@$createZioWebsiteVersion $siteName \\
+        |  --description="$description" \\
+        |  --author="ZIO Contributors" \\
+        |  --email="email@zio.dev" \\
+        |  --license="Apache-2.0" \\
+        |  --architecture=Linux""".stripMargin
+
+  // The ZIO website (zio/zio) builds every library's published docs with the current Docusaurus,
+  // which rejects things an older, committed `website/` only warns about -- two docs sharing an
+  // id, say (`mux.md` next to `mux.mdx`). A library whose own site is committed and pinned to an
+  // old Docusaurus therefore passes its CI and then breaks the ZIO website's. Build the docs in a
+  // site scaffolded from the pinned create-zio-website instead, which is what consumers see.
+  lazy val checkDocsOnFreshWebsiteTask: Def.Initialize[Task[Unit]] =
+    Def.task {
+      val logger     = streams.value.log
+      val _          = compileDocs.toTask("").value
+      val committed  = Files.exists(websiteDir.value.resolve("package.json"))
+      val siteName   = s"${normalizedName.value}-fresh-website"
+      val scratch    = target.value / siteName
+      val command    = scaffoldCommand(createZioWebsiteVersion.value, siteName, name.value)
+      val workingDir = target.value
+      val docsOut    = mdocOut.value
+
+      // Without a committed site, `buildWebsite` already scaffolds a fresh one and builds on it.
+      if (!committed)
+        logger.info("No committed website found; `buildWebsite` already builds on a fresh scaffold, skipping.")
+      else {
+        if (scratch.exists) IO.delete(scratch)
+
+        logger.info(s"scaffolding a fresh website to check the docs against ... \n$command")
+        exit(Process(command, workingDir).!, "Failed to scaffold the fresh website!")
+
+        // The scaffold ships its own `docs/`; swap it for this project's compiled docs.
+        IO.delete(scratch / "docs")
+        IO.copyDirectory(docsOut, scratch / "docs")
+
+        exit(Process("npm install", scratch).!, "Failed to install the fresh website's dependencies!")
+        exit(
+          Process("npm run build", scratch).!,
+          "The docs do not build on a fresh ZIO website (the one zio/zio builds them with)!"
+        )
+      }
     }
 
   lazy val buildWebsiteTask: Def.Initialize[Task[Unit]] =
