@@ -47,6 +47,8 @@ jobs:
       run: sbt --no-colors +publishLocal
     - name: Check website build process
       run: sbt --no-colors docs/clean; sbt --no-colors docs/buildWebsite
+    - name: Check docs build on a fresh ZIO website
+      run: sbt --no-colors docs/checkDocsOnFreshWebsite
     - name: Check website is installed
       id: check-website-installed
       if: ${{ github.event_name == 'pull_request' }}

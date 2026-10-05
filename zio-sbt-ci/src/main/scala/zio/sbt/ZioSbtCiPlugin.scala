@@ -1707,6 +1707,15 @@ object ZioSbtCiPlugin extends AutoPlugin {
         Step.SingleStep(
           name = "Check website build process",
           run = Some(prefixJobs + SbtCommand + " docs/clean; " + SbtCommand + " docs/buildWebsite")
+        ),
+        // A committed `website/` is built with whatever Docusaurus it pins, which can be too old
+        // to reject what the ZIO website's (zio/zio) current Docusaurus rejects -- duplicate doc
+        // ids, for one. This builds the same docs on a fresh scaffold, as zio/zio does, so the
+        // failure shows up here instead of in a dependency-bump PR there. A no-op when there is
+        // no committed website, since `docs/buildWebsite` then already builds on a fresh one.
+        Step.SingleStep(
+          name = "Check docs build on a fresh ZIO website",
+          run = Some(prefixJobs + SbtCommand + " docs/checkDocsOnFreshWebsite")
         )
       )
     }

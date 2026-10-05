@@ -51,6 +51,8 @@ jobs:
       run: sbt --no-colors "zio-sbt-ecosystem/scripted zio-sbt-ecosystem/verifySettings-sbt2" "zio-sbt-website/scripted zio-sbt-website/installWebsite-sbt2" "zio-sbt-ci/scripted zio-sbt-ci/defaults-sbt2"
     - name: Check website build process
       run: sbt --no-colors docs/clean; sbt --no-colors docs/buildWebsite
+    - name: Check docs build on a fresh ZIO website
+      run: sbt --no-colors docs/checkDocsOnFreshWebsite
     - name: Check website is installed
       id: check-website-installed
       if: ${{ github.event_name == 'pull_request' }}
