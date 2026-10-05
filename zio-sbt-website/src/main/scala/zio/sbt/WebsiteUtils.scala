@@ -19,6 +19,7 @@ package zio.sbt
 import java.nio.file.{Files, Paths}
 
 import scala.annotation.nowarn
+import scala.jdk.CollectionConverters._
 import scala.sys.process._
 
 import sbt.File
@@ -161,6 +162,44 @@ object WebsiteUtils {
       ()
     }
   }
+
+  private val DocExtensions = Seq(".md", ".mdx")
+
+  private val FrontMatterId = """(?m)^id:\s*["']?([^"'\r\n]+?)["']?\s*$""".r
+
+  private def frontMatterId(file: File): Option[String] = {
+    val lines = Files.readAllLines(file.toPath, StandardCharsets.UTF_8).asScala.toList
+    if (lines.headOption.exists(_.trim == "---"))
+      FrontMatterId.findFirstMatchIn(lines.tail.takeWhile(_.trim != "---").mkString("\n")).map(_.group(1))
+    else None
+  }
+
+  /**
+   * Finds docs under `docsDir` that Docusaurus would give the same id: files
+   * whose paths differ only by extension (`mux.md` and `mux.mdx`), or that
+   * declare the same `id` front matter in the same directory. Docusaurus aborts
+   * the whole site build on such a collision, so catching it where the docs are
+   * produced keeps a bad package from reaching every site that consumes it.
+   *
+   * @return
+   *   each colliding id mapped to its files, relative to `docsDir`
+   */
+  def duplicateDocIds(docsDir: File): Map[String, Seq[String]] =
+    if (!docsDir.isDirectory) Map.empty
+    else {
+      val root = docsDir.toPath
+      val docs = Files
+        .walk(root)
+        .iterator()
+        .asScala
+        .filter(p => Files.isRegularFile(p) && DocExtensions.exists(p.getFileName.toString.endsWith))
+        .toList
+      docs.groupBy { p =>
+        val rel  = root.relativize(p).toString.replace(java.io.File.separatorChar, '/')
+        val stem = DocExtensions.collectFirst { case e if rel.endsWith(e) => rel.dropRight(e.length) }.getOrElse(rel)
+        frontMatterId(p.toFile).fold(stem)(id => stem.take(stem.lastIndexOf('/') + 1) + id)
+      }.collect { case (id, ps) if ps.size > 1 => id -> ps.map(p => root.relativize(p).toString).sorted }
+    }
 
   def releaseVersion(logger: String => Unit): Option[String] =
     try

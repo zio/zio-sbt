@@ -1,0 +1,10 @@
+# `mux.md` and `mux.mdx` share one Docusaurus id, so compileDocs must fail
+> clean
+> compile
+-> compileDocs
+
+# mdoc never prunes its output, so drop the stale copy along with the source
+$ delete docs/reference/mux.md
+$ delete website/docs/reference/mux.md
+> compileDocs
+$ exists website/docs/reference/mux.mdx
