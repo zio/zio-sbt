@@ -110,7 +110,16 @@ object ZioSbtCiPlugin extends AutoPlugin {
           "and makes `ciGenerateGithubWorkflow` also generate deploy-preview.yml, which deploys " +
           "website/build to Netlify via a workflow_run-triggered job after a successful CI run " +
           "on a pull request touching docs/ or website/. Requires the NETLIFY_AUTH_TOKEN and " +
-          "NETLIFY_SITE_ID secrets to be configured on the repository. Default is false"
+          "NETLIFY_SITE_ID secrets to be configured on the repository. See `ciDeployPreviewMode` to " +
+          "deploy on demand instead of on every successful run. Default is false"
+      )
+    val ciDeployPreviewMode: SettingKey[DeployPreviewMode] =
+      settingKey[DeployPreviewMode](
+        "How deploy-preview.yml deploys the website preview, only used when `ciEnableDeployPreview` " +
+          "is true. `DeployPreviewMode.Automatic` deploys after every successful CI run on a pull " +
+          "request. `DeployPreviewMode.OnDemand` instead posts a comment with a \"Deploy preview\" " +
+          "checkbox on the pull request and deploys only when someone with write access ticks it, " +
+          "which saves Netlify credits. Default is `DeployPreviewMode.Automatic`"
       )
     val ciEnableReleaseDrafter: SettingKey[Boolean] =
       settingKey[Boolean](
@@ -1171,6 +1180,16 @@ object ZioSbtCiPlugin extends AutoPlugin {
     }
 
   lazy val netlifyDeployPreviewWorkflow: Def.Initialize[Workflow] = Def.setting {
+    val automatic = automaticDeployPreviewWorkflow.value
+    val onDemand  = onDemandDeployPreviewWorkflow.value
+
+    ciDeployPreviewMode.value match {
+      case DeployPreviewMode.Automatic => automatic
+      case DeployPreviewMode.OnDemand  => onDemand
+    }
+  }
+
+  private lazy val automaticDeployPreviewWorkflow: Def.Initialize[Workflow] = Def.setting {
     val ciWorkflowName = ciWorkflowTitle.value
 
     val deployPreviewCondition =
@@ -1311,6 +1330,305 @@ object ZioSbtCiPlugin extends AutoPlugin {
                      |
                      |🕒 Deployed at: ${{ steps.meta.outputs.time }}
                      |📌 Commit: [`${{ steps.meta.outputs.short_sha }}`](https://github.com/${{ github.repository }}/commit/${{ github.event.workflow_run.head_sha }})""".stripMargin
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  }
+
+  // The on-demand variant of deploy-preview.yml (`DeployPreviewMode.OnDemand`). Same file name and
+  // workflow name as the automatic variant, so switching modes just rewrites that one file.
+  //
+  // It has two jobs, told apart by the event that started the run:
+  //  - `post-preview-comment` (after a successful pull-request CI run) creates or resets the single
+  //    bot comment holding an unticked "Deploy preview" checkbox. Nothing is deployed.
+  //  - `deploy-preview` (when that comment is edited with the box ticked) deploys the website built
+  //    by the CI run of the commit named in the comment, then rewrites the comment with the URL.
+  //
+  // The bot comment carries two hidden markers: one to find it again, one with the full commit sha
+  // it was posted for, so a later tick deploys exactly that commit and never a newer one.
+  private lazy val onDemandDeployPreviewWorkflow: Def.Initialize[Workflow] = Def.setting {
+    val ciWorkflowName = ciWorkflowTitle.value
+
+    val commentMarker = "<!-- netlify-preview-comment -->"
+
+    val postCommentCondition =
+      Condition.Expression("github.event_name == 'workflow_run'") &&
+        Condition.Expression("github.event.workflow_run.event == 'pull_request'") &&
+        Condition.Expression("github.event.workflow_run.conclusion == 'success'")
+
+    // Only a bot-authored preview comment whose checkbox was just ticked may start a deployment;
+    // the permission of whoever ticked it is checked in the first step.
+    val deployCondition =
+      Condition.Expression("github.event_name == 'issue_comment'") &&
+        Condition.Expression("github.event.issue.pull_request") &&
+        Condition.Expression("github.event.comment.user.type == 'Bot'") &&
+        Condition.Expression(s"contains(github.event.comment.body, '$commentMarker')") &&
+        Condition.Expression("contains(github.event.comment.body, '- [x]')")
+
+    // Same soft-failure pattern as the automatic mode: both artifacts are only uploaded when the
+    // website is installed and docs/ or website/ changed, so a missing one means "nothing to
+    // preview" and must not turn into a failing check or a pointless comment.
+    val artifactsDownloaded =
+      Condition.Expression("steps.download-website.outcome == 'success'") &&
+        Condition.Expression("steps.download-pr-metadata.outcome == 'success'")
+
+    Workflow(
+      name = "Deploy Preview",
+      triggers = Seq(
+        Trigger.WorkflowRun(workflows = Seq(ciWorkflowName), types = Seq("completed")),
+        Trigger.IssueComment(types = Seq("edited"))
+      ),
+      permissions = Map(
+        "actions"       -> "read",
+        "contents"      -> "read",
+        "deployments"   -> "write",
+        "issues"        -> "write",
+        "pull-requests" -> "write",
+        "statuses"      -> "write"
+      ),
+      // The workflow-level default group would cancel a deployment when an unrelated event for the
+      // same ref arrives; the deploy job has its own per-PR group instead.
+      concurrency = None,
+      jobs = Seq(
+        Job(
+          id = "post-preview-comment",
+          name = "post-preview-comment",
+          condition = Some(postCommentCondition),
+          steps = Seq(
+            Step.SingleStep(
+              name = "Download Website Artifact",
+              id = Some("download-website"),
+              continueOnError = true,
+              uses = Some(ActionRef(V("actions/download-artifact"))),
+              parameters = Map(
+                "name"         -> Json.Str("website-artifact"),
+                "path"         -> Json.Str("website-artifact"),
+                "run-id"       -> Json.Str("${{ github.event.workflow_run.id }}"),
+                "github-token" -> Json.Str("${{ secrets.GITHUB_TOKEN }}")
+              )
+            ),
+            Step.SingleStep(
+              name = "Download PR Metadata",
+              id = Some("download-pr-metadata"),
+              continueOnError = true,
+              uses = Some(ActionRef(V("actions/download-artifact"))),
+              parameters = Map(
+                "name"         -> Json.Str("pr-metadata"),
+                "path"         -> Json.Str("pr-metadata"),
+                "run-id"       -> Json.Str("${{ github.event.workflow_run.id }}"),
+                "github-token" -> Json.Str("${{ secrets.GITHUB_TOKEN }}")
+              )
+            ),
+            Step.SingleStep(
+              name = "Read PR Number",
+              id = Some("pr"),
+              condition = Some(artifactsDownloaded),
+              run = Some("echo \"number=$(cat pr-metadata/pr-number.txt)\" >> \"$GITHUB_OUTPUT\"")
+            ),
+            Step.SingleStep(
+              name = "Create or Reset Preview Comment",
+              condition = Some(artifactsDownloaded),
+              uses = Some(ActionRef(V("actions/github-script"))),
+              env = Map(
+                "PR_NUMBER" -> "${{ steps.pr.outputs.number }}",
+                "HEAD_SHA"  -> "${{ github.event.workflow_run.head_sha }}"
+              ),
+              parameters = Map(
+                "script" -> Json.Str(
+                  """|const issue_number = parseInt(process.env.PR_NUMBER, 10);
+                     |const sha = process.env.HEAD_SHA;
+                     |const body = [
+                     |  '<!-- netlify-preview-comment -->',
+                     |  `<!-- preview-sha:${sha} -->`,
+                     |  '### 🌐 Website preview',
+                     |  '',
+                     |  `- [ ] **Deploy preview** for commit [\`${sha.slice(0, 7)}\`](https://github.com/${context.repo.owner}/${context.repo.repo}/commit/${sha})`,
+                     |  '',
+                     |  'Tick the checkbox to deploy this commit to Netlify. Previews are not deployed automatically: after a new push, tick the box again.',
+                     |].join('\n');
+                     |
+                     |const comments = await github.paginate(github.rest.issues.listComments, {
+                     |  owner: context.repo.owner,
+                     |  repo: context.repo.repo,
+                     |  issue_number,
+                     |  per_page: 100,
+                     |});
+                     |const existing = comments.find(
+                     |  (c) => c.user.type === 'Bot' && c.body.includes('<!-- netlify-preview-comment -->')
+                     |);
+                     |
+                     |if (existing) {
+                     |  await github.rest.issues.updateComment({
+                     |    owner: context.repo.owner,
+                     |    repo: context.repo.repo,
+                     |    comment_id: existing.id,
+                     |    body,
+                     |  });
+                     |} else {
+                     |  await github.rest.issues.createComment({
+                     |    owner: context.repo.owner,
+                     |    repo: context.repo.repo,
+                     |    issue_number,
+                     |    body,
+                     |  });
+                     |}
+                     |""".stripMargin
+                )
+              )
+            )
+          )
+        ),
+        Job(
+          id = "deploy-preview",
+          name = "deploy-preview",
+          condition = Some(deployCondition),
+          // One deployment at a time per PR, but never cancel one that is already running: the
+          // second tick simply waits for its turn.
+          concurrency = Some(
+            Concurrency(
+              group = "deploy-preview-${{ github.event.issue.number }}",
+              cancelInProgress = CancelInProgress.Never
+            )
+          ),
+          steps = Seq(
+            Step.SingleStep(
+              name = "Check Permission of the Requester",
+              uses = Some(ActionRef(V("actions/github-script"))),
+              parameters = Map(
+                "script" -> Json.Str(
+                  """|const { data } = await github.rest.repos.getCollaboratorPermissionLevel({
+                     |  owner: context.repo.owner,
+                     |  repo: context.repo.repo,
+                     |  username: context.payload.sender.login,
+                     |});
+                     |if (!['admin', 'maintain', 'write'].includes(data.permission)) {
+                     |  core.setFailed(`${context.payload.sender.login} has no write access, refusing to deploy preview.`);
+                     |}
+                     |""".stripMargin
+                )
+              )
+            ),
+            Step.SingleStep(
+              name = "Find CI Run of the Commit",
+              id = Some("ci"),
+              uses = Some(ActionRef(V("actions/github-script"))),
+              env = Map("COMMENT_BODY" -> "${{ github.event.comment.body }}"),
+              parameters = Map(
+                "script" -> Json.Str(
+                  """|const match = process.env.COMMENT_BODY.match(/<!-- preview-sha:([0-9a-f]{40}) -->/);
+                     |if (!match) {
+                     |  core.setFailed('Cannot find the commit sha in the preview comment.');
+                     |  return;
+                     |}
+                     |const sha = match[1];
+                     |const { data } = await github.rest.actions.listWorkflowRuns({
+                     |  owner: context.repo.owner,
+                     |  repo: context.repo.repo,
+                     |  workflow_id: 'ci.yml',
+                     |  head_sha: sha,
+                     |  event: 'pull_request',
+                     |  status: 'success',
+                     |  per_page: 1,
+                     |});
+                     |if (data.workflow_runs.length === 0) {
+                     |  core.setFailed(`No successful CI run found for commit ${sha}.`);
+                     |  return;
+                     |}
+                     |core.setOutput('sha', sha);
+                     |core.setOutput('run_id', data.workflow_runs[0].id);
+                     |""".stripMargin
+                )
+              )
+            ),
+            Step.SingleStep(
+              name = "Download Website Artifact",
+              uses = Some(ActionRef(V("actions/download-artifact"))),
+              parameters = Map(
+                "name"         -> Json.Str("website-artifact"),
+                "path"         -> Json.Str("website-artifact"),
+                "run-id"       -> Json.Str("${{ steps.ci.outputs.run_id }}"),
+                "github-token" -> Json.Str("${{ secrets.GITHUB_TOKEN }}")
+              )
+            ),
+            Step.SingleStep(
+              name = "Deploy Preview to Netlify",
+              id = Some("netlify-deploy"),
+              uses = Some(ActionRef(V("nwtgck/actions-netlify"))),
+              parameters = Map(
+                "publish-dir"                 -> Json.Str("./website-artifact"),
+                "github-token"                -> Json.Str("${{ secrets.GITHUB_TOKEN }}"),
+                "deploy-message"              -> Json.Str("PR #${{ github.event.issue.number }}"),
+                "alias"                       -> Json.Str("pr-${{ github.event.issue.number }}"),
+                "enable-pull-request-comment" -> Json.Bool(false),
+                "enable-commit-comment"       -> Json.Bool(false)
+              ),
+              env = Map(
+                "NETLIFY_AUTH_TOKEN" -> "${{ secrets.NETLIFY_AUTH_TOKEN }}",
+                "NETLIFY_SITE_ID"    -> "${{ secrets.NETLIFY_SITE_ID }}"
+              )
+            ),
+            Step.SingleStep(
+              name = "Update Preview Comment With Deploy URL",
+              uses = Some(ActionRef(V("actions/github-script"))),
+              env = Map(
+                "SHA"        -> "${{ steps.ci.outputs.sha }}",
+                "DEPLOY_URL" -> "${{ steps.netlify-deploy.outputs.deploy-url }}"
+              ),
+              parameters = Map(
+                "script" -> Json.Str(
+                  """|const sha = process.env.SHA;
+                     |const time = new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+                     |const body = [
+                     |  '<!-- netlify-preview-comment -->',
+                     |  `<!-- preview-sha:${sha} -->`,
+                     |  '### 🌐 Website preview',
+                     |  '',
+                     |  `🚀 Preview deployed to Netlify: ${process.env.DEPLOY_URL}`,
+                     |  '',
+                     |  `🕒 Deployed at: ${time}`,
+                     |  `📌 Commit: [\`${sha.slice(0, 7)}\`](https://github.com/${context.repo.owner}/${context.repo.repo}/commit/${sha})`,
+                     |  '',
+                     |  '- [ ] **Redeploy preview** (tick to deploy this commit again)',
+                     |  '',
+                     |  'Previews are not deployed automatically: after a new push, tick the box again.',
+                     |].join('\n');
+                     |await github.rest.issues.updateComment({
+                     |  owner: context.repo.owner,
+                     |  repo: context.repo.repo,
+                     |  comment_id: context.payload.comment.id,
+                     |  body,
+                     |});
+                     |""".stripMargin
+                )
+              )
+            ),
+            Step.SingleStep(
+              name = "Reset Checkbox on Failure",
+              condition = Some(Condition.Expression("failure()")),
+              uses = Some(ActionRef(V("actions/github-script"))),
+              env = Map(
+                "COMMENT_BODY" -> "${{ github.event.comment.body }}",
+                "RUN_URL"      -> "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+              ),
+              parameters = Map(
+                "script" -> Json.Str(
+                  """|const body = process.env.COMMENT_BODY
+                     |  .replace('- [x]', '- [ ]')
+                     |  .split('\n')
+                     |  .filter((l) => !l.startsWith('⚠️'))
+                     |  .join('\n')
+                     |  .trimEnd() + `\n\n⚠️ Preview deployment failed, see [workflow run](${process.env.RUN_URL}). Tick the box to retry.`;
+                     |await github.rest.issues.updateComment({
+                     |  owner: context.repo.owner,
+                     |  repo: context.repo.repo,
+                     |  comment_id: context.payload.comment.id,
+                     |  body,
+                     |});
+                     |""".stripMargin
                 )
               )
             )
@@ -1539,6 +1857,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
         ),
       ciCheckWebsiteBuildProcess := CheckWebsiteBuildProcess.value,
       ciEnableDeployPreview      := false,
+      ciDeployPreviewMode        := DeployPreviewMode.Automatic,
       ciEnableReleaseDrafter     := true,
       ciReleaseDrafterCategories := Seq(
         ReleaseDrafterCategory("🚀 Features", Seq("feature")),

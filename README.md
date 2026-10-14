@@ -235,6 +235,25 @@ Put together, this makes `ciEnableDeployPreview` safe to turn on before the Docu
 
 This requires two repository secrets: `NETLIFY_AUTH_TOKEN`, a [personal access token](https://docs.netlify.com/api/get-started/#authentication) generated from the Netlify user account that owns the site, and `NETLIFY_SITE_ID`, found under the site's **Site configuration → General → Site details** in the Netlify dashboard. The default value of `ciEnableDeployPreview` is `false`, so existing builds see no change until they opt in.
 
+#### On-demand previews
+
+Every preview deploy costs Netlify credits. To deploy only when someone asks for it, switch the mode:
+
+```scala
+import zio.sbt.githubactions.DeployPreviewMode
+
+ThisBuild / ciEnableDeployPreview := true
+ThisBuild / ciDeployPreviewMode   := DeployPreviewMode.OnDemand
+```
+
+`ciDeployPreviewMode` defaults to `DeployPreviewMode.Automatic`, the behavior described above, so nothing changes until you opt in. With `OnDemand`, `deploy-preview.yml` is still generated, but it works differently:
+
+1. After a successful pull-request CI run, the `post-preview-comment` job creates one bot comment on the pull request with an unticked **Deploy preview** checkbox. Nothing is deployed yet. A later push resets the same comment to the new commit with the box unticked again.
+2. When someone ticks the box, GitHub fires an `issue_comment` `edited` event and the `deploy-preview` job runs. It first checks that the person who ticked has `admin`, `maintain` or `write` access to the repository, then finds the successful `ci.yml` run for the exact commit named in the comment, downloads that run's `website-artifact`, and deploys it to Netlify.
+3. The comment is rewritten with the preview URL, the deploy time and the commit, plus a **Redeploy preview** checkbox. If the deployment fails, the box is unticked again and the comment links to the failed run.
+
+Deployments are serialized per pull request (a second tick waits for the first instead of cancelling it). The two Netlify secrets and the `website-artifact` / `pr-metadata` artifacts from `build` are the same as for the automatic mode, and the generated workflow looks up CI by its file name, `ci.yml`.
+
 ### Release Drafter
 
 `ciEnableReleaseDrafter` defaults to `true`, so `ciGenerateGithubWorkflow` generates `release-drafter.yml` automatically, which runs [`release-drafter/release-drafter`](https://github.com/release-drafter/release-drafter) on every push to the release branch to keep a draft GitHub Release up to date with categorized notes for each merged pull request. Set it to `false` to opt out:
@@ -313,6 +332,7 @@ All settings are `ThisBuild`-scoped.
 | `ciSwapSizeGB` | `Int` | `0` | Adds a swap-space step to every job when greater than zero |
 | `ciBackgroundJobs` | `Seq[String]` | `Seq.empty` | Commands prefixed to each `run`, for daemons a job needs |
 | `ciEnableDeployPreview` | `Boolean` | `false` | Adds website-artifact upload steps to `build` and generates `deploy-preview.yml`. Requires `NETLIFY_AUTH_TOKEN`/`NETLIFY_SITE_ID` secrets |
+| `ciDeployPreviewMode` | `DeployPreviewMode` | `DeployPreviewMode.Automatic` | Only used with `ciEnableDeployPreview`. `Automatic` deploys every successful pull-request CI run; `OnDemand` posts a "Deploy preview" checkbox comment and deploys only when it is ticked |
 | `ciEnableReleaseDrafter` | `Boolean` | `true` | Generates `release-drafter.yml` and scaffolds `.github/release-drafter.yml` (once). Overwrites a hand-written `release-drafter.yml` when on; when off, only deletes a copy it generated itself |
 | `ciReleaseDrafterCategories` | `Seq[ReleaseDrafterCategory]` | Features/Bug Fixes/Maintenance/Dependency Updates | Categories written into the scaffolded config on first generation only |
 | `ciReleaseDrafterVersionResolver` | `Option[ReleaseDrafterVersionResolver]` | `None` | Optional `version-resolver` block for the scaffolded config |

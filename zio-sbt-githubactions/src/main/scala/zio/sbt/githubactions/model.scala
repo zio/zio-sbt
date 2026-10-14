@@ -44,6 +44,19 @@ object DependencyBot {
   final case class Custom(login: String) extends DependencyBot
 }
 
+/**
+ * How the Netlify website preview of a pull request is deployed.
+ *
+ *   - `Automatic`: deploy after every successful CI run on a pull request.
+ *   - `OnDemand`: post a comment with a checkbox after every successful CI run,
+ *     and deploy only when someone with write access ticks it.
+ */
+sealed trait DeployPreviewMode
+object DeployPreviewMode {
+  case object Automatic extends DeployPreviewMode
+  case object OnDemand  extends DeployPreviewMode
+}
+
 sealed trait Branch
 object Branch {
   case object All                extends Branch
@@ -246,6 +259,16 @@ object Trigger {
   object WorkflowRun {
     def apply(workflows: Seq[String], types: Seq[String] = Seq("completed")): WorkflowRun =
       WorkflowRun(Chunk.fromIterable(workflows), Chunk.fromIterable(types))
+  }
+
+  case class IssueComment private (types: Chunk[String]) extends Trigger {
+    override def toKeyValuePair: (String, Json) =
+      ("issue_comment", Json.Obj(("types", types.toJsonAST.getOrElse(Json.Null))))
+  }
+
+  object IssueComment {
+    def apply(types: Seq[String] = Seq("created", "edited", "deleted")): IssueComment =
+      IssueComment(Chunk.fromIterable(types))
   }
 }
 
