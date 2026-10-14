@@ -40,6 +40,6 @@ libraryDependencies := {
 }
 
 libraryDependencies += "org.snakeyaml" % "snakeyaml-engine" % "3.2"
-libraryDependencies += "dev.zio"      %% "zio"              % "2.1.26"
+libraryDependencies += "dev.zio"      %% "zio"              % "2.1.27"
 libraryDependencies += "dev.zio"      %% "zio-json"         % "0.9.2"
 libraryDependencies += "dev.zio"      %% "zio-json-yaml"    % "0.9.2"
