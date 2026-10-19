@@ -1512,6 +1512,29 @@ object ZioSbtCiPlugin extends AutoPlugin {
                 )
               )
             ),
+            // A 👍 on the comment tells the requester the tick was received. GitHub keeps a single
+            // reaction per user, so on a re-tick (status 200: already there) it is removed and added
+            // again to acknowledge this request too. Purely cosmetic, so it never blocks the deploy.
+            Step.SingleStep(
+              name = "Acknowledge Request",
+              continueOnError = true,
+              uses = Some(ActionRef(V("actions/github-script"))),
+              parameters = Map(
+                "script" -> Json.Str(
+                  """|const params = {
+                     |  owner: context.repo.owner,
+                     |  repo: context.repo.repo,
+                     |  comment_id: context.payload.comment.id,
+                     |};
+                     |const { status, data } = await github.rest.reactions.createForIssueComment({ ...params, content: '+1' });
+                     |if (status === 200) {
+                     |  await github.rest.reactions.deleteForIssueComment({ ...params, reaction_id: data.id });
+                     |  await github.rest.reactions.createForIssueComment({ ...params, content: '+1' });
+                     |}
+                     |""".stripMargin
+                )
+              )
+            ),
             Step.SingleStep(
               name = "Find CI Run of the Commit",
               id = Some("ci"),
