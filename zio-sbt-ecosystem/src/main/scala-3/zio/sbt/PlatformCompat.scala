@@ -16,20 +16,21 @@
 
 package zio.sbt
 
+import explicitdeps.ExplicitDepsPlugin.autoImport._
 import sbt.Keys._
 import sbt._
 
 /**
  * `scala-3` counterpart of the `scala-2.12` [[PlatformCompat]] - see that file
- * for why this split exists. Neither `sbt-explicit-dependencies` nor
- * `sbt-platform-deps` has an sbt-2.x / Scala-3 release yet, so on this axis
- * `stdSettings()` skips the unused-dependency filter tweak, and `enableZIO()`
- * depends on the plain (JVM-only) `%%` operator instead of `%%%`
- * (cross-platform JS/Native support is unavailable here until upstream catches
- * up).
+ * for why this split exists. `sbt-platform-deps` has no sbt-2.x / Scala-3
+ * release yet, so `enableZIO()` uses the plain (JVM-only) `%%` operator instead
+ * of `%%%`. Cross-platform JS/Native support is unavailable here until upstream
+ * catches up.
  */
 private[sbt] object PlatformCompat {
-  def unusedCompileDependenciesFilterSettings: Seq[Setting[_]] = Seq.empty
+  def unusedCompileDependenciesFilterSettings: Seq[Setting[_]] = Seq(
+    unusedCompileDependenciesFilter -= moduleFilter("org.scala-js", "scalajs-library")
+  )
 
   // `Test / test`'s value type is `sbt.protocol.testing.TestResult` on this axis (was `Unit`
   // under sbt 1.x); `Passed` matches the original intent of treating a compiled-but-not-run test
