@@ -16,22 +16,20 @@
 
 package zio.sbt
 
-import explicitdeps.ExplicitDepsPlugin.autoImport.*
-import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport.*
-import sbt.Keys.*
-import sbt.{Def, *}
+import sbt.Keys._
+import sbt.{Def, _}
 import sbtbuildinfo.BuildInfoPlugin.autoImport.{BuildInfoKey, buildInfoKeys, buildInfoPackage}
 import sbtcrossproject.CrossPlugin.autoImport.{JVMPlatform, crossProjectPlatform}
-import scalafix.sbt.ScalafixPlugin.autoImport.{scalafixDependencies, scalafixScalaBinaryVersion, scalafixSemanticdb}
+import scalafix.sbt.ScalafixPlugin.autoImport.{scalafixDependencies, scalafixSemanticdb}
 
-import zio.sbt.Versions.*
+import zio.sbt.Versions._
 
 trait ScalaCompilerSettings {
 
   private val stdOptions = Seq(
     "-deprecation",
     "-encoding",
-    "UTF-8",
+    "utf8",
     "-feature",
     "-unchecked"
   )
@@ -59,7 +57,7 @@ trait ScalaCompilerSettings {
       if (Keys.scalaBinaryVersion.value == "3")
         Seq("-Xfatal-warnings")
       else
-        Seq() //"-Xprint:typer" from zio-config
+        Seq() // "-Xprint:typer" from zio-config
     },
     Compile / doc / sources := {
       val old = (Compile / doc / sources).value
@@ -86,15 +84,12 @@ trait ScalaCompilerSettings {
           "-language:implicitConversions",
           "-Xignore-scala2-macros",
           "-noindent",
-          "-release",
-          javaPlatform
+          s"-release:$javaPlatform"
         )
       case Some((2, 13)) =>
         Seq(
           "-Ywarn-unused:params,-implicits",
-          "-release",
-          javaPlatform,
-          s"-target:$javaPlatform"
+          s"-release:$javaPlatform"
         ) ++ std2xOptions ++ optimizerOptions(optimize)
       case Some((2, 12)) =>
         Seq(
@@ -114,21 +109,6 @@ trait ScalaCompilerSettings {
           "-Xmax-classfile-name",
           "242"
         ) ++ std2xOptions ++ optimizerOptions(optimize)
-      case Some((2, 11)) =>
-        Seq(
-          "-Ypartial-unification",
-          "-Yno-adapted-args",
-          "-Ywarn-inaccessible",
-          "-Ywarn-infer-any",
-          "-Ywarn-nullary-override",
-          "-Ywarn-nullary-unit",
-          "-Xexperimental",
-          "-Ywarn-unused-import",
-          "-Xfuture",
-          "-Xsource:2.13",
-          "-Xmax-classfile-name",
-          "242"
-        ) ++ std2xOptions
       case _ => Seq.empty
     }
 
@@ -142,14 +122,12 @@ trait ScalaCompilerSettings {
 
   def crossPlatformSources(scalaVer: String, platform: String, conf: String, baseDir: File): List[File] = {
     val versions = CrossVersion.partialVersion(scalaVer) match {
-      case Some((2, 11)) =>
-        List("2.11", "2.11+", "2.11-2.12", "2.x")
       case Some((2, 12)) =>
-        List("2.12", "2.11+", "2.12+", "2.11-2.12", "2.12-2.13", "2.x")
+        List("2.12", "2.12+", "2.12-2.13", "2.x")
       case Some((2, 13)) =>
-        List("2.13", "2.11+", "2.12+", "2.13+", "2.12-2.13", "2.x")
+        List("2.13", "2.12+", "2.13+", "2.12-2.13", "2.x")
       case Some((3, _)) =>
-        List("dotty", "2.11+", "2.12+", "2.13+", "3.x")
+        List("dotty", "2.12+", "2.13+", "3.x")
       case _ =>
         List()
     }
@@ -175,17 +153,10 @@ trait ScalaCompilerSettings {
     }
   )
 
-  val silencerModules: Seq[ModuleID] =
-    Seq(
-      "com.github.ghik" % "silencer-lib" % SilencerVersion % Provided cross CrossVersion.full,
-      compilerPlugin("com.github.ghik" % "silencer-plugin" % SilencerVersion cross CrossVersion.full)
-    )
-
   def stdSettings(
     name: Option[String] = None,
     packageName: Option[String] = None,
-    javaPlatform: String = "8",
-    enableSilencer: Boolean = true,
+    javaPlatform: String = "17",
     enableKindProjector: Boolean = true,
     enableCrossProject: Boolean = false,
     enableScalafix: Boolean = true,
@@ -197,33 +168,19 @@ trait ScalaCompilerSettings {
     }) ++
       Seq(
         ZioSbtEcosystemPlugin.autoImport.javaPlatform := javaPlatform,
-        scalacOptions ++= stdOptions ++ extraOptions(
-          Keys.scalaVersion.value,
-          javaPlatform,
-          optimize = !isSnapshot.value
-        ) ++ {
-          if (turnCompilerWarningIntoErrors && sys.env.contains("CI"))
-            Seq("-Xfatal-warnings")
-          else
-            Nil // to enable Scalafix locally
-        },
+        scalacOptions                                 := (
+          scalacOptions.value ++
+            stdOptions ++
+            extraOptions(Keys.scalaVersion.value, javaPlatform, optimize = !isSnapshot.value) ++
+            (
+              if (turnCompilerWarningIntoErrors && sys.env.contains("CI")) Seq("-Xfatal-warnings")
+              else Nil // to enable Scalafix locally
+            )
+        ).distinct,
         javacOptions := Seq("-source", javaPlatform, "-target", javaPlatform),
 //      Compile / console / scalacOptions ~= {
 //        _.filterNot(Set("-Xfatal-warnings"))
 //      },
-        libraryDependencies ++= {
-          if (enableSilencer) {
-            if (scalaBinaryVersion.value == "3")
-              Seq(
-                "com.github.ghik" % s"silencer-lib_${ZioSbtEcosystemPlugin.autoImport.scala213.value}" % SilencerVersion % Provided
-              )
-            else
-              Seq(
-                "com.github.ghik" % "silencer-lib" % SilencerVersion % Provided cross CrossVersion.full,
-                compilerPlugin("com.github.ghik" % "silencer-plugin" % SilencerVersion cross CrossVersion.full)
-              )
-          } else Seq.empty
-        },
         libraryDependencies ++= {
           if (enableKindProjector && scalaBinaryVersion.value != "3") {
             Seq(
@@ -233,26 +190,24 @@ trait ScalaCompilerSettings {
         },
         Test / parallelExecution := scalaBinaryVersion.value != "3",
         incOptions ~= (_.withLogRecompileOnMacro(false)),
-        autoAPIMappings := true,
-        unusedCompileDependenciesFilter -= moduleFilter("org.scala-js", "scalajs-library")
-      ) ++ (if (enableCrossProject) crossProjectSettings else Seq.empty) ++ {
+        autoAPIMappings := true
+      ) ++ PlatformCompat.unusedCompileDependenciesFilterSettings ++
+      (if (enableCrossProject) crossProjectSettings else Seq.empty) ++ {
         packageName match {
           case Some(name) => buildInfoSettings(name)
           case None       => Seq.empty
         }
       } ++ scala3Settings ++ {
         if (enableScalafix) scalafixSettings else Seq.empty
-      }
+      } ++ betterMonadicForSettings
 
   lazy val scalafixSettings: Seq[Def.Setting[_]] =
     Seq(
       semanticdbEnabled := Keys.scalaBinaryVersion.value != "3",
       semanticdbOptions += "-P:semanticdb:synthetics:on",
-      semanticdbVersion                      := scalafixSemanticdb.revision, // use Scalafix compatible version
-      ThisBuild / scalafixScalaBinaryVersion := CrossVersion.binaryScalaVersion(Keys.scalaVersion.value),
+      semanticdbVersion := scalafixSemanticdb.revision, // use Scalafix compatible version
       ThisBuild / scalafixDependencies ++= List(
-        "com.github.liancheng" %% "organize-imports" % OrganizeImportsVersion,
-        "com.github.vovapolu"  %% "scaluzzi"         % ScaluzziVersion
+        "com.github.vovapolu" %% "scaluzzi" % ScaluzziVersion
       )
     )
 
@@ -270,30 +225,26 @@ trait ScalaCompilerSettings {
     enableStreaming: Boolean = false,
     enableTesting: Boolean = true
   ): Seq[Def.Setting[_]] =
-    Seq(libraryDependencies += "dev.zio" %%% "zio" % ZioSbtEcosystemPlugin.autoImport.zioVersion.value) ++
-      (if (enableTesting)
-         Seq(
-           libraryDependencies ++= Seq(
-             "dev.zio" %%% "zio-test"     % ZioSbtEcosystemPlugin.autoImport.zioVersion.value % Test,
-             "dev.zio" %%% "zio-test-sbt" % ZioSbtEcosystemPlugin.autoImport.zioVersion.value % Test
-           ),
-           testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
-         )
-       else Seq.empty) ++ {
-        if (enableStreaming)
-          libraryDependencies += "dev.zio" %%% "zio-streams" % ZioSbtEcosystemPlugin.autoImport.zioVersion.value
-        else Seq.empty
-      }
+    PlatformCompat.enableZIO(enableStreaming, enableTesting)
 
   def buildInfoSettings(packageName: String): Seq[Setting[_]] =
     Seq(
-      buildInfoKeys    := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion, isSnapshot),
+      // Wrapped explicitly with `BuildInfoKey(...)` rather than relying on its implicit
+      // `SettingKey[T] => BuildInfoKey` conversion applying automatically inside a `Seq[BuildInfoKey](...)`
+      // literal: Scala 3 does not apply it there the way Scala 2 does.
+      buildInfoKeys := Seq[BuildInfoKey](
+        BuildInfoKey(name),
+        BuildInfoKey(version),
+        BuildInfoKey(scalaVersion),
+        BuildInfoKey(sbtVersion),
+        BuildInfoKey(isSnapshot)
+      ),
       buildInfoPackage := packageName
     )
 
   def macroExpansionSettings: Seq[Setting[_]] = Seq(
     addOptionsOn("2.13")("-Ymacro-annotations"),
-    addDependenciesOn("2.11", "2.12")(
+    addDependenciesOn("2.12")(
       compilerPlugin(("org.scalamacros" % "paradise" % "2.1.1").cross(CrossVersion.full))
     )
   )
@@ -323,8 +274,12 @@ trait ScalaCompilerSettings {
   def nativeSettings: Seq[Setting[_]] = Seq(
     doc / skip              := true,
     Compile / doc / sources := Seq.empty,
-    Test / test             := { val _ = (Test / compile).value; () },
-    Test / fork             := crossProjectPlatform.value == JVMPlatform // set fork to `true` on JVM to improve log readability, JS and Native need `false`
+    // `Test / test`'s own value type is `Unit` on sbt 1.x but `sbt.protocol.testing.TestResult` on
+    // sbt 2.x, so the replacement value - not just an expression discarding to a common type, since
+    // `:=`'s RHS must match the key's own declared type - has to come from the scala-2.12/scala-3
+    // PlatformCompat split.
+    PlatformCompat.skippedTestSetting,
+    Test / fork := crossProjectPlatform.value == JVMPlatform // set fork to `true` on JVM to improve log readability, JS and Native need `false`
   )
 
   lazy val scalajs: Seq[Setting[_]] =
@@ -334,7 +289,7 @@ trait ScalaCompilerSettings {
     optionsOnOrElse(scalaBinaryVersions*)(options*)(Seq.empty*)
 
   def optionsOnExcept(scalaBinaryVersions: String*)(options: String*): Def.Initialize[Seq[String]] =
-    optionsOn(Seq("2.11", "2.12", "2.13", "3").diff(scalaBinaryVersions)*)(options*)
+    optionsOn(Seq("2.12", "2.13", "3").diff(scalaBinaryVersions)*)(options*)
 
   def optionsOnOrElse(scalaBinaryVersions: String*)(defaults: String*)(
     orElse: String*
@@ -347,7 +302,7 @@ trait ScalaCompilerSettings {
     dependenciesOnOrElse(scalaBinaryVersions*)(modules*)(Seq.empty*)
 
   def dependenciesOnExcept(scalaBinaryVersions: String*)(modules: ModuleID*): Def.Initialize[Seq[ModuleID]] =
-    dependenciesOn(Seq("2.11", "2.12", "2.13", "3").diff(scalaBinaryVersions)*)(modules*)
+    dependenciesOn(Seq("2.12", "2.13", "3").diff(scalaBinaryVersions)*)(modules*)
 
   def dependenciesOnOrElse(scalaBinaryVersions: String*)(defaultModules: ModuleID*)(
     orElse: ModuleID*
@@ -360,7 +315,7 @@ trait ScalaCompilerSettings {
     addDependenciesOnOrElse(scalaBinaryVersions*)(dependencies*)(Seq.empty*)
 
   def addDependenciesOnExcept(scalaBinaryVersions: String*)(dependencies: ModuleID*): Def.Setting[Seq[ModuleID]] =
-    libraryDependencies ++= dependenciesOn(Seq("2.11", "2.12", "2.13", "3").diff(scalaBinaryVersions)*)(
+    libraryDependencies ++= dependenciesOn(Seq("2.12", "2.13", "3").diff(scalaBinaryVersions)*)(
       dependencies*
     ).value
 
@@ -378,6 +333,16 @@ trait ScalaCompilerSettings {
     scalacOptions ++= optionsOnOrElse(scalaBinaryVersions*)(options*)(orElse*).value
 
   def addOptionsOnExcept(scalaBinaryVersions: String*)(options: String*): Def.Setting[Task[Seq[String]]] =
-    addOptionsOn(Seq("2.11", "2.12", "2.13", "3").diff(scalaBinaryVersions)*)(options*)
+    addOptionsOn(Seq("2.12", "2.13", "3").diff(scalaBinaryVersions)*)(options*)
+
+  private def betterMonadicForSettings =
+    Seq(
+      libraryDependencies ++= {
+        CrossVersion.partialVersion(scalaVersion.value) match {
+          case Some((2, _)) => Seq(compilerPlugin(betterMonadFor))
+          case _            => Seq.empty
+        }
+      }
+    )
 
 }

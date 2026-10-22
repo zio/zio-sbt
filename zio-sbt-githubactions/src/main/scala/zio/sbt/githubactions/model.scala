@@ -16,9 +16,11 @@
 
 package zio.sbt.githubactions
 
-import io.circe._
-import io.circe.syntax._
+import scala.annotation.nowarn
 
+import zio.Chunk
+import zio.json._
+import zio.json.ast.Json
 import zio.sbt.githubactions.Step.StepSequence
 
 sealed trait OS {
@@ -28,15 +30,43 @@ object OS {
   case object UbuntuLatest extends OS { val asString = "ubuntu-latest" }
 }
 
+sealed trait DependencyBot {
+  def login: String
+}
+object DependencyBot {
+  case object Dependabot extends DependencyBot { val login = "dependabot[bot]" }
+  case object Renovate   extends DependencyBot { val login = "renovate[bot]"   }
+
+  final case class ScalaSteward(githubAppName: String) extends DependencyBot {
+    val login: String = s"$githubAppName[bot]"
+  }
+
+  final case class Custom(login: String) extends DependencyBot
+}
+
+/**
+ * How the Netlify website preview of a pull request is deployed.
+ *
+ *   - `Automatic`: deploy after every successful CI run on a pull request.
+ *   - `OnDemand`: post a comment with a checkbox after every successful CI run,
+ *     and deploy only when someone with write access ticks it.
+ */
+sealed trait DeployPreviewMode
+object DeployPreviewMode {
+  case object Automatic extends DeployPreviewMode
+  case object OnDemand  extends DeployPreviewMode
+}
+
 sealed trait Branch
 object Branch {
   case object All                extends Branch
   case class Named(name: String) extends Branch
 
-  implicit val encoder: Encoder[Branch] = {
-    case All         => Json.fromString("*")
-    case Named(name) => Json.fromString(name)
-  }
+  implicit val encoder: JsonEncoder[Branch] =
+    JsonEncoder.string.contramap {
+      case All         => "*"
+      case Named(name) => name
+    }
 }
 
 sealed trait Trigger {
@@ -46,83 +76,219 @@ sealed trait Trigger {
 case class Input(key: String, description: String, required: Boolean, defaultValue: String)
 
 object Trigger {
-  case class WorkflowDispatch(
-    inputs: Seq[Input] = Seq.empty
+  case class WorkflowDispatch private (
+    inputs: Chunk[Input]
   ) extends Trigger {
-    override def toKeyValuePair: (String, Json) =
-      "workflow_dispatch" := inputs.map { i =>
-        i.key ->
-          Json.obj(
-            ("description", i.description.asJson),
-            ("required", i.required.asJson),
-            ("default", i.defaultValue.asJson)
+    override def toKeyValuePair: (String, Json) = {
+      val inputsMap = inputs.map { i =>
+        (
+          i.key,
+          Json.Obj(
+            ("description", Json.Str(i.description)),
+            ("required", Json.Bool(i.required)),
+            ("default", Json.Str(i.defaultValue))
           )
-      }.toMap.asJson
+        )
+      }.toMap
+      ("workflow_dispatch", inputsMap.toJsonAST.getOrElse(Json.Null))
+    }
   }
 
-  case class Release(
-    releaseTypes: Seq[String] = Seq.empty
-  ) extends Trigger {
-    override def toKeyValuePair: (String, Json) =
-      "release" := Json.obj("types" := releaseTypes)
+  object WorkflowDispatch {
+    def apply(inputs: Seq[Input] = Seq.empty): WorkflowDispatch =
+      WorkflowDispatch(Chunk.fromIterable(inputs))
   }
 
-  case class PullRequest(
-    branches: Seq[Branch] = Seq.empty,
-    ignoredBranches: Seq[Branch] = Seq.empty
-  ) extends Trigger {
+  case class Schedule private (crons: Chunk[String]) extends Trigger {
     override def toKeyValuePair: (String, Json) =
-      "pull_request" := Json.obj(
-        Seq(
-          "branches"        := branches,
-          "branches-ignore" := ignoredBranches
-        ).filter { case (_, data) => data.asArray.exists(_.nonEmpty) }: _*
+      (
+        "schedule",
+        crons.map(cron => Json.Obj(("cron", Json.Str(cron)))).toJsonAST.getOrElse(Json.Null)
       )
   }
 
-  case class Push(
-    branches: Seq[Branch] = Seq.empty,
-    ignoredBranches: Seq[Branch] = Seq.empty
+  object Schedule {
+    def apply(crons: Seq[String]): Schedule = Schedule(Chunk.fromIterable(crons))
+  }
+
+  case class Release private (
+    releaseTypes: Chunk[String]
   ) extends Trigger {
     override def toKeyValuePair: (String, Json) =
-      "push" := Json.obj(
-        Seq(
-          "branches"        := branches,
-          "branches-ignore" := ignoredBranches
-        ).filter { case (_, data) => data.asArray.exists(_.nonEmpty) }: _*
+      ("release", Json.Obj("types" -> releaseTypes.toJsonAST.getOrElse(Json.Null)))
+  }
+  object Release {
+    def apply(releaseTypes: Seq[String] = Seq.empty): Release =
+      Release(Chunk.fromIterable(releaseTypes))
+  }
+
+  case class PullRequest private (
+    branches: Chunk[Branch],
+    ignoredBranches: Chunk[Branch]
+  ) extends Trigger {
+    override def toKeyValuePair: (String, Json) = {
+      val fields = Chunk(
+        ("branches", branches.toJsonAST.getOrElse(Json.Null)),
+        ("branches-ignore", ignoredBranches.toJsonAST.getOrElse(Json.Null))
+      ).filter { case (_, data) =>
+        data match {
+          case Json.Arr(elements) => elements.nonEmpty
+          case _                  => false
+        }
+      }
+      ("pull_request", Json.Obj(fields))
+    }
+  }
+
+  object PullRequest {
+    def apply(
+      branches: Seq[Branch] = Seq.empty,
+      ignoredBranches: Seq[Branch] = Seq.empty
+    ): PullRequest =
+      PullRequest(
+        Chunk.fromIterable(branches),
+        Chunk.fromIterable(ignoredBranches)
       )
   }
 
-  case class Create(
-    branches: Seq[Branch] = Seq.empty,
-    ignoredBranches: Seq[Branch] = Seq.empty
+  case class PullRequestTarget private (
+    types: Chunk[String],
+    branches: Chunk[Branch],
+    ignoredBranches: Chunk[Branch]
+  ) extends Trigger {
+    override def toKeyValuePair: (String, Json) = {
+      val fields = Chunk(
+        ("types", types.toJsonAST.getOrElse(Json.Null)),
+        ("branches", branches.toJsonAST.getOrElse(Json.Null)),
+        ("branches-ignore", ignoredBranches.toJsonAST.getOrElse(Json.Null))
+      ).filter { case (_, data) =>
+        data match {
+          case Json.Arr(elements) => elements.nonEmpty
+          case _                  => false
+        }
+      }
+      ("pull_request_target", Json.Obj(fields))
+    }
+  }
+
+  object PullRequestTarget {
+    def apply(
+      types: Seq[String] = Seq.empty,
+      branches: Seq[Branch] = Seq.empty,
+      ignoredBranches: Seq[Branch] = Seq.empty
+    ): PullRequestTarget =
+      PullRequestTarget(
+        Chunk.fromIterable(types),
+        Chunk.fromIterable(branches),
+        Chunk.fromIterable(ignoredBranches)
+      )
+  }
+
+  case class Push private (
+    branches: Chunk[Branch],
+    ignoredBranches: Chunk[Branch]
+  ) extends Trigger {
+    override def toKeyValuePair: (String, Json) = {
+      val fields = Chunk(
+        ("branches", branches.toJsonAST.getOrElse(Json.Null)),
+        ("branches-ignore", ignoredBranches.toJsonAST.getOrElse(Json.Null))
+      ).filter { case (_, data) =>
+        data match {
+          case Json.Arr(elements) => elements.nonEmpty
+          case _                  => false
+        }
+      }
+      ("push", Json.Obj(fields))
+    }
+  }
+
+  object Push {
+    def apply(
+      branches: Seq[Branch] = Seq.empty,
+      ignoredBranches: Seq[Branch] = Seq.empty
+    ): Push =
+      Push(
+        Chunk.fromIterable(branches),
+        Chunk.fromIterable(ignoredBranches)
+      )
+  }
+
+  case class Create private (
+    branches: Chunk[Branch],
+    ignoredBranches: Chunk[Branch]
+  ) extends Trigger {
+    override def toKeyValuePair: (String, Json) = {
+      val fields = Chunk(
+        ("branches", branches.toJsonAST.getOrElse(Json.Null)),
+        ("branches-ignore", ignoredBranches.toJsonAST.getOrElse(Json.Null))
+      ).filter { case (_, data) =>
+        data match {
+          case Json.Arr(elements) => elements.nonEmpty
+          case _                  => false
+        }
+      }
+      ("create", Json.Obj(fields))
+    }
+  }
+
+  object Create {
+    def apply(
+      branches: Seq[Branch] = Seq.empty,
+      ignoredBranches: Seq[Branch] = Seq.empty
+    ): Create =
+      Create(
+        Chunk.fromIterable(branches),
+        Chunk.fromIterable(ignoredBranches)
+      )
+  }
+
+  case class WorkflowRun private (
+    workflows: Chunk[String],
+    types: Chunk[String]
   ) extends Trigger {
     override def toKeyValuePair: (String, Json) =
-      "create" := Json.obj(
-        Seq(
-          "branches"        := branches,
-          "branches-ignore" := ignoredBranches
-        ).filter { case (_, data) => data.asArray.exists(_.nonEmpty) }: _*
+      (
+        "workflow_run",
+        Json.Obj(
+          ("workflows", workflows.toJsonAST.getOrElse(Json.Null)),
+          ("types", types.toJsonAST.getOrElse(Json.Null))
+        )
       )
+  }
+
+  object WorkflowRun {
+    def apply(workflows: Seq[String], types: Seq[String] = Seq("completed")): WorkflowRun =
+      WorkflowRun(Chunk.fromIterable(workflows), Chunk.fromIterable(types))
+  }
+
+  case class IssueComment private (types: Chunk[String]) extends Trigger {
+    override def toKeyValuePair: (String, Json) =
+      ("issue_comment", Json.Obj(("types", types.toJsonAST.getOrElse(Json.Null))))
+  }
+
+  object IssueComment {
+    def apply(types: Seq[String] = Seq("created", "edited", "deleted")): IssueComment =
+      IssueComment(Chunk.fromIterable(types))
   }
 }
 
 case class Strategy(matrix: Map[String, List[String]], maxParallel: Option[Int] = None, failFast: Boolean = true)
 
 object Strategy {
-  implicit val encoder: Encoder[Strategy] =
-    (s: Strategy) =>
-      Json.obj(
-        "fail-fast"    := s.failFast,
-        "max-parallel" := s.maxParallel,
-        "matrix"       := s.matrix
+  implicit val encoder: JsonEncoder[Strategy] =
+    JsonEncoder[Json].contramap { s =>
+      Json.Obj(
+        ("fail-fast", Json.Bool(s.failFast)),
+        ("max-parallel", s.maxParallel.toJsonAST.getOrElse(Json.Null)),
+        ("matrix", s.matrix.toJsonAST.getOrElse(Json.Null))
       )
+    }
 }
 
 case class ActionRef(ref: String)
 object ActionRef {
-  implicit val encoder: Encoder[ActionRef] =
-    (action: ActionRef) => Json.fromString(action.ref)
+  implicit val encoder: JsonEncoder[ActionRef] =
+    JsonEncoder.string.contramap(_.ref)
 }
 
 sealed trait Condition {
@@ -162,13 +328,13 @@ object Condition {
     def asString: String = expression
   }
 
-  implicit val encoder: Encoder[Condition] =
-    (c: Condition) => Json.fromString(c.asString)
+  implicit val encoder: JsonEncoder[Condition] =
+    JsonEncoder.string.contramap(_.asString)
 }
 
 sealed trait Step {
   def when(condition: Condition): Step
-  def flatten: Seq[Step.SingleStep]
+  def flatten: Chunk[Step.SingleStep]
 }
 object Step {
   case class SingleStep(
@@ -178,144 +344,339 @@ object Step {
     condition: Option[Condition] = None,
     parameters: Map[String, Json] = Map.empty,
     run: Option[String] = None,
-    env: Map[String, String] = Map.empty
+    env: Map[String, String] = Map.empty,
+    // Kept boolean (rather than an `Option`) to match GitHub's own field, but only ever rendered
+    // when `true` - a step that never sets it must not gain a `continue-on-error: false` line, or
+    // every existing generated workflow (and its checked-in golden fixtures) picks up a spurious
+    // diff on every step, for every consumer of this DSL.
+    continueOnError: Boolean = false
   ) extends Step {
     override def when(condition: Condition): Step =
       copy(condition = Some(condition))
 
-    override def flatten: Seq[Step.SingleStep] = Seq(this)
+    override def flatten: Chunk[Step.SingleStep] = Chunk.single(this)
   }
 
-  case class StepSequence(steps: Seq[Step]) extends Step {
+  case class StepSequence private (steps: Chunk[Step]) extends Step {
     override def when(condition: Condition): Step =
       copy(steps = steps.map(_.when(condition)))
 
-    override def flatten: Seq[SingleStep] =
+    override def flatten: Chunk[SingleStep] =
       steps.flatMap(_.flatten)
   }
 
-  implicit val encoder: Encoder[SingleStep] =
-    (s: SingleStep) =>
-      Json
-        .obj(
-          "name" := s.name,
-          "id"   := s.id,
-          "uses" := s.uses,
-          "if"   := s.condition,
-          "with" := (if (s.parameters.nonEmpty) s.parameters.asJson
-                     else Json.Null),
-          "run" := s.run,
-          "env" := (if (s.env.nonEmpty) s.env.asJson else Json.Null)
-        )
+  object StepSequence {
+    def apply(steps: Seq[Step]): StepSequence =
+      StepSequence(Chunk.fromIterable(steps))
+  }
+
+  implicit val encoder: JsonEncoder[SingleStep] =
+    JsonEncoder[Json].contramap { s =>
+      Json.Obj(
+        ("name", Json.Str(s.name)),
+        ("id", s.id.toJsonAST.getOrElse(Json.Null)),
+        ("uses", s.uses.toJsonAST.getOrElse(Json.Null)),
+        ("if", s.condition.toJsonAST.getOrElse(Json.Null)),
+        ("with", if (s.parameters.nonEmpty) s.parameters.toJsonAST.getOrElse(Json.Null) else Json.Null),
+        ("run", s.run.toJsonAST.getOrElse(Json.Null)),
+        ("env", if (s.env.nonEmpty) s.env.toJsonAST.getOrElse(Json.Null) else Json.Null),
+        ("continue-on-error", if (s.continueOnError) Json.Bool(true) else Json.Null)
+      )
+    }
 }
 
 case class ImageRef(ref: String)
 object ImageRef {
-  implicit val encoder: Encoder[ImageRef] =
-    (image: ImageRef) => Json.fromString(image.ref)
+  implicit val encoder: JsonEncoder[ImageRef] =
+    JsonEncoder.string.contramap(_.ref)
 }
 
+/**
+ * A port mapping, rendered as `inner:outer`.
+ *
+ * GitHub reads that as `<host>:<container>`, so `inner` is the port exposed on
+ * the runner and `outer` the port inside the service container. A step reaching
+ * the service connects to `inner` on localhost.
+ */
 case class ServicePort(inner: Int, outer: Int)
 object ServicePort {
-  implicit val encoder: Encoder[ServicePort] =
-    (sp: ServicePort) => Json.fromString(s"${sp.inner}:${sp.outer}")
+  implicit val encoder: JsonEncoder[ServicePort] =
+    JsonEncoder.string.contramap(sp => s"${sp.inner}:${sp.outer}")
 }
 
+/**
+ * A service container attached to a job.
+ *
+ * `options` carries the raw `docker create` arguments, which is where health
+ * checks live. Without one, a job races the container: the service is started
+ * but steps may run before it is accepting connections. For example:
+ *
+ * {{{
+ * options = Some("--health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5")
+ * }}}
+ */
 case class Service(
   name: String,
   image: ImageRef,
   env: Map[String, String] = Map.empty,
-  ports: Seq[ServicePort] = Seq.empty
+  ports: Chunk[ServicePort] = Chunk.empty,
+  options: Option[String] = None
 )
 object Service {
-  implicit val encoder: Encoder[Service] =
-    (s: Service) =>
-      Json.obj(
-        "image" := s.image,
-        "env"   := s.env,
-        "ports" := s.ports
+  implicit val encoder: JsonEncoder[Service] =
+    JsonEncoder[Json].contramap { s =>
+      Json.Obj(
+        ("image", s.image.toJsonAST.getOrElse(Json.Null)),
+        // Empty collections would otherwise render as `env: {}` and `ports: []`, which `dropNulls`
+        // cannot remove.
+        ("env", if (s.env.nonEmpty) s.env.toJsonAST.getOrElse(Json.Null) else Json.Null),
+        ("ports", if (s.ports.nonEmpty) s.ports.toJsonAST.getOrElse(Json.Null) else Json.Null),
+        ("options", s.options.toJsonAST.getOrElse(Json.Null))
       )
+    }
 }
 
-case class Job(
+/**
+ * Whether an in-flight run is cancelled when a new one joins the same
+ * concurrency group.
+ *
+ * GitHub accepts either a boolean or an expression here, which is what lets a
+ * workflow cancel superseded pull request runs while letting releases run to
+ * completion.
+ */
+sealed trait CancelInProgress {
+  def toJsonValue: Json
+}
+
+object CancelInProgress {
+  case object Always extends CancelInProgress { def toJsonValue: Json = Json.Bool(true)  }
+  case object Never  extends CancelInProgress { def toJsonValue: Json = Json.Bool(false) }
+
+  final case class When(condition: Condition) extends CancelInProgress {
+    def toJsonValue: Json = Json.Str(condition.asString)
+  }
+}
+
+case class Concurrency(group: String, cancelInProgress: CancelInProgress = CancelInProgress.Always)
+
+object Concurrency {
+  implicit val encoder: JsonEncoder[Concurrency] =
+    JsonEncoder[Json].contramap { c =>
+      Json.Obj(
+        ("group", Json.Str(c.group)),
+        ("cancel-in-progress", c.cancelInProgress.toJsonValue)
+      )
+    }
+}
+
+// The synthetic `copy`/`apply`/`unapply` all mention the deprecated `timeoutMinutes`, which would
+// otherwise warn here on every compile - and `enableStrictCompile` turns warnings into errors.
+@nowarn("cat=deprecation")
+case class Job private (
   id: String,
   name: String,
-  runsOn: String = "ubuntu-latest",
-  timeoutMinutes: Int = 30,
-  continueOnError: Boolean = false,
-  strategy: Option[Strategy] = None,
-  steps: Seq[Step] = Seq.empty,
-  need: Seq[String] = Seq.empty,
-  services: Seq[Service] = Seq.empty,
-  condition: Option[Condition] = None
+  runsOn: String,
+  @deprecated("Use jobTimeout instead", "0.6.4")
+  timeoutMinutes: Int,
+  continueOnError: Boolean,
+  strategy: Option[Strategy],
+  steps: Chunk[Step],
+  need: Chunk[String],
+  services: Chunk[Service],
+  condition: Option[Condition],
+  jobTimeout: Option[Int],
+  concurrency: Option[Concurrency],
+  permissions: Map[String, String]
 ) {
   def withStrategy(strategy: Strategy): Job =
     copy(strategy = Some(strategy))
 
+  def withRunsOn(runsOn: String): Job =
+    copy(runsOn = runsOn)
+
   def withSteps(steps: Step*): Job =
-    copy(steps = steps)
+    copy(steps = Chunk.fromIterable(steps))
 
   def withServices(services: Service*): Job =
-    copy(services = services)
+    copy(services = Chunk.fromIterable(services))
+
+  def withTimeout(minutes: Int): Job =
+    copy(jobTimeout = Some(minutes))
+
+  def withPermissions(permissions: (String, String)*): Job =
+    copy(permissions = permissions.toMap)
 }
 
 object Job {
-  implicit val encoder: Encoder[Job] =
-    (job: Job) =>
-      Json
-        .obj(
-          "name"              := job.name,
-          "runs-on"           := job.runsOn,
-          "continue-on-error" := job.continueOnError,
-          "strategy"          := job.strategy,
-          "needs" := (if (job.need.nonEmpty) job.need.asJson
-                      else Json.Null),
-          "services" := (if (job.services.nonEmpty) {
-                           Json.obj(
-                             job.services.map(svc => svc.name := svc): _*
-                           )
-                         } else {
-                           Json.Null
-                         }),
-          "if"    := job.condition,
-          "steps" := StepSequence(job.steps).flatten
-        )
+
+  /**
+   * The historical default of the deprecated `timeoutMinutes` field.
+   *
+   * `timeoutMinutes` was accepted but never rendered, so no repository has ever
+   * had a `timeout-minutes` line in its generated workflow. Emitting the
+   * default would silently impose a 30 minute cap on every existing job,
+   * killing any that legitimately runs longer, so only a value that differs
+   * from this default is treated as a request for a timeout.
+   */
+  private final val UnsetTimeoutMinutes = 30
+
+  def apply(
+    id: String,
+    name: String,
+    runsOn: String = "ubuntu-latest",
+    timeoutMinutes: Int = UnsetTimeoutMinutes,
+    continueOnError: Boolean = false,
+    strategy: Option[Strategy] = None,
+    steps: Seq[Step] = Seq.empty,
+    need: Seq[String] = Seq.empty,
+    services: Seq[Service] = Seq.empty,
+    condition: Option[Condition] = None,
+    jobTimeout: Option[Int] = None,
+    concurrency: Option[Concurrency] = None,
+    permissions: Map[String, String] = Map.empty
+  ): Job = Job(
+    id = id,
+    name = name,
+    runsOn = runsOn,
+    timeoutMinutes = timeoutMinutes,
+    continueOnError = continueOnError,
+    strategy = strategy,
+    steps = Chunk.fromIterable(steps),
+    need = Chunk.fromIterable(need),
+    services = Chunk.fromIterable(services),
+    condition = condition,
+    jobTimeout = jobTimeout,
+    concurrency = concurrency,
+    permissions = permissions
+  )
+
+  /**
+   * The timeout to render, if any.
+   *
+   * `jobTimeout` wins. Failing that, a `timeoutMinutes` that differs from its
+   * default is honoured, so builds that set it before it was ever rendered -
+   * zio-prelude sets 60 - get what they asked for without having to change.
+   */
+  @nowarn("cat=deprecation")
+  private def timeoutOf(job: Job): Option[Int] =
+    job.jobTimeout.orElse(Some(job.timeoutMinutes).filter(_ != UnsetTimeoutMinutes))
+
+  implicit val encoder: JsonEncoder[Job] =
+    JsonEncoder[Json].contramap { job =>
+      val servicesJson = if (job.services.nonEmpty) {
+        Json.Obj(job.services.map(svc => (svc.name, svc.toJsonAST.getOrElse(Json.Null))))
+      } else {
+        Json.Null
+      }
+
+      Json.Obj(
+        ("name", Json.Str(job.name)),
+        ("runs-on", Json.Str(job.runsOn)),
+        ("timeout-minutes", timeoutOf(job).toJsonAST.getOrElse(Json.Null)),
+        ("concurrency", job.concurrency.toJsonAST.getOrElse(Json.Null)),
+        ("continue-on-error", Json.Bool(job.continueOnError)),
+        (
+          "permissions",
+          if (job.permissions.nonEmpty) job.permissions.toJsonAST.getOrElse(Json.Null) else Json.Null
+        ),
+        ("strategy", job.strategy.toJsonAST.getOrElse(Json.Null)),
+        ("needs", if (job.need.nonEmpty) job.need.toJsonAST.getOrElse(Json.Null) else Json.Null),
+        ("services", servicesJson),
+        ("if", job.condition.toJsonAST.getOrElse(Json.Null)),
+        ("steps", StepSequence(job.steps).flatten.toJsonAST.getOrElse(Json.Null))
+      )
+    }
 }
 
-case class Workflow(
+case class Workflow private (
   name: String,
-  env: Map[String, String] = Map.empty,
-  triggers: Seq[Trigger] = Seq.empty,
-  jobs: Seq[Job] = Seq.empty
+  env: Map[String, String],
+  triggers: Chunk[Trigger],
+  jobs: Chunk[Job],
+  concurrency: Option[Concurrency]
+)(
+  val permissions: Map[String, String],
+  val renderPermissions: Boolean
 ) {
   def on(triggers: Trigger*): Workflow =
-    copy(triggers = triggers)
+    copy(triggers = Chunk.fromIterable(triggers))(permissions, renderPermissions)
 
   def withJobs(jobs: Job*): Workflow =
-    copy(jobs = jobs)
+    copy(jobs = Chunk.fromIterable(jobs))(permissions, renderPermissions)
 
   def addJob(job: Job): Workflow =
-    copy(jobs = jobs :+ job)
+    copy(jobs = jobs :+ job)(permissions, renderPermissions)
 
-  def addJobs(newJobs: Seq[Job]): Workflow =
-    copy(jobs = jobs ++ newJobs)
+  def addJobs(newJobs: Chunk[Job]): Workflow =
+    copy(jobs = jobs ++ newJobs)(permissions, renderPermissions)
+
+  /**
+   * Omits the workflow-level `permissions` block altogether.
+   *
+   * That is not the same as an empty map, which renders `permissions: {}` and
+   * grants the token nothing. With no block, the workflow runs with the
+   * repository's default token permissions, which is what a workflow written
+   * before `permissions` was added to this DSL relies on.
+   */
+  def withoutPermissions: Workflow =
+    copy()(permissions, renderPermissions = false)
 }
 
 object Workflow {
-  implicit val encoder: Encoder[Workflow] =
-    (wf: Workflow) =>
-      Json
-        .obj(
-          "name" := wf.name,
-          "env"  := wf.env,
-          "on" := (if (wf.triggers.isEmpty)
-                     Json.Null
-                   else {
-                     Json.obj(
-                       wf.triggers
-                         .map(_.toKeyValuePair): _*
-                     )
-                   }),
-          "jobs" := Json.obj(wf.jobs.map(job => job.id := job): _*)
-        )
+  val defaultPermissions: Map[String, String] = Map("id-token" -> "write", "contents" -> "read")
+
+  /**
+   * One run per branch, except on the default branch where every run is kept.
+   *
+   * This was hard-coded into the encoder before it became configurable, so it
+   * stays the default to keep generated workflows byte-identical for builds
+   * that do not override it.
+   */
+  val defaultConcurrency: Concurrency = Concurrency(
+    group =
+      "${{ github.workflow }}-${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.run_id || github.ref }}",
+    cancelInProgress = CancelInProgress.Always
+  )
+
+  def apply(
+    name: String,
+    env: Map[String, String] = Map.empty,
+    triggers: Seq[Trigger] = Seq.empty,
+    jobs: Seq[Job] = Seq.empty,
+    permissions: Map[String, String] = defaultPermissions,
+    concurrency: Option[Concurrency] = Some(defaultConcurrency)
+    // `new` rather than the synthetic apply: with `concurrency` added, the two overloads take the
+    // same number of named arguments and the call would be ambiguous.
+  ): Workflow = new Workflow(
+    name = name,
+    env = env,
+    triggers = Chunk.fromIterable(triggers),
+    jobs = Chunk.fromIterable(jobs),
+    concurrency = concurrency
+  )(permissions, renderPermissions = true)
+
+  implicit val encoder: JsonEncoder[Workflow] =
+    JsonEncoder[Json].contramap { wf =>
+      val onJson = if (wf.triggers.isEmpty) {
+        Json.Null
+      } else {
+        Json.Obj(wf.triggers.map(_.toKeyValuePair))
+      }
+
+      val concurrencyJson = wf.concurrency.toJsonAST.getOrElse(Json.Null)
+
+      val jobsJson = Json.Obj(wf.jobs.map(job => (job.id, job.toJsonAST.getOrElse(Json.Null))): _*)
+
+      val permissionsJson =
+        if (wf.renderPermissions) wf.permissions.toJsonAST.getOrElse(Json.Null) else Json.Null
+
+      Json.Obj(
+        ("name", Json.Str(wf.name)),
+        ("env", wf.env.toJsonAST.getOrElse(Json.Null)),
+        ("on", onJson),
+        ("permissions", permissionsJson),
+        ("concurrency", concurrencyJson),
+        ("jobs", jobsJson)
+      )
+    }
 }

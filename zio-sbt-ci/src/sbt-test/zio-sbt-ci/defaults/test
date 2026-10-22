@@ -1,0 +1,5 @@
+# Generate ci.yml, auto-approve.yml and auto-merge.yml from the plugin defaults.
+> ciGenerateGithubWorkflow
+
+# Compare them against the recorded golden copies.
+> checkWorkflows

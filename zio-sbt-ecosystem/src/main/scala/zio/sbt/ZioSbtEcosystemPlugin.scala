@@ -18,13 +18,13 @@ package zio.sbt
 
 import scala.collection.immutable.ListMap
 
-import com.jsuereth.sbtpgp.SbtPgp.autoImport.*
-import de.heikoseeberger.sbtheader.HeaderPlugin
+import com.jsuereth.sbtpgp.SbtPgp.autoImport._
 import org.scalafmt.sbt.ScalafmtPlugin
-import sbt.Keys.*
+import sbt.Keys._
 import sbt.nio.Keys.{ReloadOnSourceChanges, onChangedBuildSource}
-import sbt.{Def, *}
+import sbt.{Def, _}
 import sbtbuildinfo.BuildInfoPlugin
+import sbtheader.HeaderPlugin
 import scalafix.sbt.ScalafixPlugin
 
 object ZioSbtEcosystemPlugin extends AutoPlugin {
@@ -48,12 +48,11 @@ object ZioSbtEcosystemPlugin extends AutoPlugin {
       )
 
     lazy val scala3: SettingKey[String]     = settingKey[String]("Scala 3 version")
-    lazy val scala211: SettingKey[String]   = settingKey[String]("Scala 2.11 version")
     lazy val scala212: SettingKey[String]   = settingKey[String]("Scala 2.12 version")
     lazy val scala213: SettingKey[String]   = settingKey[String]("Scala 2.13 version")
     lazy val zioVersion: SettingKey[String] = settingKey[String]("ZIO version")
 
-    lazy val javaPlatform: SettingKey[String] = settingKey[String]("java target platform, default is 8")
+    lazy val javaPlatform: SettingKey[String] = settingKey[String]("java target platform, default is 11")
 
     val welcomeBannerEnabled: SettingKey[Boolean] =
       settingKey[Boolean]("Indicates whether or not to enable the welcome banner.")
@@ -89,9 +88,9 @@ object ZioSbtEcosystemPlugin extends AutoPlugin {
         s"""|${Banner.trueColor(s"${name.value} v.${version.value}")}
             |Useful sbt tasks:
             |${usefulTasksAndSettings.value.map { case (task, description) =>
-          s"${item(task)} ${normalizedPadding(task)}${description}"
-        }
-          .mkString("\n")}
+             s"${item(task)} ${normalizedPadding(task)}${description}"
+           }
+             .mkString("\n")}
       """.stripMargin
 
       } else ""
@@ -105,13 +104,12 @@ object ZioSbtEcosystemPlugin extends AutoPlugin {
 
   override def buildSettings: Seq[Def.Setting[_]] = super.buildSettings ++ Seq(
     scala3             := Versions.scala3,
-    scala211           := Versions.scala211,
     scala212           := Versions.scala212,
     scala213           := Versions.scala213,
     scalaVersion       := scala213.value,
-    crossScalaVersions := Seq(scala211.value, scala212.value, scala213.value, scala3.value),
+    crossScalaVersions := Seq(scala212.value, scala213.value, scala3.value),
     zioVersion         := Versions.zioVersion,
-    javaPlatform       := "8"
+    javaPlatform       := "17"
   )
 
   override def globalSettings: Seq[Def.Setting[_]] =
@@ -120,10 +118,10 @@ object ZioSbtEcosystemPlugin extends AutoPlugin {
       organization   := "dev.zio",
       homepage       := Some(url(s"https://zio.dev/${normalizedName.value}")),
       normalizedName := (ThisBuild / name).value.toLowerCase.replaceAll(" ", "-"),
-      scmInfo := Some(
+      scmInfo        := Some(
         ScmInfo(
-          homepage.value.get,
-          s"scm:git:git@github.com:zio/${normalizedName}.git"
+          url(s"https://github.com/zio/${normalizedName.value}"),
+          s"scm:git:git@github.com:zio/${normalizedName.value}.git"
         )
       ),
       pgpPassphrase        := sys.env.get("PGP_PASSPHRASE").map(_.toArray),

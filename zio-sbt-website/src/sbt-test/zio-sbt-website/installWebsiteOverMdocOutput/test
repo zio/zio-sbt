@@ -1,0 +1,15 @@
+# A website directory holding only mdoc output is not an installed website. installWebsite used
+# to key its skip on the directory alone, leaving no Docusaurus scaffold behind; the build then
+# failed with "Could not read package.json". See #749.
+> seedMdocOutput
+$ exists website/docs/index.md
+$ absent website/package.json
+
+# Scaffolding must still happen, merging into the existing directory rather than nesting inside it.
+> installWebsite
+$ exists website/package.json
+$ exists website/src
+$ absent website/test-project-website
+
+# The pre-existing mdoc output must survive the merge.
+$ exists website/docs/index.md

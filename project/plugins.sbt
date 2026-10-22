@@ -1,33 +1,28 @@
-// Build Server Plugins
-addSbtPlugin("ch.epfl.scala" % "sbt-bloop" % "1.5.6")
-
 // Linting Plugins
-addSbtPlugin("org.scalameta"  % "sbt-scalafmt"               % "2.5.0")
-addSbtPlugin("ch.epfl.scala"  % "sbt-scalafix"               % "0.11.0")
+addSbtPlugin("org.scalameta"  % "sbt-scalafmt"               % "2.6.2")
+addSbtPlugin("ch.epfl.scala"  % "sbt-scalafix"               % "0.14.9")
 addSbtPlugin("me.mnedokushev" % "sbt2-explicit-dependencies" % "0.2.2")
 
 // Versioning and Release Plugins
-addSbtPlugin("com.eed3si9n"   % "sbt-buildinfo"  % "0.11.0")
-addSbtPlugin("com.jsuereth"   % "sbt-pgp"        % "2.1.1")
-addSbtPlugin("com.dwijnand"   % "sbt-dynver"     % "4.1.1")
-addSbtPlugin("org.xerial.sbt" % "sbt-sonatype"   % "3.9.18")
-addSbtPlugin("com.geirsson"   % "sbt-ci-release" % "1.5.7")
+addSbtPlugin("com.eed3si9n"   % "sbt-buildinfo"  % "0.13.2")
+addSbtPlugin("com.github.sbt" % "sbt-ci-release" % "1.12.1")
 
 // Docs Plugins
-addSbtPlugin("org.scalameta"     % "sbt-mdoc"   % "2.3.7")
-addSbtPlugin("com.github.sbt"    % "sbt-unidoc" % "0.5.0")
-addSbtPlugin("de.heikoseeberger" % "sbt-header" % "5.9.0")
+addSbtPlugin("org.scalameta"  % "sbt-mdoc"   % "2.9.2")
+addSbtPlugin("com.github.sbt" % "sbt-unidoc" % "0.6.1")
+addSbtPlugin("com.github.sbt" % "sbt-header" % "5.11.0")
 
 // Cross-Compiler Plugins
-addSbtPlugin("org.scala-js"       % "sbt-scalajs"                   % "1.13.0")
-addSbtPlugin("org.portable-scala" % "sbt-scalajs-crossproject"      % "1.3.0")
-addSbtPlugin("org.scala-native"   % "sbt-scala-native"              % "0.4.12")
-addSbtPlugin("org.portable-scala" % "sbt-scala-native-crossproject" % "1.3.0")
-addSbtPlugin("org.portable-scala" % "sbt-platform-deps"             % "1.0.1")
+addSbtPlugin("org.scala-js"       % "sbt-scalajs"                   % "1.22.0")
+addSbtPlugin("org.portable-scala" % "sbt-scalajs-crossproject"      % "1.4.0")
+addSbtPlugin("org.scala-native"   % "sbt-scala-native"              % "0.5.12")
+addSbtPlugin("org.portable-scala" % "sbt-scala-native-crossproject" % "1.4.0")
+addSbtPlugin("org.portable-scala" % "sbt-platform-deps"             % "1.0.2")
 
 // Benchmarking Plugins
-addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.4.5")
+addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.4.8")
 
-libraryDependencies += "org.snakeyaml" % "snakeyaml-engine" % "2.6"
-libraryDependencies += "dev.zio"      %% "zio"              % "2.0.15"
-libraryDependencies += "io.circe"     %% "circe-yaml"       % "0.14.2"
+libraryDependencies += "org.snakeyaml" % "snakeyaml-engine" % "3.2"
+libraryDependencies += "dev.zio"      %% "zio"              % "2.1.26"
+libraryDependencies += "dev.zio"      %% "zio-json"         % "0.9.2"
+libraryDependencies += "dev.zio"      %% "zio-json-yaml"    % "0.9.2"

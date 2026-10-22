@@ -16,9 +16,9 @@
 
 package zio.sbt.githubactions
 
-import io.circe.syntax._
-
-import zio.sbt.githubactions.ScalaWorkflow.JavaVersion.AdoptJDK18
+import zio.json.ast.Json
+import zio.sbt.V
+import zio.sbt.githubactions.ScalaWorkflow.JavaVersion.JDK17
 
 // The original code of the githubactions package was originally copied from the zio-aws-codegen project:
 // https://github.com/zio/zio-aws/tree/master/zio-aws-codegen/src/main/scala/zio/aws/codegen/githubactions
@@ -28,18 +28,18 @@ object ScalaWorkflow {
   def checkoutCurrentBranch(fetchDepth: Int = 0): Step =
     SingleStep(
       name = "Checkout current branch",
-      uses = Some(ActionRef("actions/checkout@v2")),
+      uses = Some(ActionRef(V("actions/checkout"))),
       parameters = Map(
-        "fetch-depth" := fetchDepth
+        "fetch-depth" -> Json.Num(fetchDepth)
       )
     )
 
   def setupScala(javaVersion: Option[JavaVersion] = None): Step =
     SingleStep(
       name = "Setup Java and Scala",
-      uses = Some(ActionRef("olafurpg/setup-scala@v11")),
+      uses = Some(ActionRef(V("olafurpg/setup-scala"))),
       parameters = Map(
-        "java-version" := (javaVersion match {
+        "java-version" -> Json.Str(javaVersion match {
           case None          => "${{ matrix.java }}"
           case Some(version) => version.asString
         })
@@ -49,20 +49,20 @@ object ScalaWorkflow {
   def setupNode(javaVersion: Option[JavaVersion] = None): Step =
     SingleStep(
       name = "Setup NodeJS",
-      uses = Some(ActionRef("actions/setup-node@v3")),
+      uses = Some(ActionRef(V("actions/setup-node"))),
       parameters = Map(
-        "node-version" := (javaVersion match {
+        "node-version" -> Json.Str(javaVersion match {
           case None          => "16.x"
           case Some(version) => version.asString
         }),
-        "registry-url" := "https://registry.npmjs.org"
+        "registry-url" -> Json.Str("https://registry.npmjs.org")
       )
     )
 
   def setupGPG(): Step =
     SingleStep(
       "Setup GPG",
-      uses = Some(ActionRef("olafurpg/setup-gpg@v3"))
+      uses = Some(ActionRef(V("olafurpg/setup-gpg")))
     )
 
   def cacheSBT(
@@ -74,15 +74,17 @@ object ScalaWorkflow {
 
     SingleStep(
       name = "Cache SBT",
-      uses = Some(ActionRef("actions/cache@v2")),
+      uses = Some(ActionRef(V("actions/cache"))),
       parameters = Map(
-        "path" := Seq(
-          "~/.ivy2/cache",
-          "~/.sbt",
-          "~/.coursier/cache/v1",
-          "~/.cache/coursier/v1"
-        ).mkString("\n"),
-        "key" := s"$osS-sbt-$scalaS-$${{ hashFiles('**/*.sbt') }}-$${{ hashFiles('**/build.properties') }}"
+        "path" -> Json.Str(
+          Seq(
+            "~/.ivy2/cache",
+            "~/.sbt",
+            "~/.coursier/cache/v1",
+            "~/.cache/coursier/v1"
+          ).mkString("\n")
+        ),
+        "key" -> Json.Str(s"$osS-sbt-$scalaS-$${{ hashFiles('**/*.sbt') }}-$${{ hashFiles('**/build.properties') }}")
       )
     )
   }
@@ -90,7 +92,7 @@ object ScalaWorkflow {
   def setupGitUser(): Step =
     SingleStep(
       name = "Setup GIT user",
-      uses = Some(ActionRef("fregante/setup-git-user@v1"))
+      uses = Some(ActionRef(V("fregante/setup-git-user")))
     )
 
   def runSBT(
@@ -129,10 +131,10 @@ object ScalaWorkflow {
         ),
         SingleStep(
           s"Upload $id targets",
-          uses = Some(ActionRef("actions/upload-artifact@v2")),
+          uses = Some(ActionRef(V("actions/upload-artifact"))),
           parameters = Map(
-            "name" := s"target-$id-$osS-$scalaS-$javaS",
-            "path" := "targets.tar"
+            "name" -> Json.Str(s"target-$id-$osS-$scalaS-$javaS"),
+            "path" -> Json.Str("targets.tar")
           )
         )
       )
@@ -153,9 +155,9 @@ object ScalaWorkflow {
       Seq(
         SingleStep(
           s"Download stored $id targets",
-          uses = Some(ActionRef("actions/download-artifact@v2")),
+          uses = Some(ActionRef(V("actions/download-artifact"))),
           parameters = Map(
-            "name" := s"target-$id-$osS-$scalaS-$javaS"
+            "name" -> Json.Str(s"target-$id-$osS-$scalaS-$javaS")
           )
         ),
         SingleStep(
@@ -188,7 +190,7 @@ object ScalaWorkflow {
   def turnstyle(): Step =
     SingleStep(
       "Turnstyle",
-      uses = Some(ActionRef("softprops/turnstyle@v1")),
+      uses = Some(ActionRef(V("softprops/turnstyle"))),
       env = Map(
         "GITHUB_TOKEN" -> "${{ secrets.ADMIN_GITHUB_TOKEN }}"
       )
@@ -197,7 +199,7 @@ object ScalaWorkflow {
   def collectDockerLogs(): Step =
     SingleStep(
       "Collect Docker logs",
-      uses = Some(ActionRef("jwalton/gh-docker-logs@v1"))
+      uses = Some(ActionRef(V("jwalton/gh-docker-logs")))
     )
 
   val isMaster: Condition = Condition.Expression(
@@ -217,26 +219,28 @@ object ScalaWorkflow {
 
   case class ScalaVersion(version: String)
 
-  sealed trait JavaVersion {
+  trait JavaVersion {
     val asString: String
   }
   object JavaVersion {
-    case object AdoptJDK18 extends JavaVersion {
-      override val asString: String = "adopt@1.8"
+
+    case class CorrettoJDK(javaVersion: String) extends JavaVersion {
+      override val asString: String = s"corretto:$javaVersion"
     }
-    case object ZuluJDK17 extends JavaVersion {
-      override val asString: String = "zulu@1.17"
-    }
+
+    val JDK17: JavaVersion = CorrettoJDK("17")
+    val JDK21: JavaVersion = CorrettoJDK("21")
+    val JDK25: JavaVersion = CorrettoJDK("25")
   }
 
   implicit class JobOps(job: Job) {
     def matrix(
       scalaVersions: Seq[ScalaVersion],
       operatingSystems: Seq[OS] = Seq(OS.UbuntuLatest),
-      javaVersions: Seq[JavaVersion] = Seq(AdoptJDK18)
+      javaVersions: Seq[JavaVersion] = Seq(JDK17)
     ): Job =
-      job.copy(
-        strategy = Some(
+      job
+        .withStrategy(
           Strategy(
             matrix = Map(
               "os"    -> operatingSystems.map(_.asString).toList,
@@ -244,9 +248,8 @@ object ScalaWorkflow {
               "java"  -> javaVersions.map(_.asString).toList
             )
           )
-        ),
-        runsOn = "${{ matrix.os }}"
-      )
+        )
+        .withRunsOn("${{ matrix.os }}")
   }
 
 }

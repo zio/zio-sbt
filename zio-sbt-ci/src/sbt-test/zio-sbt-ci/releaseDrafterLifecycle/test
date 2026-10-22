@@ -1,0 +1,30 @@
+# 1. false -> true: enabling generates the workflow and scaffolds the config.
+> set ThisBuild / ciEnableReleaseDrafter := true
+> ciGenerateGithubWorkflow
+> checkWorkflowExists
+> checkConfigExists
+
+# 2. Hand-edit the config, then regenerate: content must NOT be overwritten (decision 5).
+> handEditConfig
+> ciGenerateGithubWorkflow
+> checkConfigHandEditPreserved
+
+# 3. Change a category setting, then regenerate: still no effect on the existing config file.
+> set ThisBuild / ciReleaseDrafterCategories := Seq(zio.sbt.githubactions.ReleaseDrafterCategory("Changed", Seq("x")))
+> ciGenerateGithubWorkflow
+> checkConfigHandEditPreserved
+
+# 4. true -> false: disabling deletes the workflow file...
+> set ThisBuild / ciEnableReleaseDrafter := false
+> ciGenerateGithubWorkflow
+> checkWorkflowAbsent
+
+# ...but leaves the hand-edited config alone.
+> checkConfigHandEditPreserved
+
+# 5. false -> true again: re-enabling regenerates the workflow, but still does not touch the
+#    existing (hand-edited) config.
+> set ThisBuild / ciEnableReleaseDrafter := true
+> ciGenerateGithubWorkflow
+> checkWorkflowExists
+> checkConfigHandEditPreserved

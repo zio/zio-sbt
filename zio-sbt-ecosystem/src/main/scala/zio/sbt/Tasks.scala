@@ -18,8 +18,8 @@ package zio.sbt
 
 import scala.Console
 
-import sbt.Keys.*
-import sbt.*
+import sbt.Keys._
+import sbt._
 
 object Tasks {
   private val strictCompilationProp = "enable.strict.compilation"
@@ -58,7 +58,10 @@ object Tasks {
         enableStrictCompile,
         Compile / compile,
         Test / compile,
-        Test / test
+        // Discards to `Unit` explicitly rather than sequencing `Test / test` directly: its value
+        // type is `Unit` under sbt 1.x but `sbt.protocol.testing.TestResult` under sbt 2.x, and
+        // `build`, the task this whole sequence feeds, is declared `TaskKey[Unit]` on both.
+        Def.task { val _ = (Test / test).value; () }
       )
       .andFinally(disableStrictCompilePure(s => println(s"[info] $s")))
 

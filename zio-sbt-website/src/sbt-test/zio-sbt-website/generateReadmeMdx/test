@@ -1,0 +1,15 @@
+# generateReadme must work when the docs index page is index.mdx instead of
+# index.md (https://github.com/zio/zio-sbt/issues/706).
+
+> generateReadme
+
+# mdoc preserves the .mdx extension on output and must substitute variables in it
+$ exists website/docs/index.mdx
+-$ exec grep -q @VERSION@ website/docs/index.mdx
+-$ exec grep -q @PROJECT_BADGES@ website/docs/index.mdx
+$ exec grep -q 0.1.0 website/docs/index.mdx
+
+# README.md is generated from the .mdx index with variables substituted
+$ exists README.md
+$ exec grep -q 0.1.0 README.md
+-$ exec grep -q @VERSION@ README.md

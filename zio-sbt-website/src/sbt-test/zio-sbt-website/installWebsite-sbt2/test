@@ -1,0 +1,17 @@
+> clean
+> installWebsite
+$ exists website/src
+$ exists website/static
+$ exists website/LICENSE
+
+# The webpack 5.75.0 override is applied only to a Docusaurus 2.x scaffold, so that the pin
+# retires itself rather than becoming an unsatisfiable constraint on Docusaurus 3.
+> checkWebpackPin
+
+# Running installWebsite again should succeed and be a no-op: since the website
+# directory already exists, the task warns and skips scaffolding instead of
+# removing/reinstalling it.
+> installWebsite
+$ exists website/src
+$ exists website/static
+$ exists website/LICENSE

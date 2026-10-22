@@ -1,0 +1,6 @@
+# Generate all five workflows (ci.yml, auto-approve.yml, auto-merge.yml, deploy-preview.yml,
+# release-drafter.yml) with both opt-in generators enabled at once, in a single invocation.
+> ciGenerateGithubWorkflow
+
+# Compare them against the recorded golden copies.
+> checkWorkflows

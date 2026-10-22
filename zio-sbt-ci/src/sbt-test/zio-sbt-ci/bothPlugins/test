@@ -1,0 +1,6 @@
+# Loading this build at all is the regression test: both plugins are on the classpath
+# and build.sbt references a key from each.
+> ciGenerateGithubWorkflow
+
+# Compare against the recorded golden copy.
+> checkWorkflows

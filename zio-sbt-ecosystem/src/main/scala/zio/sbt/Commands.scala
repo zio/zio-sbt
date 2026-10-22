@@ -18,8 +18,8 @@ package zio.sbt
 
 import scala.collection.immutable.ListMap
 
-import sbt.Keys.*
-import sbt.*
+import sbt.Keys._
+import sbt._
 
 object Commands {
 
@@ -102,7 +102,7 @@ object Commands {
       "Verifies that all source files are properly formatted and have had all scalafix rules applied."
     )
 
-    //TODO: adding missing license headers
+    // TODO: adding missing license headers
     val prepare: ComposableCommand = {
       quietOn >>
 //        "+headerCreateAll" >>

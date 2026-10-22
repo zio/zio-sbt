@@ -1,0 +1,10 @@
+# A committed website that is too old to notice that `mux.md` and `mux.mdx` share a Docusaurus id
+# must not hide it: the docs are also built on a freshly scaffolded site, as the ZIO website does.
+> clean
+> compile
+-> checkDocsOnFreshWebsite
+
+# mdoc never prunes its output, so drop the stale copy along with the source
+$ delete docs/reference/mux.md
+$ delete website/docs/reference/mux.md
+> checkDocsOnFreshWebsite

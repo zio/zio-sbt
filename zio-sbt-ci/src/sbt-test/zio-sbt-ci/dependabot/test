@@ -1,0 +1,3 @@
+# Default ciEnableDependabot := true generates the default github-actions config.
+> ciGenerateGithubWorkflow
+> checkDependabot

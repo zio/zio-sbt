@@ -17,23 +17,28 @@
 package zio.sbt
 
 import scala.collection.mutable
-import scala.sys.process.*
+import scala.sys.process._
 
 import _root_.java.nio.file.{Files, Path, Paths}
 import mdoc.MdocPlugin
-import mdoc.MdocPlugin.autoImport.*
-import sbt.Keys.*
-import sbt.{Def, *}
+import mdoc.MdocPlugin.autoImport._
+import sbt.Keys._
+import sbt.{Def, _}
 
+import zio.Chunk
+import zio.json._
+import zio.json.ast.Json
 import zio.sbt.WebsiteUtils.{readFile, removeYamlHeader}
 
 object WebsitePlugin extends sbt.AutoPlugin {
 
   object autoImport {
-    val compileDocs: InputKey[Unit]                 = inputKey[Unit]("Compile docs")
-    val installWebsite: TaskKey[Unit]               = taskKey[Unit]("Install the website for the first time")
-    val buildWebsite: TaskKey[Unit]                 = taskKey[Unit]("Build website (default output: target/website/build)")
-    val previewWebsite: TaskKey[Unit]               = taskKey[Unit]("preview website")
+    val compileDocs: InputKey[Unit]            = inputKey[Unit]("Compile docs")
+    val installWebsite: TaskKey[Unit]          = taskKey[Unit]("Install the website for the first time")
+    val buildWebsite: TaskKey[Unit]            = taskKey[Unit]("Build website (default output: website/build)")
+    val previewWebsite: TaskKey[Unit]          = taskKey[Unit]("preview website")
+    val checkDocsOnFreshWebsite: TaskKey[Unit] =
+      taskKey[Unit]("Build the docs in a freshly scaffolded ZIO website, the way the ZIO website consumes them")
     val publishToNpm: InputKey[Unit]                = inputKey[Unit]("Publish website to the npm registry")
     val publishSnapshotToNpm: InputKey[Unit]        = inputKey[Unit]("Publish snapshot version of website to the npm registry")
     val publishHashverToNpm: InputKey[Unit]         = inputKey[Unit]("Publish hash version of website to the npm registry")
@@ -45,20 +50,27 @@ object WebsitePlugin extends sbt.AutoPlugin {
     val projectStage: SettingKey[ProjectStage]      = settingKey[ProjectStage]("Project stage")
     val projectName: SettingKey[String]             = settingKey[String]("Project name e.g. ZIO SBT")
     val mainModuleName: SettingKey[String]          = settingKey[String]("Main Module Name e.g. zio-sbt")
-    val ciWorkflowName: SettingKey[String]          = settingKey[String]("CI Workflow Name")
-    val projectHomePage: SettingKey[String]         = settingKey[String]("Project home page url e.g. https://zio.dev/zio-sbt")
-    val readmeBanner: SettingKey[String]            = settingKey[String]("Readme banner section")
-    val readmeDocumentation: SettingKey[String]     = settingKey[String]("Readme documentation section")
-    val readmeContribution: SettingKey[String]      = settingKey[String]("Readme contribution section")
-    val readmeCodeOfConduct: SettingKey[String]     = settingKey[String]("Readme code of conduct")
-    val readmeSupport: SettingKey[String]           = settingKey[String]("Readme support section")
-    val readmeLicense: SettingKey[String]           = settingKey[String]("Readme license section")
-    val readmeAcknowledgement: SettingKey[String]   = settingKey[String]("Acknowledgement section")
-    val readmeCredits: SettingKey[String]           = settingKey[String]("Credits section")
-    val readmeMaintainers: SettingKey[String]       = settingKey[String]("Maintainers section")
+    val badgeArtifactId: SettingKey[String]         =
+      settingKey[String](
+        "Artifact id used in version badges (default: mainModuleName_scalaBinaryVersion). " +
+          "Override it for artifacts with non-standard coordinates, e.g. sbt plugins (name_2.12_1.0)."
+      )
+    val ciWorkflowName: SettingKey[String]                 = settingKey[String]("CI Workflow Name")
+    val projectHomePage: SettingKey[String]                = settingKey[String]("Project home page url e.g. https://zio.dev/zio-sbt")
+    val readmeBanner: SettingKey[String]                   = settingKey[String]("Readme banner section")
+    val readmeDocumentation: SettingKey[String]            = settingKey[String]("Readme documentation section")
+    val readmeContribution: SettingKey[String]             = settingKey[String]("Readme contribution section")
+    val readmeCodeOfConduct: SettingKey[String]            = settingKey[String]("Readme code of conduct")
+    val readmeSupport: SettingKey[String]                  = settingKey[String]("Readme support section")
+    val readmeLicense: SettingKey[String]                  = settingKey[String]("Readme license section")
+    val readmeAcknowledgement: SettingKey[String]          = settingKey[String]("Acknowledgement section")
+    val readmeCredits: SettingKey[String]                  = settingKey[String]("Credits section")
+    val readmeMaintainers: SettingKey[String]              = settingKey[String]("Maintainers section")
     val docsVersioningScheme: SettingKey[VersioningScheme] =
       settingKey[VersioningScheme]("Versioning scheme used for docs package")
-    val docsVersion: SettingKey[String] = settingKey[String]("Docs package version")
+    val docsVersion: SettingKey[String]             = settingKey[String]("Docs package version")
+    val createZioWebsiteVersion: SettingKey[String] =
+      settingKey[String]("Pinned version of @zio.dev/create-zio-website npm package")
 
     val ProjectStage = zio.sbt.WebsiteUtils.ProjectStage
     type ProjectStage = zio.sbt.WebsiteUtils.ProjectStage
@@ -76,30 +88,48 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
   override lazy val projectSettings: Seq[Setting[_ <: Object]] =
     Seq(
-      compileDocs          := compileDocsTask.evaluated,
-      websiteDir           := Paths.get(target.value.getPath, "website"),
-      mdocOut              := websiteDir.value.resolve("docs").toFile,
-      installWebsite       := installWebsiteTask.value,
-      buildWebsite         := buildWebsiteTask.value,
-      previewWebsite       := previewWebsiteTask.value,
-      publishToNpm         := publishToNpmTask.value,
-      publishSnapshotToNpm := publishSnapshotToNpmTask.value,
-      publishHashverToNpm  := publishHashverToNpmTask.value,
-      checkReadme          := checkReadmeTask.value,
-      generateReadme       := generateReadmeTask.value,
-      docsDependencies     := Seq.empty,
+      compileDocs             := compileDocsTask.evaluated,
+      websiteDir              := Paths.get((ThisBuild / baseDirectory).value.getPath, "website"),
+      mdocOut                 := websiteDir.value.resolve("docs").toFile,
+      installWebsite          := installWebsiteTask.value,
+      buildWebsite            := buildWebsiteTask.value,
+      checkDocsOnFreshWebsite := checkDocsOnFreshWebsiteTask.value,
+      previewWebsite          := previewWebsiteTask.value,
+      publishToNpm            := publishToNpmTask.value,
+      publishSnapshotToNpm    := publishSnapshotToNpmTask.value,
+      publishHashverToNpm     := publishHashverToNpmTask.value,
+      checkReadme             := checkReadmeTask.value,
+      generateReadme          := generateReadmeTask.value,
+      // mdoc only treats a limited set of extensions as markdown by default, so without
+      // this, docs/index.mdx would be copied verbatim, leaving @VERSION@ and
+      // @PROJECT_BADGES@ unsubstituted. `--markdown-extensions` replaces the defaults and
+      // must be passed once per extension (a comma-separated value is parsed as a single
+      // literal extension that matches no files), so include all desired extensions here.
+      mdocExtraArguments ++= Seq(
+        "--markdown-extensions",
+        "md",
+        "--markdown-extensions",
+        "html",
+        "--markdown-extensions",
+        "mdx"
+      ),
+      docsDependencies := Seq.empty,
+      badgeArtifactId  := mainModuleName.value + '_' + scalaBinaryVersion.value,
       libraryDependencies ++= docsDependencies.value,
       mdocVariables ++= {
         Map(
           "VERSION"          -> WebsiteUtils.releaseVersion(sLog.value.warn(_)).getOrElse(version.value),
           "RELEASE_VERSION"  -> WebsiteUtils.releaseVersion(sLog.value.warn(_)).getOrElse("NOT RELEASED YET"),
           "SNAPSHOT_VERSION" -> version.value,
-          "PROJECT_BADGES" -> {
+          "PROJECT_BADGES"   -> {
             WebsiteUtils.generateProjectBadges(
               projectStage = projectStage.value,
               groupId = organization.value,
-              artifactId = mainModuleName.value + '_' + scalaBinaryVersion.value,
-              docsArtifactId = moduleName.value + '_' + scalaBinaryVersion.value,
+              artifactId = badgeArtifactId.value,
+              // The javadoc badge must point at a published artifact. The docs module
+              // itself (moduleName here) is typically not published, so use the same
+              // published coordinate as the release badge.
+              docsArtifactId = badgeArtifactId.value,
               githubUser = "zio",
               githubRepo = scmInfo.value.map(_.browseUrl.getPath.split('/').last).getOrElse("github repo not provided"),
               projectName = projectName.value,
@@ -110,23 +140,32 @@ object WebsitePlugin extends sbt.AutoPlugin {
       },
       readmeDocumentation := readmeDocumentationSection(
         projectName.value,
-        homepage.value.getOrElse(new URL(s"https://zio.dev/ecosystem/"))
+        homepage.value.map(_.toString).getOrElse("https://zio.dev/ecosystem/")
       ),
-      readmeContribution    := readmeContributionSection,
-      readmeSupport         := readmeSupportSection,
-      readmeLicense         := readmeLicenseSection,
-      readmeAcknowledgement := "",
-      readmeContribution    := readmeContributionSection,
-      readmeCodeOfConduct   := readmeCodeOfConductSection,
-      readmeCredits         := "",
-      readmeBanner          := "",
-      readmeMaintainers     := "",
-      ciWorkflowName        := "CI",
-      docsVersioningScheme  := VersioningScheme.SemanticVersioning,
-      docsVersion           := docsVersionTask.value
+      readmeContribution      := readmeContributionSection,
+      readmeSupport           := readmeSupportSection,
+      readmeLicense           := readmeLicenseSection,
+      readmeAcknowledgement   := "",
+      readmeContribution      := readmeContributionSection,
+      readmeCodeOfConduct     := readmeCodeOfConductSection,
+      readmeCredits           := "",
+      readmeBanner            := "",
+      readmeMaintainers       := "",
+      ciWorkflowName          := "CI",
+      docsVersioningScheme    := VersioningScheme.SemanticVersioning,
+      docsVersion             := docsVersionTask.value,
+      createZioWebsiteVersion := "0.1.0"
     )
 
   private def exit(exitCode: Int, errorMessage: String = "") = if (exitCode != 0) sys.error(errorMessage: String)
+
+  // Docs index may be either index.md or index.mdx (e.g. when the page needs
+  // JSX components like Tabs); mdoc preserves the extension on output.
+  private def resolveIndexFile(docsDir: Path): Path = {
+    val md  = docsDir.resolve("index.md")
+    val mdx = docsDir.resolve("index.mdx")
+    if (!Files.exists(md) && Files.exists(mdx)) mdx else md
+  }
 
   lazy val previewWebsiteTask: Def.Initialize[Task[Unit]] = Def.task {
     import zio.*
@@ -168,31 +207,144 @@ object WebsitePlugin extends sbt.AutoPlugin {
     Def.task {
       val logger = streams.value.log
 
-      val siteTarget = s"${target.value}/${normalizedName.value}-website"
+      val websiteDirPath = websiteDir.value
 
-      if (Files.exists(Paths.get(siteTarget)))
-        exit(Process(s"rm $siteTarget -Rvf").!)
+      // Keyed on package.json, not on the directory itself. `mdocOut` writes generated docs to
+      // `website/docs`, so a repository that commits that output -- or simply ran `compileDocs`
+      // first -- has a `website/` directory containing no Docusaurus scaffold at all. Treating
+      // that as "already installed" leaves nothing for `npm install` to read, which is the
+      // failure reported in #749.
+      if (Files.exists(websiteDirPath.resolve("package.json"))) {
+        logger.warn(
+          s"""|
+              |Website directory already exists, skipping installation: $websiteDirPath
+              |Remove it manually and rerun installWebsite if you want a fresh install.
+              |""".stripMargin
+        )
+      } else {
+        val siteTarget = s"${target.value}/${normalizedName.value}-website"
 
-      val task: String =
-        s"""|npx @zio.dev/create-zio-website@latest ${normalizedName.value}-website \\
-            |  --description="${name.value}" \\
-            |  --author="ZIO Contributors" \\
-            |  --email="email@zio.dev" \\
-            |  --license="Apache-2.0" \\
-            |  --architecture=Linux""".stripMargin
+        if (Files.exists(Paths.get(siteTarget)))
+          exit(Process(s"rm $siteTarget -Rvf").!)
 
-      logger.info(s"installing website for ${normalizedName.value} ... \n$task")
+        val task: String =
+          scaffoldCommand(createZioWebsiteVersion.value, s"${normalizedName.value}-website", name.value)
 
-      exit(Process(task, target.value).!)
+        logger.info(s"installing website for ${normalizedName.value} ... \n$task")
 
-      exit(Process(s"mv ${target.value}/${normalizedName.value}-website ${websiteDir.value}").!)
+        exit(Process(task, target.value).!)
 
-      exit(s"rm -rvf ${websiteDir.value.toString}/.git/".!)
+        // `mv` moves the source *into* an existing destination directory rather than becoming
+        // it, so a pre-existing `website/` (holding mdoc output, say) would end up with a nested
+        // `website/<name>-website`. Copy the scaffold's contents in instead, which merges with
+        // whatever is already there.
+        if (Files.exists(websiteDirPath)) {
+          exit(Process(s"cp -a $siteTarget/. ${websiteDirPath}/").!)
+          exit(Process(s"rm -rf $siteTarget").!)
+        } else
+          exit(Process(s"mv $siteTarget ${websiteDirPath}").!)
+
+        exit(s"rm -rvf ${websiteDirPath.toString}/.git/".!)
+
+        // Docusaurus 2.x uses ProgressPlugin options that webpack >=5.76 removed, so a site
+        // scaffolded on 2.x must pin webpack to 5.75.0 or `npm run build` breaks.
+        //
+        // The pin is applied only when the scaffold really is on 2.x. Docusaurus 3.x depends on
+        // webpack ^5.95.0, where pinning 5.75.0 is unsatisfiable and fails `npm install` with
+        // ERESOLVE. Keying the override off the scaffolded version lets the pin retire itself
+        // when create-zio-website moves to Docusaurus 3, instead of turning into a broken
+        // constraint for every project that scaffolds a new site.
+        val pkgJsonFile    = new File(s"${websiteDirPath}/package.json")
+        val pkgJsonContent = IO.read(pkgJsonFile)
+        val pkgJson        = pkgJsonContent.fromJson[Json.Obj] match {
+          case Right(obj) => obj
+          case Left(err)  => sys.error(s"Failed to parse package.json: $err")
+        }
+
+        if (docusaurusMajorOf(pkgJson).exists(_ < 3)) {
+          logger.info("Docusaurus 2.x scaffold detected, pinning webpack to 5.75.0.")
+          val patched =
+            Json
+              .Obj(pkgJson.fields :+ ("overrides" -> Json.Obj(Chunk("webpack" -> Json.Str("5.75.0")))))
+              .toJsonPretty + "\n"
+          IO.write(pkgJsonFile, patched)
+        }
+
+        exit(Process("npm install", new File(s"${websiteDirPath}")).!)
+      }
+
+      val _ = Files.createDirectories(websiteDirPath.resolve("docs"))
+    }
+
+  private def scaffoldCommand(createZioWebsiteVersion: String, siteName: String, description: String): String =
+    s"""|npx @zio.dev/create-zio-website@$createZioWebsiteVersion $siteName \\
+        |  --description="$description" \\
+        |  --author="ZIO Contributors" \\
+        |  --email="email@zio.dev" \\
+        |  --license="Apache-2.0" \\
+        |  --architecture=Linux""".stripMargin
+
+  // The ZIO website (zio/zio) builds every library's published docs with the current Docusaurus,
+  // which rejects things an older, committed `website/` only warns about -- two docs sharing an
+  // id, say (`mux.md` next to `mux.mdx`). A library whose own site is committed and pinned to an
+  // old Docusaurus therefore passes its CI and then breaks the ZIO website's. Build the docs in a
+  // site scaffolded from the pinned create-zio-website instead, which is what consumers see.
+  lazy val checkDocsOnFreshWebsiteTask: Def.Initialize[Task[Unit]] =
+    Def.task {
+      val logger     = streams.value.log
+      val _          = compileDocs.toTask("").value
+      val committed  = Files.exists(websiteDir.value.resolve("package.json"))
+      val siteName   = s"${normalizedName.value}-fresh-website"
+      val scratch    = target.value / siteName
+      val command    = scaffoldCommand(createZioWebsiteVersion.value, siteName, name.value)
+      val workingDir = target.value
+      val docsOut    = mdocOut.value
+
+      // Without a committed site, `buildWebsite` already scaffolds a fresh one and builds on it.
+      if (!committed)
+        logger.info("No committed website found; `buildWebsite` already builds on a fresh scaffold, skipping.")
+      else {
+        if (scratch.exists) IO.delete(scratch)
+
+        logger.info(s"scaffolding a fresh website to check the docs against ... \n$command")
+        exit(Process(command, workingDir).!, "Failed to scaffold the fresh website!")
+
+        // The scaffold ships its own `docs/`; swap it for this project's compiled docs.
+        IO.delete(scratch / "docs")
+        IO.copyDirectory(docsOut, scratch / "docs")
+
+        exit(Process("npm install", scratch).!, "Failed to install the fresh website's dependencies!")
+        exit(
+          Process("npm run build", scratch).!,
+          "The docs do not build on a fresh ZIO website (the one zio/zio builds them with)!"
+        )
+      }
     }
 
   lazy val buildWebsiteTask: Def.Initialize[Task[Unit]] =
     Def.task {
       val _ = Def.sequential(installWebsiteTask, compileDocs.toTask("")).value
+
+      // The website directory may already exist (e.g. committed to the repository) so
+      // installWebsiteTask skips installation, but its dependencies are not versioned.
+      if (!Files.exists(websiteDir.value.resolve("node_modules"))) {
+        // Say what is actually wrong. `npm install` reports only "Could not read package.json",
+        // which gives no hint that the real problem is a website directory without a scaffold.
+        if (!Files.exists(websiteDir.value.resolve("package.json")))
+          sys.error(
+            s"""|${websiteDir.value} exists but contains no package.json, so there is no website to build.
+                |
+                |This usually means the directory holds only generated output -- `mdocOut` writes
+                |compiled docs to `website/docs` -- rather than a Docusaurus site. Add `website/docs`
+                |to .gitignore so the generated output is not committed, then rerun `installWebsite`.
+                |""".stripMargin
+          )
+
+        exit(
+          Process("npm install", new File(s"${websiteDir.value}")).!,
+          "Failed to install website dependencies!"
+        )
+      }
 
       val p = Process("npm run build", new File(s"${websiteDir.value}")).!
       exit(p, "Failed to build the website!")
@@ -221,74 +373,147 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
   private val docsVersionTask: Def.Initialize[String] =
     Def.setting {
+      val logger           = sLog.value
+      val projectVersion   = version.value
       val versioningScheme = docsVersioningScheme.value
+
+      // This setting is evaluated at project load, so it must not blow up when
+      // git is unavailable (e.g. a source tarball or a scripted test sandbox).
+      def hashOrProjectVersion: String =
+        hashVersion.getOrElse {
+          logger.warn(
+            "Could not determine the hash version from git, falling back to the project version. " +
+              "This is most likely because git is not installed, this project has no git repo initialized, " +
+              "or the repo has no commits yet."
+          )
+          projectVersion
+        }
+
       versioningScheme match {
         case VersioningScheme.HashVersioning =>
-          hashVersion
+          hashOrProjectVersion
         case VersioningScheme.SemanticVersioning =>
-          WebsiteUtils.releaseVersion(sLog.value.warn(_)).getOrElse(hashVersion)
+          WebsiteUtils.releaseVersion(logger.warn(_)).getOrElse(hashOrProjectVersion)
       }
     }
 
-  lazy val publishToNpmTask: Def.Initialize[Task[Unit]] =
-    Def.task {
-      val _       = compileDocs.toTask("").value
-      val version = docsVersionTask.value
+  lazy val publishToNpmTask: Def.Initialize[Task[Unit]] = Def.task {
+    val _             = compileDocs.toTask("").value
+    val version       = docsVersionTask.value
+    val docsDir: File = new File(websiteDir.value.toString, "docs")
 
-      exit(
-        Process(
-          s"npm version --new-version $version --no-git-tag-version",
-          new File(s"${websiteDir.value.toString}/docs/")
-        ).!
-      )
+    // Get repository URL from scmInfo
+    val repoUrl: String = scmInfo.value
+      .map(_.browseUrl.toString)
+      .getOrElse(sys.error("scmInfo must be set for npm provenance verification"))
 
-      exit("npm config set access public".!)
-
-      exit(Process("npm publish", new File(s"${websiteDir.value.toString}/docs/")).!)
+    // Extract prerelease tag from version (e.g., "1.0.0-beta.1" -> "beta")
+    val prereleaseTag: Option[String] = {
+      val prereleasePattern = """^\d+\.\d+\.\d+-([a-zA-Z]+).*""".r
+      version match {
+        case prereleasePattern(tag) => Some(tag.toLowerCase)
+        case _                      => None
+      }
     }
 
-  private def hashVersion: String = {
-    val hashPart = s"git rev-parse --short=12 HEAD".!!
-    val datePart = java.time.LocalDate.now().toString.replace("-", ".")
-    datePart + "-" + hashPart
+    // Sideline a prerelease under its own dist-tag only when a stable release
+    // already holds `latest`. For a project that has never released a stable
+    // version the prerelease *is* the current release, and parking it under
+    // `rc` freezes `latest` on an older version - which hides the docs from
+    // dependency bots, since Renovate's respectLatest will not go past `latest`.
+    val packageName: String =
+      """"name"\s*:\s*"([^"]+)"""".r
+        .findFirstMatchIn(IO.read(new File(docsDir, "package.json")))
+        .map(_.group(1))
+        .getOrElse(sys.error(s"Could not read the package name from ${docsDir / "package.json"}"))
+
+    val currentLatest: Option[String] = {
+      val out  = new mutable.StringBuilder
+      val code = Process(s"npm view $packageName dist-tags.latest", docsDir)
+        .!(ProcessLogger(line => { out.append(line); () }, _ => ()))
+      Some(out.toString.trim).filter(_.nonEmpty && code == 0)
+    }
+    val latestIsStable = currentLatest.exists(!_.contains("-"))
+    val npmTag         = prereleaseTag.filter(_ => latestIsStable).map(tag => s"--tag $tag").getOrElse("")
+
+    exit(Process(s"npm version $version --no-git-tag-version", docsDir).!)
+    exit(Process(s"npm pkg set repository.url=$repoUrl", docsDir).!)
+    exit("npm config set access public".!)
+    exit(Process(s"npm publish $npmTag".trim, docsDir).!)
   }
+
+  /**
+   * Major version of `@docusaurus/core` declared in a scaffolded site's
+   * package.json, if it can be determined. Returns None when the dependency is
+   * absent or the version is not a plain number, in which case callers should
+   * not assume anything about the Docusaurus generation in use.
+   */
+  private[sbt] def docusaurusMajorOf(pkgJson: Json.Obj): Option[Int] = {
+    def field(obj: Json.Obj, key: String): Option[Json] =
+      obj.fields.collectFirst { case (k, v) if k == key => v }
+
+    for {
+      deps    <- field(pkgJson, "dependencies").collect { case o: Json.Obj => o }
+      version <- field(deps, "@docusaurus/core").collect { case Json.Str(v) => v }
+      digits   = version.dropWhile(!_.isDigit).takeWhile(_.isDigit)
+      major   <- scala.util.Try(digits.toInt).toOption
+    } yield major
+  }
+
+  private def hashVersion: Option[String] =
+    try {
+      val hashPart = s"git rev-parse --short=12 HEAD".!!.trim
+      val datePart = java.time.LocalDate.now().toString.replace("-", ".")
+      Some(datePart + "-" + hashPart)
+    } catch {
+      // Not a git repository, or a repository without any commit yet.
+      case scala.util.control.NonFatal(_) => None
+    }
 
   lazy val publishHashverToNpmTask: Def.Initialize[Task[Unit]] =
     Def.task {
-      val _ = compileDocs.toTask("").value
+      val _             = compileDocs.toTask("").value
+      val docsDir: File = new File(websiteDir.value.toString, "docs")
 
-      exit(
-        Process(
-          s"npm version --new-version $hashVersion --no-git-tag-version",
-          new File(s"${websiteDir.value.toString}/docs/")
-        ).!
+      // Get repository URL from scmInfo
+      val repoUrl: String = scmInfo.value
+        .map(_.browseUrl.toString)
+        .getOrElse(sys.error("scmInfo must be set for npm provenance verification"))
+
+      val hashVer = hashVersion.getOrElse(
+        sys.error(
+          "Could not determine the hash version from git. This is most likely because git is not installed, " +
+            "this project has no git repo initialized, or the repo has no commits yet."
+        )
       )
 
+      exit(Process(s"npm version $hashVer --no-git-tag-version", docsDir).!)
+      exit(Process(s"npm pkg set repository.url=$repoUrl", docsDir).!)
       exit("npm config set access public".!)
-
-      exit(Process("npm publish", new File(s"${websiteDir.value.toString}/docs/")).!)
+      exit(Process("npm publish --tag hash", docsDir).!)
     }
 
   lazy val publishSnapshotToNpmTask: Def.Initialize[Task[Unit]] =
     Def.task {
-      val _ = compileDocs.toTask("").value
+      val _             = compileDocs.toTask("").value
+      val docsDir: File = new File(websiteDir.value.toString, "docs")
 
+      // Get repository URL from scmInfo
+      val repoUrl: String = scmInfo.value
+        .map(_.browseUrl.toString)
+        .getOrElse(sys.error("scmInfo must be set for npm provenance verification"))
+
+      // Replace + with -- for npm compatibility, snapshot versions contain hyphens
       val refinedVersion = version.value.replace("+", "--")
 
-      exit(
-        Process(
-          s"npm version --new-version $refinedVersion --no-git-tag-version",
-          new File(s"${websiteDir.value.toString}/docs/")
-        ).!
-      )
-
+      exit(Process(s"npm version $refinedVersion --no-git-tag-version", docsDir).!)
+      exit(Process(s"npm pkg set repository.url=$repoUrl", docsDir).!)
       exit("npm config set access public".!)
-
-      exit(Process("npm publish", new File(s"${websiteDir.value.toString}/docs/")).!)
+      exit(Process("npm publish --tag snapshot", docsDir).!)
     }
 
   private def prefixUrlsWith(markdown: String, prefix: String): String = {
-    val regex = """\(((?!http)\S*\.(png|jpg|md|scala|java)\b)\)""".r
+    val regex = """\(((?!http)\S*\.(png|jpg|mdx?|scala|java)\b)\)""".r
 
     regex.replaceAllIn(markdown, '(' + prefix + _.group(1) + ')')
   }
@@ -324,18 +549,21 @@ object WebsitePlugin extends sbt.AutoPlugin {
   }
 
   lazy val ignoreIndexSnapshotVersion: Def.Initialize[Task[Unit]] = Def.task {
-    if (normalizedVersion.value.endsWith("-SNAPSHOT"))
-      exit("sed -i.bak s/@VERSION@/<version>/g docs/index.md".!)
+    if (normalizedVersion.value.endsWith("-SNAPSHOT")) {
+      val index = resolveIndexFile(Paths.get("docs"))
+      exit(s"sed -i.bak s/@VERSION@/<version>/g $index".!)
+    }
   }
 
   lazy val revertIndexChanges: Def.Initialize[Task[Unit]] = Def.task {
     if (normalizedVersion.value.endsWith("-SNAPSHOT")) {
-      exit("rm docs/index.md".!)
-      exit("mv docs/index.md.bak docs/index.md".!)
+      val index = resolveIndexFile(Paths.get("docs"))
+      exit(s"rm $index".!)
+      exit(s"mv $index.bak $index".!)
     }
   }
 
-  lazy val generateReadmeTask: Def.Initialize[Task[Unit]] = {
+  lazy val generateReadmeTask: Def.Initialize[Task[Unit]] =
     Def.task {
       import zio.*
 
@@ -351,8 +579,9 @@ object WebsitePlugin extends sbt.AutoPlugin {
       Unsafe.unsafe { implicit unsafe =>
         Runtime.default.unsafe
           .run(
-            readFile(websiteDir.value.resolve("docs/index.md").toString).map(md => removeYamlHeader(md).trim).flatMap {
-              introduction =>
+            readFile(resolveIndexFile(websiteDir.value.resolve("docs")).toString)
+              .map(md => removeYamlHeader(md).trim)
+              .flatMap { introduction =>
                 WebsiteUtils.generateReadme(
                   projectName = projectName.value,
                   banner = readmeBanner.value,
@@ -366,7 +595,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
                   credits = readmeCredits.value.trim,
                   maintainers = readmeMaintainers.value.trim
                 )
-            }
+              }
           )
           .getOrThrowFiberFailure()
       }
@@ -374,7 +603,6 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
       logger.info("The new README.md file generated")
     }
-  }
 
   lazy val checkReadmeTask: Def.Initialize[Task[Unit]] =
     Def.task {
@@ -388,7 +616,11 @@ object WebsitePlugin extends sbt.AutoPlugin {
       }
     }
 
-  def readmeDocumentationSection(projectName: String, projectHomepageUrl: URL): String =
+  // `projectHomepageUrl` is a String, not `URL`/`URI`: `homepage`'s value type differs between sbt
+  // lines (`Option[java.net.URL]` on sbt 1.x, `Option[java.net.URI]` on sbt 2.x), and this method
+  // only ever interpolates it into markdown, so taking the pre-rendered String sidesteps that
+  // divergence entirely instead of needing per-axis source.
+  def readmeDocumentationSection(projectName: String, projectHomepageUrl: String): String =
     s"""Learn more on the [$projectName homepage]($projectHomepageUrl)!""".stripMargin
 
   def readmeContributionSection: String =

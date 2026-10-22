@@ -1,0 +1,6 @@
+# Generate ci.yml, auto-approve.yml, auto-merge.yml and deploy-preview.yml with the Netlify
+# deploy preview feature enabled.
+> ciGenerateGithubWorkflow
+
+# Compare them against the recorded golden copies.
+> checkWorkflows

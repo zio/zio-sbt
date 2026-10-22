@@ -15,37 +15,77 @@
  */
 
 package zio.sbt
-import scala.language.experimental.macros
-import scala.sys.process._
+import scala.sys.process.{Process, ProcessLogger}
 
-import io.circe._
-import io.circe.syntax._
-import io.circe.yaml.Printer.{LineBreak, YamlVersion}
 import sbt.{Def, io => _, _}
 
+import zio.json._
+import zio.json.ast.Json
+import zio.json.yaml._
 import zio.sbt.githubactions.Step.SingleStep
-import zio.sbt.githubactions.{Job, Step, _}
+import zio.sbt.githubactions._
 
 object ZioSbtCiPlugin extends AutoPlugin {
   override def requires = plugins.CorePlugin
   override def trigger  = allRequirements
 
+  /**
+   * How every generated step invokes sbt.
+   *
+   * `--no-colors` matters more in CI than it looks: with colour on, sbt wraps
+   * its `[error]` and `[warn]` prefixes in ANSI escapes, so a run log cannot be
+   * searched for them. `gh run view --log-failed | grep '[error]'` comes back
+   * empty on a job that failed with sbt errors, and GitHub's own log search has
+   * the same blind spot.
+   */
+  private val SbtCommand = "sbt --no-colors"
+
   object autoImport {
     val ciDocsVersioningScheme: SettingKey[DocsVersioning] = settingKey[DocsVersioning]("Docs versioning style")
     val ciEnabledBranches: SettingKey[Seq[String]]         = settingKey[Seq[String]]("Publish branch for documentation")
-    val ciGroupSimilarTests: SettingKey[Boolean] =
+    val ciGroupSimilarTests: SettingKey[Boolean]           =
       settingKey[Boolean]("Group similar test by their Java and Scala versions, default is false")
     val ciMatrixMaxParallel: SettingKey[Option[Int]] =
       settingKey[Option[Int]](
         "Set the maximum number of jobs that can run simultaneously when using a matrix job strategy, default is None"
       )
-    val ciGenerateGithubWorkflow: TaskKey[Unit] = taskKey[Unit]("Generate github workflow")
-    val ciJvmOptions: SettingKey[Seq[String]]   = settingKey[Seq[String]]("JVM Options")
-    val ciNodeOptions: SettingKey[Seq[String]]  = settingKey[Seq[String]]("NodeJS Options")
+    val ciGenerateGithubWorkflow: TaskKey[Unit]        = taskKey[Unit]("Generate github workflow")
+    val ciJvmOptions: SettingKey[Seq[String]]          = settingKey[Seq[String]]("JVM Options")
+    val ciNodeOptions: SettingKey[Seq[String]]         = settingKey[Seq[String]]("NodeJS Options")
+    val ciWorkflowEnv: SettingKey[Map[String, String]] =
+      settingKey[Map[String, String]](
+        "Environment variables set at the workflow level. Defaults to JDK_JAVA_OPTIONS (from " +
+          "`ciJvmOptions`) and NODE_OPTIONS (from `ciNodeOptions`); assigning to this key replaces " +
+          "that map entirely, which is how a build opts out of JDK_JAVA_OPTIONS in favour of, say, SBT_OPTS"
+      )
+    val ciWorkflowTriggers: SettingKey[Seq[Trigger]] =
+      settingKey[Seq[Trigger]](
+        "Events the generated workflow runs on. Defaults to workflow_dispatch, published releases, " +
+          "pushes (to `ciEnabledBranches` if set, otherwise to every branch), and pull requests not " +
+          "targeting gh-pages. Worth narrowing if a job's condition would let a manual run do " +
+          "something it should not, such as release. Must not be empty: a workflow with no `on:` " +
+          "block is rejected by GitHub"
+      )
+    val ciConcurrency: SettingKey[Option[Concurrency]] =
+      settingKey[Option[Concurrency]](
+        "Concurrency group for the generated workflow, or None to omit the block entirely. Defaults " +
+          "to one run per branch with in-progress runs cancelled, keeping every run on the default " +
+          "branch. `cancelInProgress` accepts an expression via `CancelInProgress.When(...)`, so a " +
+          "workflow can cancel superseded pull request runs while letting releases finish"
+      )
+    val ciWorkflowPermissions: SettingKey[Option[Map[String, String]]] =
+      settingKey[Option[Map[String, String]]](
+        "Workflow-level `permissions` of the generated CI workflow. Defaults to " +
+          "`Some(Workflow.defaultPermissions)`. `None` omits the block entirely, so the workflow " +
+          "runs with the repository's default token permissions - needed by a job that pushes " +
+          "with GITHUB_TOKEN, such as one tagging a release, since the default block only grants " +
+          "`contents: read`. This is distinct from `Some(Map.empty)`, which renders " +
+          "`permissions: {}` and grants nothing"
+      )
     val ciUpdateReadmeCondition: SettingKey[Option[Condition]] =
       settingKey[Option[Condition]]("condition to update readme")
     val ciTargetJavaVersions: SettingKey[Seq[String]] =
-      settingKey[Seq[String]]("The default target Java versions for all modules, default is 8, 11, 17")
+      settingKey[Seq[String]]("The default target Java versions for all modules, default is 17, 21, 25")
     val ciTargetMinJavaVersions: SettingKey[Map[String, String]] =
       SettingKey[Map[String, String]](
         "minimum target Java version for each module, default is an empty map which makes CI to use `ciAllTargetJavaVersions` to determine the minimum target Java version for all modules"
@@ -56,13 +96,119 @@ object ZioSbtCiPlugin extends AutoPlugin {
       )
     val ciDefaultJavaVersion: SettingKey[String] =
       settingKey[String](
-        "The default Java version which is used in CI, especially for releasing artifacts, defaults to 8"
+        "The default Java version which is used in CI, especially for releasing artifacts, defaults to 17. Note that this is just JDK version used for compilation. Artefact will be compiled with -target and -source flags specified by 'javaPlatform' setting or 'javaPlatform' parameter in 'stdSettings'"
       )
-    val ciCheckGithubWorkflow: TaskKey[Unit] = taskKey[Unit]("Make sure if the ci.yml file is up-to-date")
+    val ciCheckGithubWorkflow: TaskKey[Unit] =
+      taskKey[Unit]("Make sure if the ci.yml, auto-approve.yml, and auto-merge.yml files are up-to-date")
     val ciCheckArtifactsBuildSteps: SettingKey[Seq[Step]] =
       settingKey[Seq[Step]]("Workflow steps for checking artifact build process")
     val ciCheckWebsiteBuildProcess: SettingKey[Seq[Step]] =
       settingKey[Seq[Step]]("Workflow steps for checking website build process")
+    val ciEnableDeployPreview: SettingKey[Boolean] =
+      settingKey[Boolean](
+        "When true, adds change-detection and website-artifact upload steps to the build job, " +
+          "and makes `ciGenerateGithubWorkflow` also generate deploy-preview.yml, which deploys " +
+          "website/build to Netlify via a workflow_run-triggered job after a successful CI run " +
+          "on a pull request touching docs/ or website/. Requires the NETLIFY_AUTH_TOKEN and " +
+          "NETLIFY_SITE_ID secrets to be configured on the repository. See `ciDeployPreviewMode` to " +
+          "deploy on demand instead of on every successful run. Default is false"
+      )
+    val ciDeployPreviewMode: SettingKey[DeployPreviewMode] =
+      settingKey[DeployPreviewMode](
+        "How deploy-preview.yml deploys the website preview, only used when `ciEnableDeployPreview` " +
+          "is true. `DeployPreviewMode.Automatic` deploys after every successful CI run on a pull " +
+          "request. `DeployPreviewMode.OnDemand` instead posts a comment with a \"Deploy preview\" " +
+          "checkbox on the pull request and deploys only when someone with write access ticks it, " +
+          "which saves Netlify credits. Default is `DeployPreviewMode.Automatic`"
+      )
+    val ciEnableReleaseDrafter: SettingKey[Boolean] =
+      settingKey[Boolean](
+        "When true, makes `ciGenerateGithubWorkflow` also generate release-drafter.yml, which runs " +
+          "release-drafter/release-drafter on pushes to the release branch to maintain a draft " +
+          "GitHub Release with auto-generated notes, and scaffolds .github/release-drafter.yml " +
+          "(the action's own config file) the first time the feature is enabled, if it does not " +
+          "already exist. Overwrites a pre-existing hand-maintained release-drafter.yml when " +
+          "enabled. Turning it back off deletes a plugin-owned workflow file only (identified by " +
+          "its autogenerated header), never a hand-written one, and not the scaffolded " +
+          "config. Default is true"
+      )
+    val ciReleaseDrafterCategories: SettingKey[Seq[ReleaseDrafterCategory]] =
+      settingKey[Seq[ReleaseDrafterCategory]](
+        "Categories written into the scaffolded .github/release-drafter.yml. Only takes effect the " +
+          "first time the file is generated"
+      )
+    val ciReleaseDrafterVersionResolver: SettingKey[Option[ReleaseDrafterVersionResolver]] =
+      settingKey[Option[ReleaseDrafterVersionResolver]](
+        "Optional version-resolver block for the scaffolded .github/release-drafter.yml. Default is None"
+      )
+    val ciReleaseDrafterAutolabeler: SettingKey[Seq[ReleaseDrafterAutolabelerRule]] =
+      settingKey[Seq[ReleaseDrafterAutolabelerRule]](
+        "Optional autolabeler rules for the scaffolded .github/release-drafter.yml. Default is empty"
+      )
+    val ciReleaseDrafterExcludeLabels: SettingKey[Seq[String]] =
+      settingKey[Seq[String]](
+        "exclude-labels for the scaffolded .github/release-drafter.yml. Default is Seq(\"skip-changelog\")"
+      )
+    val ciReleaseDrafterBranch: SettingKey[Option[Branch]] =
+      settingKey[Option[Branch]](
+        "Branch release-drafter.yml's push trigger runs on. None resolves at generation time to the " +
+          "first of ciEnabledBranches if non-empty, else the literal branch \"main\""
+      )
+    val ciEnableScalaSteward: SettingKey[Boolean] =
+      settingKey[Boolean](
+        "When true, makes `ciGenerateGithubWorkflow` also generate scala-steward.yml, which runs " +
+          "scala-steward-org/scala-steward-action on a schedule to open dependency-update pull " +
+          "requests, authenticating via a GitHub App through the SCALA_STEWARD_GITHUB_APP_ID, " +
+          "SCALA_STEWARD_GITHUB_APP_INSTALLATION_ID and SCALA_STEWARD_GITHUB_APP_PRIVATE_KEY " +
+          "secrets. Also scaffolds .scala-steward.conf from `ciScalaStewardConfig` the first " +
+          "time that renders non-empty content, if the file does not already exist. Never " +
+          "touches a pre-existing scala-steward.yml this plugin didn't generate itself, whether " +
+          "enabling or disabling. Default is true"
+      )
+    val ciScalaStewardSchedule: SettingKey[String] =
+      settingKey[String](
+        "Cron schedule for scala-steward.yml's `schedule` trigger, default is \"0 0 * * *\" " +
+          "(daily at midnight UTC), matching every ZIO-ecosystem repo surveyed"
+      )
+    val ciScalaStewardTimeoutMinutes: SettingKey[Int] =
+      settingKey[Int]("`timeout-minutes` for the scala-steward job, default is 45")
+    val ciScalaStewardPermissions: SettingKey[Map[String, String]] =
+      settingKey[Map[String, String]](
+        "Permissions block for scala-steward.yml, default is Map(\"contents\" -> \"read\") - the " +
+          "action authenticates via the GitHub App's installation token (github-app-auth-only is " +
+          "always true), not GITHUB_TOKEN, so no write scope is needed by default"
+      )
+    val ciScalaStewardWorkflowEnv: SettingKey[Map[String, String]] =
+      settingKey[Map[String, String]](
+        "Extra env vars for the scala-steward job, e.g. JVM heap/GC tuning; default is empty"
+      )
+    val ciScalaStewardConfig: SettingKey[ScalaStewardConfig] =
+      settingKey[ScalaStewardConfig](
+        "Settings scaffolded into .scala-steward.conf the first time it renders non-empty " +
+          "content. Default is ScalaStewardConfig(), which renders to nothing and skips " +
+          "scaffolding entirely"
+      )
+    val ciEnableDependabot: SettingKey[Boolean] =
+      settingKey[Boolean](
+        "When true, makes `ciGenerateGithubWorkflow` also generate .github/dependabot.yml from " +
+          "`ciDependabotConfig`. Adopts (overwrites) a pre-existing hand-written dependabot.yml, " +
+          "like the generated workflows; when false, only deletes a dependabot.yml this plugin " +
+          "generated itself, identified by its autogenerated header. Default is true"
+      )
+    val ciEnableRegenerateWorkflows: SettingKey[Boolean] =
+      settingKey[Boolean](
+        "When true, makes `ciGenerateGithubWorkflow` also generate regenerate-workflows.yml, which " +
+          "re-runs `ciGenerateGithubWorkflow` on pull requests opened by `ciDependencyUpdateBots` " +
+          "and pushes the result to the PR branch, so a bot bump of zio-sbt-ci (or of anything else " +
+          "the generated files depend on) does not leave `ciCheckGithubWorkflow` failing. Pushes " +
+          "with the GitHub App token (APP_ID/APP_PRIVATE_KEY) so CI re-runs on the new commit. " +
+          "Default is true"
+      )
+    val ciDependabotConfig: SettingKey[DependabotConfig] =
+      settingKey[DependabotConfig](
+        "Content of the generated .github/dependabot.yml. Default is DependabotConfig(), a single " +
+          "weekly `github-actions` update at the repository root, matching the ZIO-ecosystem repos"
+      )
     val ciCheckArtifactsCompilationSteps: SettingKey[Seq[Step]] =
       settingKey[Seq[Step]]("Workflow steps for checking compilation of all codes")
     val ciCheckGithubWorkflowSteps: SettingKey[Seq[Step]] =
@@ -71,22 +217,73 @@ object ZioSbtCiPlugin extends AutoPlugin {
       settingKey[Seq[String]]("Job IDs that need to pass before a pull request (PR) can be approved")
     val ciReleaseApprovalJobs: SettingKey[Seq[String]] =
       settingKey[Seq[String]]("Job IDs that need to pass before a new release.")
-    val ciWorkflowName: SettingKey[String]        = settingKey[String]("CI Workflow Name")
-    val ciExtraTestSteps: SettingKey[Seq[Step]]   = settingKey[Seq[Step]]("Extra test steps")
-    val ciSwapSizeGB: SettingKey[Int]             = settingKey[Int]("Swap size, default is 0")
-    val ciBackgroundJobs: SettingKey[Seq[String]] = settingKey[Seq[String]]("Background jobs")
-    val ciBuildJobs: SettingKey[Seq[Job]]         = settingKey[Seq[Job]]("CI Build Jobs")
-    val ciLintJobs: SettingKey[Seq[Job]]          = settingKey[Seq[Job]]("CI Lint Jobs")
-    val ciTestJobs: SettingKey[Seq[Job]]          = settingKey[Seq[Job]]("CI Test Jobs")
-    val ciUpdateReadmeJobs: SettingKey[Seq[Job]]  = settingKey[Seq[Job]]("CI Update Readme Jobs")
-    val ciReleaseJobs: SettingKey[Seq[Job]]       = settingKey[Seq[Job]]("CI Release Jobs")
-    val ciPostReleaseJobs: SettingKey[Seq[Job]]   = settingKey[Seq[Job]]("CI Post Release Jobs")
+    val ciWorkflowTitle: SettingKey[String] =
+      settingKey[String](
+        "Name of the generated CI workflow, which also determines the file it is written to; " +
+          "default is \"CI\", written to .github/workflows/ci.yml. Named `ciWorkflowTitle` rather " +
+          "than `ciWorkflowName` so it does not collide with zio-sbt-website's key of that name"
+      )
+    val ciDependencyUpdateBots: SettingKey[Seq[DependencyBot]] =
+      settingKey[Seq[DependencyBot]](
+        "Bots whose PRs are auto-approved and auto-merged, e.g. `DependencyBot.Dependabot`, " +
+          "`DependencyBot.Renovate`, `DependencyBot.ScalaSteward(githubAppName)`, or `DependencyBot.Custom(login)`; " +
+          "default is Seq(Dependabot, Renovate, ScalaSteward(\"zio-scala-steward\")), matching zio/zio's bots"
+      )
+    val ciGenerateAutoApproveWorkflow: TaskKey[Unit] =
+      taskKey[Unit]("Generate the github workflow that auto-approves dependency-bot PRs")
+    val ciGenerateAutoMergeWorkflow: TaskKey[Unit] =
+      taskKey[Unit]("Generate the github workflow that auto-merges dependency-bot PRs")
+    val ciSwapSizeGB: SettingKey[Int]           = settingKey[Int]("Swap size, default is 0")
+    val ciPublishSnapshots: SettingKey[Boolean] =
+      settingKey[Boolean](
+        "Whether the release job also runs on pushes to enabled branches, publishing SNAPSHOT artifacts via `sbt ci-release`; default is true"
+      )
+    val ciBackgroundJobs: SettingKey[Seq[String]]    = settingKey[Seq[String]]("Background jobs")
+    val ciBuildJobs: SettingKey[Seq[Job]]            = settingKey[Seq[Job]]("CI Build Jobs")
+    val ciLintJobs: SettingKey[Seq[Job]]             = settingKey[Seq[Job]]("CI Lint Jobs")
+    val ciTestJobs: SettingKey[Seq[Job]]             = settingKey[Seq[Job]]("CI Test Jobs")
+    val ciUpdateReadmeJobs: SettingKey[Seq[Job]]     = settingKey[Seq[Job]]("CI Update Readme Jobs")
+    val ciReportSuccessfulJobs: SettingKey[Seq[Job]] =
+      settingKey[Seq[Job]](
+        "CI Report Successful Jobs: by default the single `ci` job that waits on " +
+          "`ciPullRequestApprovalJobs`, for branch protection to require. Set to `Seq.empty` for a " +
+          "workflow made up entirely of custom jobs that has no use for it"
+      )
+    val ciReleaseJobs: SettingKey[Seq[Job]]     = settingKey[Seq[Job]]("CI Release Jobs")
+    val ciPostReleaseJobs: SettingKey[Seq[Job]] = settingKey[Seq[Job]]("CI Post Release Jobs")
 
+    // Neither a `val` nor a `def` for the shared `ScopeFilter` survives being referenced from two
+    // separate `.all(...).value` call sites in the same `Def.setting {}` block: sbt 1.x's macro
+    // rejects a `val` ("Could not find proxy for val filter"), and sbt 2.x's rejects a `def`
+    // ("reference to method filter was used outside the scope where it was defined") - so the
+    // filter expression is simply repeated inline at each call site instead.
     def targetScalaVersionsFor(projects: Project*): sbt.Def.Initialize[Map[String, Seq[String]]] =
-      macro CiTargetMap.macroMakeTargetScalaMapImpl
+      Def.setting {
+        Keys.thisProject
+          .all(ScopeFilter(inProjects(projects.map(p => LocalProject(p.id))*)))
+          .value
+          .map(_.id)
+          .zip(Keys.crossScalaVersions.all(ScopeFilter(inProjects(projects.map(p => LocalProject(p.id))*))).value)
+          .toMap
+      }
 
-    def minTargetJavaVersionsFor(projects: Project*): sbt.Def.Initialize[Map[String, String]] =
-      macro CiTargetMap.macroMakeJavaVersionMapImpl
+    def minTargetJavaVersionsFor(projects: Project*): sbt.Def.Initialize[Map[String, String]] = {
+      // Referenced by label rather than importing `ZioSbtEcosystemPlugin` (which zio-sbt-ci does not
+      // otherwise depend on): sbt resolves same-labelled settingKeys as the same key without
+      // requiring a compile-time module dependency on whichever plugin first declared it. Defined
+      // outside the `Def.setting {}` block - a plain `val` referenced across a `.value` call *inside*
+      // that block fails both sbt 1.x's and sbt 2.x's macro (see comment on `targetScalaVersionsFor`
+      // above), but capturing an outer val from an enclosing method scope is fine.
+      val javaPlatformKey = SettingKey[String]("javaPlatform")
+      Def.setting {
+        Keys.thisProject
+          .all(ScopeFilter(inProjects(projects.map(p => LocalProject(p.id))*)))
+          .value
+          .map(_.id)
+          .zip(javaPlatformKey.all(ScopeFilter(inProjects(projects.map(p => LocalProject(p.id))*))).value)
+          .toMap
+      }
+    }
   }
 
   import autoImport.*
@@ -99,20 +296,23 @@ object ZioSbtCiPlugin extends AutoPlugin {
     val checkAllCodeCompiles      = ciCheckArtifactsCompilationSteps.value
     val checkArtifactBuildProcess = ciCheckArtifactsBuildSteps.value
     val checkWebsiteBuildProcess  = ciCheckWebsiteBuildProcess.value
+    val netlifyPreviewBuildSteps  =
+      if (ciEnableDeployPreview.value) NetlifyPreviewBuildSteps.value else Seq.empty
 
     Seq(
       Job(
         id = "build",
         name = "Build",
-        continueOnError = true,
         steps = {
           (if (swapSizeGB > 0) Seq(setSwapSpace) else Seq.empty) ++
             Seq(
               checkout,
               SetupLibuv,
               SetupJava(javaVersion),
+              SetupSBT,
               CacheDependencies
-            ) ++ checkAllCodeCompiles ++ checkArtifactBuildProcess ++ checkWebsiteBuildProcess
+            ) ++ checkAllCodeCompiles ++ checkArtifactBuildProcess ++ checkWebsiteBuildProcess ++
+            netlifyPreviewBuildSteps
         }
       )
     )
@@ -131,7 +331,9 @@ object ZioSbtCiPlugin extends AutoPlugin {
         id = "lint",
         name = "Lint",
         steps = (if (swapSizeGB > 0) Seq(setSwapSpace) else Seq.empty) ++
-          Seq(checkout, SetupLibuv, SetupJava(javaVersion), CacheDependencies) ++ checkGithubWorkflow ++ Seq(lint)
+          Seq(checkout, SetupLibuv, SetupJava(javaVersion), SetupSBT, CacheDependencies) ++ checkGithubWorkflow ++ Seq(
+            lint
+          )
       )
     )
   }
@@ -146,15 +348,14 @@ object ZioSbtCiPlugin extends AutoPlugin {
     val setSwapSpace       = SetSwapSpace.value
     val checkout           = Checkout.value
     val backgroundJobs     = ciBackgroundJobs.value
-    val extraTestSteps     = ciExtraTestSteps.value // TODO: do we need this sbt setting, I don't think so!
 
     val prefixJobs = makePrefixJobs(backgroundJobs)
 
     val GroupTests = {
       def makeTests(scalaVersion: String) =
         s" ${scalaVersionMatrix.filter { case (_, versions) =>
-          versions.contains(scalaVersion)
-        }.map(e => e._1 + "/test").mkString(" ")}"
+            versions.contains(scalaVersion)
+          }.map(e => e._1 + "/test").mkString(" ")}"
 
       Job(
         id = "test",
@@ -163,7 +364,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
           Strategy(
             matrix = Map(
               "java"  -> javaPlatforms.toList,
-              "scala" -> scalaVersionMatrix.values.flatten.toSet.toList
+              "scala" -> scalaVersionMatrix.values.toSeq.flatten.distinct.toList
             ),
             maxParallel = matrixMaxParallel,
             failFast = false
@@ -173,15 +374,16 @@ object ZioSbtCiPlugin extends AutoPlugin {
           (if (swapSizeGB > 0) Seq(setSwapSpace) else Seq.empty) ++ Seq(
             SetupLibuv,
             SetupJava("${{ matrix.java }}"),
+            SetupSBT,
             CacheDependencies,
             checkout
           ) ++ (if (javaPlatformMatrix.values.toSet.isEmpty) {
-                  scalaVersionMatrix.values.toSeq.flatten.distinct.map { scalaVersion: String =>
+                  scalaVersionMatrix.values.toSeq.flatten.distinct.map { (scalaVersion: String) =>
                     Step.SingleStep(
                       name = "Test",
                       condition = Some(Condition.Expression(s"matrix.scala == '$scalaVersion'")),
                       run = Some(
-                        prefixJobs + "sbt ++${{ matrix.scala }}" + makeTests(
+                        prefixJobs + SbtCommand + " ++${{ matrix.scala }}" + makeTests(
                           scalaVersion
                         )
                       )
@@ -189,9 +391,9 @@ object ZioSbtCiPlugin extends AutoPlugin {
                   }
                 } else {
                   (for {
-                    javaPlatform: String <- Set("8", "11", "17")
-                    scalaVersion: String <- scalaVersionMatrix.values.toSeq.flatten.toSet
-                    projects =
+                    javaPlatform: String <- javaPlatforms
+                    scalaVersion: String <- scalaVersionMatrix.values.toSeq.flatten.distinct
+                    projects              =
                       scalaVersionMatrix.filterKeys { p =>
                         javaPlatformMatrix.getOrElse(p, javaPlatform).toInt <= javaPlatform.toInt
                       }.filter { case (_, versions) =>
@@ -208,13 +410,13 @@ object ZioSbtCiPlugin extends AutoPlugin {
                             )
                           ),
                           run = Some(
-                            prefixJobs + "sbt ++${{ matrix.scala }}" ++ s" ${projects.map(_ + "/test ").mkString(" ")}"
+                            prefixJobs + SbtCommand + " ++${{ matrix.scala }}" ++ s" ${projects.map(_ + "/test ").mkString(" ")}"
                           )
                         )
                       )
                     else Seq.empty).flatten.toSeq
                 })
-        } ++ extraTestSteps
+        }
       )
     }
 
@@ -253,42 +455,29 @@ object ZioSbtCiPlugin extends AutoPlugin {
           Seq(
             SetupLibuv,
             SetupJava("${{ matrix.java }}"),
+            SetupSBT,
             CacheDependencies,
             checkout,
             if (javaPlatformMatrix.values.toSet.isEmpty) {
               Step.SingleStep(
                 name = "Test",
-                run = Some(prefixJobs + "sbt ${{ matrix.scala-project }}/test")
+                run = Some(prefixJobs + SbtCommand + " ${{ matrix.scala-project }}/test")
               )
             } else {
               Step.StepSequence(
-                Seq(
+                javaPlatforms.map { javaPlatform =>
                   Step.SingleStep(
-                    name = "Java 8 Tests",
-                    condition = Some(Condition.Expression("matrix.java == '8'")),
+                    name = s"Java $javaPlatform Tests",
+                    condition = Some(Condition.Expression(s"matrix.java == '$javaPlatform'")),
                     run = Some(
-                      prefixJobs + "sbt ${{ matrix.scala-project-java8 }}/test"
-                    )
-                  ),
-                  Step.SingleStep(
-                    name = "Java 11 Tests",
-                    condition = Some(Condition.Expression("matrix.java == '11'")),
-                    run = Some(
-                      prefixJobs + "sbt ${{ matrix.scala-project-java11 }}/test"
-                    )
-                  ),
-                  Step.SingleStep(
-                    name = "Java 17 Tests",
-                    condition = Some(Condition.Expression("matrix.java == '17'")),
-                    run = Some(
-                      prefixJobs + "sbt ${{ matrix.scala-project-java17 }}/test"
+                      prefixJobs + SbtCommand + s" $${{ matrix.scala-project-java$javaPlatform }}/test"
                     )
                   )
-                )
+                }
               )
 
             }
-          ) ++ extraTestSteps
+          )
       )
 
     val DefaultTestStrategy =
@@ -306,13 +495,14 @@ object ZioSbtCiPlugin extends AutoPlugin {
           Seq(
             SetupLibuv,
             SetupJava("${{ matrix.java }}"),
+            SetupSBT,
             CacheDependencies,
             checkout,
             Step.SingleStep(
               name = "Test",
-              run = Some(prefixJobs + "sbt +test")
+              run = Some(prefixJobs + SbtCommand + " +test")
             )
-          ) ++ extraTestSteps
+          )
       )
 
     if (javaPlatformMatrix.isEmpty && scalaVersionMatrix.isEmpty)
@@ -329,7 +519,26 @@ object ZioSbtCiPlugin extends AutoPlugin {
         id = "ci",
         name = "ci",
         need = pullRequestApprovalJobs,
+        // Runs even when a job it needs has failed.
+        //
+        // Without this the job is skipped, and GitHub reports a skipped job to branch protection as
+        // a success. Since this is the job repositories are told to require, the single required
+        // check would pass precisely when something upstream had broken - and a pull request with a
+        // failing lint or test job would merge. That is not hypothetical: it is how #694 landed on
+        // main with a red Lint job.
+        condition = Some(Condition.Function("always()")),
         steps = Seq(
+          // Only `failure` and `cancelled` count. An upstream job that was skipped was usually
+          // skipped on purpose, by its own condition, and should not fail the gate.
+          SingleStep(
+            name = "Report Failed CI",
+            condition = Some(
+              Condition.Expression(
+                "contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')"
+              )
+            ),
+            run = Some("echo \"ci failed: one or more required jobs did not succeed\"; exit 1")
+          ),
           SingleStep(
             name = "Report Successful CI",
             run = Some("echo \"ci passed\"")
@@ -351,29 +560,36 @@ object ZioSbtCiPlugin extends AutoPlugin {
       Job(
         id = "update-readme",
         name = "Update README",
-        condition = updateReadmeCondition orElse Some(Condition.Expression("github.event_name == 'push'")),
+        // The workflow-level `permissions` block only grants `id-token`/`contents: read`, so
+        // without this, `Approve PR`/`Enable Auto-Merge` below fail with "Resource not
+        // accessible by integration": a job-level `permissions` block replaces the workflow's
+        // grants entirely rather than adding to them, so `contents: read` has to be repeated
+        // here for the checkout step - the job never pushes with GITHUB_TOKEN, the actual
+        // commit/PR push uses the separate GitHub App token from `Generate Token` below.
+        permissions = Map("contents" -> "read", "pull-requests" -> "write"),
+        condition = updateReadmeCondition orElse Some(
+          Condition.Expression("github.event_name == 'release'") &&
+            Condition.Expression("github.event.action == 'published'")
+        ),
         steps = (if (swapSizeGB > 0) Seq(setSwapSpace) else Seq.empty) ++
           Seq(
             checkout,
             SetupLibuv,
             SetupJava(javaVersion),
+            SetupSBT,
             CacheDependencies,
             generateReadme,
-            Step.SingleStep(
-              name = "Commit Changes",
-              run = Some("""|git config --local user.email "zio-assistant[bot]@users.noreply.github.com"
-                            |git config --local user.name "ZIO Assistant"
-                            |git add README.md
-                            |git commit -m "Update README.md" || echo "No changes to commit"
-                            |""".stripMargin)
-            ),
+            // Deliberately no `git commit` step here. Release events check out the tag (detached
+            // HEAD), and create-pull-request treats an already-committed HEAD as its working base,
+            // finds zero commits to carry over, and reports "not ahead of base" without opening a
+            // PR. Leave README.md as an uncommitted change and let the action commit it.
             Step.SingleStep(
               name = "Generate Token",
               id = Some("generate-token"),
               uses = Some(ActionRef(V("zio/generate-github-app-token"))),
               parameters = Map(
-                "app_id"          -> "${{ secrets.APP_ID }}".asJson,
-                "app_private_key" -> "${{ secrets.APP_PRIVATE_KEY }}".asJson
+                "app_id"          -> Json.Str("${{ secrets.APP_ID }}"),
+                "app_private_key" -> Json.Str("${{ secrets.APP_PRIVATE_KEY }}")
               )
             ),
             Step.SingleStep(
@@ -381,17 +597,31 @@ object ZioSbtCiPlugin extends AutoPlugin {
               id = Some("cpr"),
               uses = Some(ActionRef(V("peter-evans/create-pull-request"))),
               parameters = Map(
-                "title"          -> "Update README.md".asJson,
-                "commit-message" -> "Update README.md".asJson,
-                "branch"         -> "zio-sbt-website/update-readme".asJson,
-                "delete-branch"  -> true.asJson,
-                "body" ->
-                  """|Autogenerated changes after running the `sbt docs/generateReadme` command of the [zio-sbt-website](https://zio.dev/zio-sbt) plugin.
-                     |
-                     |I will automatically update the README.md file whenever there is new change for README.md, e.g.
-                     |  - After each release, I will update the version in the installation section.
-                     |  - After any changes to the "docs/index.md" file, I will update the README.md file accordingly.""".stripMargin.asJson,
-                "token" -> "${{ steps.generate-token.outputs.token }}".asJson
+                "title"          -> Json.Str("Update README.md"),
+                "commit-message" -> Json.Str("Update README.md"),
+                "branch"         -> Json.Str("zio-sbt-website/update-readme"),
+                // Scope the pull request to the file this job is about.
+                //
+                // `generateReadme` sequences `compileDocs`, which writes mdoc output to
+                // `website/docs`. Without add-paths, create-pull-request commits everything left
+                // in the working tree, so the generated PR carries that output too. On such a PR
+                // the build job then fails: `installWebsite` finds a `website/` directory and
+                // skips scaffolding, leaving no package.json for `npm install`.
+                "add-paths" -> Json.Str("README.md"),
+                // A `release`-triggered run checks out the tag, leaving HEAD detached, and
+                // `create-pull-request` can't infer a base branch from a detached HEAD without
+                // this — without it the step fails with "the 'base' input must be supplied".
+                "base"          -> Json.Str("${{ github.event.repository.default_branch }}"),
+                "delete-branch" -> Json.Bool(true),
+                "body"          ->
+                  Json.Str(
+                    """|Autogenerated changes after running the `sbt docs/generateReadme` command of the [zio-sbt-website](https://zio.dev/zio-sbt) plugin.
+                       |
+                       |I will automatically update the README.md file whenever there is new change for README.md, e.g.
+                       |  - After each release, I will update the version in the installation section.
+                       |  - After any changes to the "docs/index.md" file, I will update the README.md file accordingly.""".stripMargin
+                  ),
+                "token" -> Json.Str("${{ steps.generate-token.outputs.token }}")
               )
             ),
             Step.SingleStep(
@@ -407,7 +637,11 @@ object ZioSbtCiPlugin extends AutoPlugin {
               name = "Enable Auto-Merge",
               condition = Some(Condition.Expression("steps.cpr.outputs.pull-request-number")),
               env = Map(
-                "GITHUB_TOKEN" -> "${{ secrets.GITHUB_TOKEN }}",
+                // The App token, not GITHUB_TOKEN: merging (and enabling auto-merge) needs
+                // `contents: write`, which this job deliberately does not grant (see `permissions`
+                // above). `Approve PR` keeps GITHUB_TOKEN: the PR is authored by the App's bot
+                // identity, and a PR's author cannot approve it.
+                "GITHUB_TOKEN" -> "${{ steps.generate-token.outputs.token }}",
                 "PR_URL"       -> "${{ steps.cpr.outputs.pull-request-url }}"
               ),
               run = Some("gh pr merge --auto --squash \"$PR_URL\" || gh pr merge --squash \"$PR_URL\"")
@@ -417,25 +651,45 @@ object ZioSbtCiPlugin extends AutoPlugin {
     )
   }
 
+  private val releaseCondition = Some(
+    Condition.Expression("github.event_name == 'release'") &&
+      Condition.Expression("github.event.action == 'published'") || Condition.Expression(
+        "github.event_name == 'workflow_dispatch'"
+      )
+  )
+
+  // Snapshots are only published from the repository's default branch: the
+  // workflow's push trigger covers ciEnabledBranches, but when that setting is
+  // empty the trigger matches all branches, and snapshots must not be
+  // published from feature branches. On a default-branch push HEAD is
+  // untagged, so `sbt ci-release` publishes a SNAPSHOT.
+  private val releaseOrSnapshotCondition =
+    releaseCondition.map(
+      _ || (Condition.Expression("github.event_name == 'push'") &&
+        Condition.Expression("github.ref == format('refs/heads/{0}', github.event.repository.default_branch)"))
+    )
+
   lazy val releaseJobs: Def.Initialize[Seq[Job]] = Def.setting {
-    val swapSizeGB   = ciSwapSizeGB.value
-    val setSwapSpace = SetSwapSpace.value
-    val checkout     = Checkout.value
-    val javaVersion  = ciDefaultJavaVersion.value
-    val release      = Release.value
-    val jobs         = ciReleaseApprovalJobs.value
+    val swapSizeGB       = ciSwapSizeGB.value
+    val setSwapSpace     = SetSwapSpace.value
+    val checkout         = Checkout.value
+    val javaVersion      = ciDefaultJavaVersion.value
+    val release          = Release.value
+    val jobs             = ciReleaseApprovalJobs.value
+    val publishSnapshots = ciPublishSnapshots.value
 
     Seq(
       Job(
         id = "release",
         name = "Release",
         need = jobs,
-        condition = Some(Condition.Expression("github.event_name != 'pull_request'")),
+        condition = if (publishSnapshots) releaseOrSnapshotCondition else releaseCondition,
         steps = (if (swapSizeGB > 0) Seq(setSwapSpace) else Seq.empty) ++
           Seq(
             checkout,
             SetupLibuv,
             SetupJava(javaVersion),
+            SetupSBT,
             CacheDependencies,
             release
           )
@@ -455,12 +709,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
         id = "release-docs",
         name = "Release Docs",
         need = Seq("release"),
-        condition = Some(
-          Condition.Expression("github.event_name == 'release'") &&
-            Condition.Expression("github.event.action == 'published'") || Condition.Expression(
-              "github.event_name == 'workflow_dispatch'"
-            )
-        ),
+        condition = releaseCondition,
         steps = (if (swapSizeGB > 0) Seq(setSwapSpace) else Seq.empty) ++
           Seq(
             Step.StepSequence(
@@ -468,6 +717,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
                 checkout,
                 SetupLibuv,
                 SetupJava(javaVersion),
+                SetupSBT,
                 CacheDependencies,
                 SetupNodeJs,
                 publishToNpmRegistry
@@ -479,20 +729,34 @@ object ZioSbtCiPlugin extends AutoPlugin {
         id = "notify-docs-release",
         name = "Notify Docs Release",
         need = Seq("release-docs"),
-        condition = Some(
-          Condition.Expression("github.event_name == 'release'") &&
-            Condition.Expression("github.event.action == 'published'")
-        ),
+        condition = releaseCondition,
         steps = Seq(
           checkout,
+          // Unlike the auto-merge app-token fallback, this has no GITHUB_TOKEN path to fall back
+          // to: the dispatch below targets zio/zio, a different repository, and GITHUB_TOKEN is
+          // scoped to only the repository the workflow is running in. A minted app token works
+          // only if that app is installed on zio/zio too; PAT_TOKEN remains the fallback for repos
+          // relying on it (or where the app lacks that installation).
+          checkAppTokenStep,
+          SingleStep(
+            name = "Generate Token",
+            id = Some("generate-token"),
+            condition = Some(appTokenConfigured),
+            uses = Some(ActionRef(V("zio/generate-github-app-token"))),
+            parameters = Map(
+              "app_id"          -> Json.Str("${{ secrets.APP_ID }}"),
+              "app_private_key" -> Json.Str("${{ secrets.APP_PRIVATE_KEY }}")
+            )
+          ),
           SingleStep(
             name = "notify the main repo about the new release of docs package",
+            env = Map("NOTIFY_TOKEN" -> "${{ steps.generate-token.outputs.token || secrets.PAT_TOKEN }}"),
             run = Some("""|PACKAGE_NAME=$(cat docs/package.json | grep '"name"' | awk -F'"' '{print $4}')
                           |PACKAGE_VERSION=$(npm view $PACKAGE_NAME version)
                           |curl -L \
                           |  -X POST \
                           |  -H "Accept: application/vnd.github+json" \
-                          |  -H "Authorization: token ${{ secrets.PAT_TOKEN }}"\
+                          |  -H "Authorization: token $NOTIFY_TOKEN"\
                           |    https://api.github.com/repos/zio/zio/dispatches \
                           |    -d '{
                           |          "event_type":"update-docs",
@@ -508,116 +772,1167 @@ object ZioSbtCiPlugin extends AutoPlugin {
     )
   }
 
+  // Shared between renderWorkflow (which writes the full header) and the release-drafter
+  // enable/disable guards (which only need to recognize it) - a single source of truth so the
+  // two never drift out of sync.
+  private val AutogeneratedHeaderPrefix = "# This file was autogenerated using `zio-sbt-ci` plugin"
+
+  def renderWorkflow(workflow: Workflow): String = {
+    val workflowJson = workflow.toJsonAST.getOrElse(Json.Null)
+
+    val yaml = workflowJson.toYaml(
+      YamlOptions.default.copy(
+        dropNulls = true,
+        sequenceIndentation = 0,
+        maxScalarWidth = None
+      )
+    ) match {
+      case Right(yaml) => yaml
+      case Left(err)   => throw new Exception(s"Failed to convert workflow to YAML: $err")
+    }
+
+    s"""|$AutogeneratedHeaderPrefix via `sbt ciGenerateGithubWorkflow`
+        |# task and should be included in the git repository. Please do not edit it manually.
+        |
+        |$yaml""".stripMargin
+  }
+
+  private val DependabotConfigFile = ".github/dependabot.yml"
+
+  def renderDependabotConfig(config: DependabotConfig): String =
+    s"""|$AutogeneratedHeaderPrefix via `sbt ciGenerateGithubWorkflow`
+        |# task and should be included in the git repository. Please do not edit it manually.
+        |
+        |${DependabotConfig.render(config)}""".stripMargin
+
+  def renderReleaseDrafterConfig(config: ReleaseDrafterConfig): String =
+    config.toJsonAST
+      .getOrElse(Json.Null)
+      .toYaml(
+        YamlOptions.default.copy(dropNulls = true, sequenceIndentation = 0, maxScalarWidth = None)
+      ) match {
+      case Right(yaml) => yaml
+      case Left(err)   => throw new Exception(s"Failed to convert release-drafter config to YAML: $err")
+    }
+
+  /**
+   * Turns a workflow name into a file name.
+   *
+   * Anything that is not alphanumeric becomes a dash, so a name like
+   * "Continuous Integration" yields `continuous-integration.yml` rather than a
+   * file with a space in it.
+   */
+  private[sbt] def workflowFileName(workflowName: String): String = {
+    val slug = workflowName.trim.toLowerCase.replaceAll("[^a-z0-9]+", "-").replaceAll("(^-)|(-$)", "")
+    s"${if (slug.isEmpty) "ci" else slug}.yml"
+  }
+
+  def writeWorkflowFile(baseDir: File, workflow: Workflow, fileName: String): Unit =
+    writeGeneratedFile(baseDir, baseDir / ".github" / "workflows" / fileName, renderWorkflow(workflow))
+
+  /**
+   * Writes a generated file, and registers it with git when it is new.
+   *
+   * Scala Steward's post-update hook runs `ciGenerateGithubWorkflow` and then
+   * commits with `git commit --all`, which only stages files git already knows
+   * about. A file the task creates for the first time would otherwise be left
+   * out of the "Regenerate GitHub Actions workflow" commit, and the PR would
+   * fail `ciCheckGithubWorkflow`. Marking it intent-to-add makes `--all` pick
+   * it up, and is harmless for anyone running the task by hand.
+   */
+  private def writeGeneratedFile(baseDir: File, target: File, content: String): Unit = {
+    val isNew = !target.exists
+    IO.write(target, content)
+    if (isNew) markIntentToAdd(baseDir, target)
+  }
+
+  // Best effort: not a git repository, git missing or the path ignored are all fine to skip.
+  private def markIntentToAdd(baseDir: File, target: File): Unit =
+    try {
+      val _ = Process(Seq("git", "add", "--intent-to-add", "--", target.getAbsolutePath), baseDir) !
+        ProcessLogger(_ => (), _ => ())
+    } catch { case _: java.io.IOException => () }
+
+  @deprecated("Use the overload taking the build's base directory", "0.6.4")
+  def writeWorkflowFile(workflow: Workflow, fileName: String): Unit =
+    writeWorkflowFile(file("."), workflow, fileName)
+
   lazy val generateGithubWorkflowTask: Def.Initialize[Task[Unit]] =
     Def.task {
-      val workflowName     = ciWorkflowName.value
-      val enabledBranches  = ciEnabledBranches.value
+      val workflowName     = ciWorkflowTitle.value
       val buildJobs        = ciBuildJobs.value
       val lintJobs         = ciLintJobs.value
       val testJobs         = ciTestJobs.value
-      val reportSuccessful = reportSuccessfulJobs.value
+      val reportSuccessful = ciReportSuccessfulJobs.value
       val updateReadmeJobs = ciUpdateReadmeJobs.value
       val releaseJobs      = ciReleaseJobs.value
       val postReleaseJobs  = ciPostReleaseJobs.value
-      val jvmOptions       = Seq("-XX:+PrintCommandLineFlags") ++ ciJvmOptions.value
-      val nodeOptions      = ciNodeOptions.value
+      val workflowEnv      = ciWorkflowEnv.value
+      val triggers         = ciWorkflowTriggers.value
+      val concurrency      = ciConcurrency.value
+      val permissions      = ciWorkflowPermissions.value
 
-      val jvmMap = Map(
-        // JDK_JAVA_OPTIONS is _the_ env. variable to use for modern Java
-        "JDK_JAVA_OPTIONS" -> jvmOptions.mkString(" "),
-        // For Java 8 only (sadly, it is not modern enough for JDK_JAVA_OPTIONS)
-        "JVM_OPTS" -> jvmOptions.mkString(" ")
-      )
-      val nodeMap: Map[String, String] =
-        if (nodeOptions.nonEmpty) Map("NODE_OPTIONS" -> nodeOptions.mkString(" ")) else Map.empty
-
-      val workflow = yaml
-        .Printer(
-          preserveOrder = true,
-          dropNullKeys = true,
-          splitLines = false,
-          lineBreak = LineBreak.Unix,
-          version = YamlVersion.Auto
-        )
-        .pretty(
-          Workflow(
-            name = workflowName,
-            env = jvmMap ++ nodeMap,
-            triggers = Seq(
-              Trigger.WorkflowDispatch(),
-              Trigger.Release(Seq("published")),
-              Trigger.Push(branches = enabledBranches.map(Branch.Named)),
-              Trigger.PullRequest(),
-              Trigger.Create()
-            ),
-            jobs =
-              buildJobs ++ lintJobs ++ testJobs ++ updateReadmeJobs ++ reportSuccessful ++ releaseJobs ++ postReleaseJobs
-          ).asJson
+      // An empty trigger list encodes as no `on:` block at all, and GitHub rejects a workflow
+      // without one. Better to say so here than to emit a file that silently never runs.
+      if (triggers.isEmpty)
+        sys.error(
+          "`ciWorkflowTriggers` is empty, which would generate a workflow with no `on:` block. " +
+            "GitHub requires at least one trigger."
         )
 
-      val template =
-        s"""|# This file was autogenerated using `zio-sbt-ci` plugin via `sbt ciGenerateGithubWorkflow` 
-            |# task and should be included in the git repository. Please do not edit it manually.
-            |
-            |$workflow""".stripMargin
+      val workflow = {
+        val base = Workflow(
+          name = workflowName,
+          env = workflowEnv,
+          concurrency = concurrency,
+          triggers = triggers,
+          permissions = permissions.getOrElse(Workflow.defaultPermissions),
+          jobs =
+            buildJobs ++ lintJobs ++ testJobs ++ updateReadmeJobs ++ reportSuccessful ++ releaseJobs ++ postReleaseJobs
+        )
 
-      IO.write(new File(s".github/workflows/${ciWorkflowName.value.toLowerCase}.yml"), template)
+        if (permissions.isEmpty) base.withoutPermissions else base
+      }
+
+      writeWorkflowFile((ThisBuild / Keys.baseDirectory).value, workflow, workflowFileName(workflowName))
     }
 
-  override lazy val buildSettings: Seq[Setting[_]] = {
+  private def dependencyBotPRCondition(bots: Seq[String]): Condition = {
+    val botConditions: Seq[Condition] =
+      bots.map(bot => Condition.Expression(s"github.event.pull_request.user.login == '$bot'"))
+
+    (Condition.Expression("github.event_name == 'workflow_dispatch'") +: botConditions).reduce(_ || _)
+  }
+
+  private def backfillBotPRsScript(bots: Seq[String], applyCommand: String): String = {
+    val actors = bots.map(bot => s""""$bot"""").mkString(" ")
+
+    s"""|set -euo pipefail
+        |for actor in $actors; do
+        |  gh pr list \\
+        |    --author "$$actor" \\
+        |    --state open \\
+        |    --json number \\
+        |    --jq '.[].number' | \\
+        |  xargs -I{} $applyCommand {}
+        |done
+        |""".stripMargin
+  }
+
+  // `gh pr merge --auto` only waits for checks that branch protection *requires*; on a branch
+  // with none it merges at once, before CI has even finished (see zio/zio-process#700). So this
+  // waits for CI itself and merges directly, failing the job - leaving the PR open - on a red
+  // check. The bot workflows' own jobs are excluded, or this would wait on itself forever.
+  // Checks for the new head commit register a few seconds after the push, so "no checks yet" is
+  // treated as pending rather than as success.
+  private def waitForCiScript(ownJobs: Seq[String]): String = {
+    val excluded = ownJobs.map(job => s""".name != "$job"""").mkString(" and ")
+
+    s"""|set -euo pipefail
+        |while true; do
+        |  checks=$$(gh pr checks "$$PR" --json name,bucket \\
+        |    --jq '[.[] | select($excluded)]' 2>/dev/null || true)
+        |  checks=$${checks:-[]}
+        |  total=$$(jq length <<< "$$checks")
+        |  pending=$$(jq '[.[] | select(.bucket == "pending")] | length' <<< "$$checks")
+        |  failed=$$(jq '[.[] | select(.bucket == "fail" or .bucket == "cancel")] | length' <<< "$$checks")
+        |  if [ "$$failed" -gt 0 ]; then
+        |    echo "CI failed, not merging:"
+        |    jq -r '.[] | select(.bucket == "fail" or .bucket == "cancel") | .name' <<< "$$checks"
+        |    exit 1
+        |  fi
+        |  if [ "$$total" -gt 0 ] && [ "$$pending" -eq 0 ]; then
+        |    break
+        |  fi
+        |  echo "Waiting for CI ($$total checks, $$pending pending)..."
+        |  sleep 30
+        |done
+        |gh pr merge --squash "$$PR"
+        |""".stripMargin
+  }
+
+  private val dependencyBotPRTriggers: Seq[Trigger] = Seq(
+    Trigger.PullRequestTarget(types = Seq("opened", "reopened", "synchronize", "ready_for_review")),
+    Trigger.WorkflowDispatch()
+  )
+
+  private val botTokenEnv: Map[String, String] = Map(
+    "GH_TOKEN" -> "${{ secrets.GITHUB_TOKEN }}",
+    "GH_REPO"  -> "${{ github.repository }}"
+  )
+
+  // GITHUB_TOKEN can never be granted the "workflows" scope GitHub's `enablePullRequestAutoMerge`
+  // mutation needs for a PR that touches .github/workflows/** - no `permissions:` grant fixes
+  // that, `actions: write` included, despite the error message asking for a "workflows"
+  // permission that isn't a valid permissions key at all (see #744). A GitHub App token can hold
+  // that scope, so the "Generate Token" step below mints one and this falls back to GITHUB_TOKEN
+  // when no app is configured: `steps.generate-token.outputs.token` is empty both when that step
+  // is skipped (no APP_ID secret) and when it fails, so `||` reaches the fallback either way.
+  // GITHUB_TOKEN alone still auto-merges ordinary, non-workflow-touching dependency PRs fine -
+  // only PRs that touch workflow files need the app's scope.
+  private val mergeTokenEnv: Map[String, String] = Map(
+    "GH_TOKEN" -> "${{ steps.generate-token.outputs.token || secrets.GITHUB_TOKEN }}",
+    "GH_REPO"  -> "${{ github.repository }}"
+  )
+
+  // GitHub rejects the `secrets` context in any `if:` - job or step - with "Unrecognized
+  // named-value: 'secrets'", failing the *entire* workflow file (every job, every trigger), not
+  // just the step that used it. `secrets` is readable in `env:`/`run:` though, so this step reads
+  // it there and exposes the result as a step output, which `if:` conditions may reference freely.
+  private val checkAppTokenStep: Step.SingleStep =
+    Step.SingleStep(
+      name = "Check App Token",
+      id = Some("check-app-token"),
+      env = Map("APP_ID" -> "${{ secrets.APP_ID }}"),
+      run = Some(
+        """|if [ -n "$APP_ID" ]; then
+           |  echo "configured=true" >> "$GITHUB_OUTPUT"
+           |else
+           |  echo "configured=false" >> "$GITHUB_OUTPUT"
+           |fi
+           |""".stripMargin
+      )
+    )
+
+  private val appTokenConfigured: Condition =
+    Condition.Expression("steps.check-app-token.outputs.configured == 'true'")
+
+  lazy val autoApproveWorkflow: Def.Initialize[Workflow] = Def.setting {
+    val bots = ciDependencyUpdateBots.value.map(_.login)
+
+    Workflow(
+      name = "Auto-approve bot dependency PRs",
+      triggers = dependencyBotPRTriggers,
+      permissions = Map("pull-requests" -> "write"),
+      jobs = Seq(
+        Job(
+          id = "auto-approve-bot-prs",
+          name = "auto-approve-bot-prs",
+          condition = Some(dependencyBotPRCondition(bots)),
+          steps = Seq(
+            Step.SingleStep(
+              name = "Approve PR",
+              condition = Some(Condition.Expression("github.event_name == 'pull_request_target'")),
+              run = Some("gh pr review --approve ${{ github.event.number }}"),
+              env = botTokenEnv
+            ),
+            Step.SingleStep(
+              name = "Backfill auto-approve for existing bot PRs",
+              condition = Some(Condition.Expression("github.event_name == 'workflow_dispatch'")),
+              run = Some(backfillBotPRsScript(bots, "gh pr review --approve")),
+              env = botTokenEnv
+            )
+          )
+        )
+      )
+    )
+  }
+
+  lazy val autoMergeWorkflow: Def.Initialize[Workflow] = Def.setting {
+    val bots = ciDependencyUpdateBots.value.map(_.login)
+
+    Workflow(
+      name = "Auto-merge bot dependency PRs",
+      triggers = dependencyBotPRTriggers,
+      // `contents`/`pull-requests: write` are for the GITHUB_TOKEN fallback path (see
+      // `mergeTokenEnv`); the app-token path doesn't need this block at all, the app's own
+      // installation permissions govern what its token can do.
+      permissions = Map("contents" -> "write", "pull-requests" -> "write", "checks" -> "read"),
+      jobs = Seq(
+        Job(
+          id = "auto-merge",
+          name = "auto-merge",
+          condition = Some(dependencyBotPRCondition(bots)),
+          jobTimeout = Some(120),
+          steps = Seq(
+            checkAppTokenStep,
+            Step.SingleStep(
+              name = "Generate Token",
+              id = Some("generate-token"),
+              // Skipped (rather than left to fail on empty secrets) on repos that never
+              // configured APP_ID/APP_PRIVATE_KEY, so no action run is wasted on the doomed API
+              // calls that would otherwise make.
+              condition = Some(appTokenConfigured),
+              uses = Some(ActionRef(V("zio/generate-github-app-token"))),
+              parameters = Map(
+                "app_id"          -> Json.Str("${{ secrets.APP_ID }}"),
+                "app_private_key" -> Json.Str("${{ secrets.APP_PRIVATE_KEY }}")
+              )
+            ),
+            Step.SingleStep(
+              name = "Merge bot PR once CI passes",
+              condition = Some(Condition.Expression("github.event_name == 'pull_request_target'")),
+              run = Some(waitForCiScript(Seq("auto-merge", "auto-approve-bot-prs"))),
+              env = mergeTokenEnv + ("PR" -> "${{ github.event.number }}")
+            ),
+            Step.SingleStep(
+              name = "Backfill auto-merge for existing bot PRs",
+              condition = Some(Condition.Expression("github.event_name == 'workflow_dispatch'")),
+              run = Some(backfillBotPRsScript(bots, "gh pr merge --auto --squash")),
+              env = mergeTokenEnv
+            )
+          )
+        )
+      )
+    )
+  }
+
+  lazy val generateAutoApproveWorkflowTask: Def.Initialize[Task[Unit]] =
+    Def.task(writeWorkflowFile((ThisBuild / Keys.baseDirectory).value, autoApproveWorkflow.value, "auto-approve.yml"))
+
+  lazy val generateAutoMergeWorkflowTask: Def.Initialize[Task[Unit]] =
+    Def.task(writeWorkflowFile((ThisBuild / Keys.baseDirectory).value, autoMergeWorkflow.value, "auto-merge.yml"))
+
+  // Bot PRs routinely change inputs of the generated files - Scala Steward bumping `zio-sbt-ci`
+  // itself, Dependabot bumping an action pin - which leaves `ciCheckGithubWorkflow` failing in
+  // Lint with nobody to fix it, so auto-merge never fires. This regenerates and pushes the fix
+  // to the PR branch. `pull_request` (not `_target`) so the PR's own build definition is what
+  // gets regenerated; bot PRs are same-repo branches, so repo secrets are available (Dependabot
+  // reads the separate Dependabot secrets store - see the docs).
+  lazy val regenerateWorkflowsWorkflow: Def.Initialize[Workflow] = Def.setting {
+    val bots     = ciDependencyUpdateBots.value.map(_.login)
+    val checkout = Step.SingleStep(
+      name = "Git Checkout",
+      uses = Some(ActionRef(V("actions/checkout"))),
+      parameters = Map(
+        "ref"         -> Json.Str("${{ github.head_ref }}"),
+        "fetch-depth" -> Json.Str("0"),
+        // A push made with GITHUB_TOKEN does not trigger other workflows, which would leave CI
+        // (and so auto-merge) waiting forever on the regenerated commit; the App token does.
+        "token" -> Json.Str("${{ steps.generate-token.outputs.token || secrets.GITHUB_TOKEN }}")
+      )
+    )
+
+    val botConditions: Seq[Condition] =
+      bots.map(bot => Condition.Expression(s"github.event.pull_request.user.login == '$bot'"))
+    val botCondition = botConditions.reduce(_ || _)
+
+    Workflow(
+      name = "Regenerate CI workflows for bot PRs",
+      triggers = Seq(Trigger.PullRequest(ignoredBranches = Seq(Branch.Named("gh-pages")))),
+      permissions = Map("contents" -> "read"),
+      concurrency = Some(Concurrency("regenerate-ci-workflows-${{ github.head_ref }}")),
+      jobs = Seq(
+        Job(
+          id = "regenerate",
+          name = "regenerate",
+          permissions = Map("contents" -> "write"),
+          condition = Some(
+            botCondition &&
+              Condition.Expression("github.event.pull_request.head.repo.full_name == github.repository")
+          ),
+          steps = Seq(
+            checkAppTokenStep,
+            Step.SingleStep(
+              name = "Generate Token",
+              id = Some("generate-token"),
+              condition = Some(appTokenConfigured),
+              uses = Some(ActionRef(V("zio/generate-github-app-token"))),
+              parameters = Map(
+                "app_id"          -> Json.Str("${{ secrets.APP_ID }}"),
+                "app_private_key" -> Json.Str("${{ secrets.APP_PRIVATE_KEY }}")
+              )
+            ),
+            checkout,
+            SetupJava(),
+            SetupSBT,
+            CacheDependencies,
+            Step.SingleStep(
+              name = "Regenerate GitHub workflow files",
+              run = Some(SbtCommand + " ciGenerateGithubWorkflow")
+            ),
+            Step.SingleStep(
+              name = "Commit and push the regenerated files if changed",
+              env = Map("HEAD_REF" -> "${{ github.head_ref }}"),
+              run = Some(
+                """|set -euo pipefail
+                   |if git diff --quiet -- .github && [ -z "$(git ls-files --others --exclude-standard -- .github)" ]; then
+                   |  echo "Generated files already up to date; nothing to do."
+                   |  exit 0
+                   |fi
+                   |git config user.name "github-actions[bot]"
+                   |git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+                   |git add .github
+                   |git commit -m "chore(ci): regenerate GitHub workflows"
+                   |git push origin "HEAD:$HEAD_REF"
+                   |""".stripMargin
+              )
+            )
+          )
+        )
+      )
+    )
+  }
+
+  lazy val generateRegenerateWorkflowsWorkflowTask: Def.Initialize[Task[Unit]] =
+    Def.task {
+      val baseDir  = (ThisBuild / Keys.baseDirectory).value
+      val enabled  = ciEnableRegenerateWorkflows.value
+      val workflow = regenerateWorkflowsWorkflow.value
+
+      // Same ownership rule as release-drafter.yml: when disabled, only delete a copy this
+      // plugin generated itself.
+      val workflowFile = baseDir / ".github" / "workflows" / "regenerate-workflows.yml"
+      val weOwn        = !workflowFile.exists || IO.read(workflowFile).startsWith(AutogeneratedHeaderPrefix)
+
+      if (enabled) writeWorkflowFile(baseDir, workflow, "regenerate-workflows.yml")
+      else if (workflowFile.exists && weOwn) IO.delete(workflowFile)
+    }
+
+  lazy val netlifyDeployPreviewWorkflow: Def.Initialize[Workflow] = Def.setting {
+    val automatic = automaticDeployPreviewWorkflow.value
+    val onDemand  = onDemandDeployPreviewWorkflow.value
+
+    ciDeployPreviewMode.value match {
+      case DeployPreviewMode.Automatic => automatic
+      case DeployPreviewMode.OnDemand  => onDemand
+    }
+  }
+
+  private lazy val automaticDeployPreviewWorkflow: Def.Initialize[Workflow] = Def.setting {
+    val ciWorkflowName = ciWorkflowTitle.value
+
+    val deployPreviewCondition =
+      Condition.Expression("github.event.workflow_run.event == 'pull_request'") &&
+        Condition.Expression("github.event.workflow_run.conclusion == 'success'")
+
+    // The build job only uploads these artifacts when the website is actually installed (see
+    // `websiteInstalled` in `NetlifyPreviewBuildSteps`); this workflow triggers on every
+    // successful pull-request CI run regardless. `continueOnError` on the two downloads turns a
+    // missing artifact into a soft failure instead of a hard one, and every later step is then
+    // gated on both downloads having actually succeeded, so a repo with no website installed gets
+    // a job with two skipped-looking (continued-past) steps and nothing else - no deploy attempt,
+    // no comment - rather than a failing required check.
+    val artifactsDownloaded =
+      Condition.Expression("steps.download-website.outcome == 'success'") &&
+        Condition.Expression("steps.download-pr-metadata.outcome == 'success'")
+
+    Workflow(
+      name = "Deploy Preview",
+      triggers = Seq(Trigger.WorkflowRun(workflows = Seq(ciWorkflowName), types = Seq("completed"))),
+      permissions = Map(
+        "actions"       -> "read",
+        "contents"      -> "read",
+        "deployments"   -> "write",
+        "issues"        -> "write",
+        "pull-requests" -> "write",
+        "statuses"      -> "write"
+      ),
+      jobs = Seq(
+        Job(
+          id = "deploy-preview",
+          name = "deploy-preview",
+          condition = Some(deployPreviewCondition),
+          steps = Seq(
+            Step.SingleStep(
+              name = "Download Website Artifact",
+              id = Some("download-website"),
+              continueOnError = true,
+              uses = Some(ActionRef(V("actions/download-artifact"))),
+              parameters = Map(
+                "name"         -> Json.Str("website-artifact"),
+                "path"         -> Json.Str("website-artifact"),
+                "run-id"       -> Json.Str("${{ github.event.workflow_run.id }}"),
+                "github-token" -> Json.Str("${{ secrets.GITHUB_TOKEN }}")
+              )
+            ),
+            Step.SingleStep(
+              name = "Download PR Metadata",
+              id = Some("download-pr-metadata"),
+              continueOnError = true,
+              uses = Some(ActionRef(V("actions/download-artifact"))),
+              parameters = Map(
+                "name"         -> Json.Str("pr-metadata"),
+                "path"         -> Json.Str("pr-metadata"),
+                "run-id"       -> Json.Str("${{ github.event.workflow_run.id }}"),
+                "github-token" -> Json.Str("${{ secrets.GITHUB_TOKEN }}")
+              )
+            ),
+            Step.SingleStep(
+              name = "Read PR Number",
+              id = Some("pr"),
+              condition = Some(artifactsDownloaded),
+              run = Some("echo \"number=$(cat pr-metadata/pr-number.txt)\" >> \"$GITHUB_OUTPUT\"")
+            ),
+            Step.SingleStep(
+              name = "Compute Deployment Metadata",
+              id = Some("meta"),
+              condition = Some(artifactsDownloaded),
+              run = Some(
+                """|echo "time=$(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> "$GITHUB_OUTPUT"
+                   |sha="${{ github.event.workflow_run.head_sha }}"
+                   |echo "short_sha=${sha:0:7}" >> "$GITHUB_OUTPUT"
+                   |""".stripMargin
+              )
+            ),
+            Step.SingleStep(
+              name = "Deploy Preview to Netlify",
+              id = Some("netlify-deploy"),
+              condition = Some(artifactsDownloaded),
+              uses = Some(ActionRef(V("nwtgck/actions-netlify"))),
+              parameters = Map(
+                "publish-dir"                 -> Json.Str("./website-artifact"),
+                "github-token"                -> Json.Str("${{ secrets.GITHUB_TOKEN }}"),
+                "deploy-message"              -> Json.Str("PR #${{ steps.pr.outputs.number }}"),
+                "alias"                       -> Json.Str("pr-${{ steps.pr.outputs.number }}"),
+                "enable-pull-request-comment" -> Json.Bool(false),
+                "enable-commit-comment"       -> Json.Bool(false)
+              ),
+              env = Map(
+                "NETLIFY_AUTH_TOKEN" -> "${{ secrets.NETLIFY_AUTH_TOKEN }}",
+                "NETLIFY_SITE_ID"    -> "${{ secrets.NETLIFY_SITE_ID }}"
+              )
+            ),
+            // A plain re-deploy (e.g. a follow-up push to the same PR) used to overwrite the one
+            // sticky comment in place, so pushing twice silently discarded the first deploy's
+            // record. Posting a fresh comment per deploy keeps that history, but leaves stale
+            // comments cluttering the thread - so before posting the new one, every earlier
+            // preview comment (tagged by the same marker) gets collapsed as outdated instead of
+            // deleted, keeping the audit trail without the noise.
+            Step.SingleStep(
+              name = "Mark previous preview comments as outdated",
+              condition = Some(artifactsDownloaded),
+              uses = Some(ActionRef(V("actions/github-script"))),
+              parameters = Map(
+                "script" -> Json.Str(
+                  """|const comments = await github.paginate(github.rest.issues.listComments, {
+                     |  owner: context.repo.owner,
+                     |  repo: context.repo.repo,
+                     |  issue_number: ${{ steps.pr.outputs.number }},
+                     |  per_page: 100,
+                     |});
+                     |const stale = comments.filter(
+                     |  (c) => c.user.type === 'Bot' && c.body.includes('<!-- netlify-preview-comment -->')
+                     |);
+                     |for (const comment of stale) {
+                     |  await github.graphql(
+                     |    `mutation($id: ID!) {
+                     |      minimizeComment(input: { subjectId: $id, classifier: OUTDATED }) {
+                     |        minimizedComment { isMinimized }
+                     |      }
+                     |    }`,
+                     |    { id: comment.node_id }
+                     |  );
+                     |}
+                     |""".stripMargin
+                )
+              )
+            ),
+            Step.SingleStep(
+              name = "Post Preview URL Comment",
+              condition = Some(artifactsDownloaded),
+              uses = Some(ActionRef(V("peter-evans/create-or-update-comment"))),
+              parameters = Map(
+                "issue-number" -> Json.Str("${{ steps.pr.outputs.number }}"),
+                "body"         -> Json.Str(
+                  """|<!-- netlify-preview-comment -->
+                     |🚀 New preview deployed to Netlify: ${{ steps.netlify-deploy.outputs.deploy-url }}
+                     |
+                     |🕒 Deployed at: ${{ steps.meta.outputs.time }}
+                     |📌 Commit: [`${{ steps.meta.outputs.short_sha }}`](https://github.com/${{ github.repository }}/commit/${{ github.event.workflow_run.head_sha }})""".stripMargin
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  }
+
+  // The on-demand variant of deploy-preview.yml (`DeployPreviewMode.OnDemand`). Same file name and
+  // workflow name as the automatic variant, so switching modes just rewrites that one file.
+  //
+  // It has two jobs, told apart by the event that started the run:
+  //  - `post-preview-comment` (after a successful pull-request CI run) creates or resets the single
+  //    bot comment holding an unticked "Deploy preview" checkbox. Nothing is deployed.
+  //  - `deploy-preview` (when that comment is edited with the box ticked) deploys the website built
+  //    by the CI run of the commit named in the comment, then rewrites the comment with the URL.
+  //
+  // The bot comment carries two hidden markers: one to find it again, one with the full commit sha
+  // it was posted for, so a later tick deploys exactly that commit and never a newer one.
+  private lazy val onDemandDeployPreviewWorkflow: Def.Initialize[Workflow] = Def.setting {
+    val ciWorkflowName = ciWorkflowTitle.value
+
+    val commentMarker = "<!-- netlify-preview-comment -->"
+
+    val postCommentCondition =
+      Condition.Expression("github.event_name == 'workflow_run'") &&
+        Condition.Expression("github.event.workflow_run.event == 'pull_request'") &&
+        Condition.Expression("github.event.workflow_run.conclusion == 'success'")
+
+    // Only a bot-authored preview comment whose checkbox was just ticked may start a deployment;
+    // the permission of whoever ticked it is checked in the first step.
+    val deployCondition =
+      Condition.Expression("github.event_name == 'issue_comment'") &&
+        Condition.Expression("github.event.issue.pull_request") &&
+        Condition.Expression("github.event.comment.user.type == 'Bot'") &&
+        Condition.Expression(s"contains(github.event.comment.body, '$commentMarker')") &&
+        Condition.Expression("contains(github.event.comment.body, '- [x]')")
+
+    // Same soft-failure pattern as the automatic mode: both artifacts are only uploaded when the
+    // website is installed and docs/ or website/ changed, so a missing one means "nothing to
+    // preview" and must not turn into a failing check or a pointless comment.
+    val artifactsDownloaded =
+      Condition.Expression("steps.download-website.outcome == 'success'") &&
+        Condition.Expression("steps.download-pr-metadata.outcome == 'success'")
+
+    Workflow(
+      name = "Deploy Preview",
+      triggers = Seq(
+        Trigger.WorkflowRun(workflows = Seq(ciWorkflowName), types = Seq("completed")),
+        Trigger.IssueComment(types = Seq("edited"))
+      ),
+      permissions = Map(
+        "actions"       -> "read",
+        "contents"      -> "read",
+        "deployments"   -> "write",
+        "issues"        -> "write",
+        "pull-requests" -> "write",
+        "statuses"      -> "write"
+      ),
+      // The workflow-level default group would cancel a deployment when an unrelated event for the
+      // same ref arrives; the deploy job has its own per-PR group instead.
+      concurrency = None,
+      jobs = Seq(
+        Job(
+          id = "post-preview-comment",
+          name = "post-preview-comment",
+          condition = Some(postCommentCondition),
+          steps = Seq(
+            Step.SingleStep(
+              name = "Download Website Artifact",
+              id = Some("download-website"),
+              continueOnError = true,
+              uses = Some(ActionRef(V("actions/download-artifact"))),
+              parameters = Map(
+                "name"         -> Json.Str("website-artifact"),
+                "path"         -> Json.Str("website-artifact"),
+                "run-id"       -> Json.Str("${{ github.event.workflow_run.id }}"),
+                "github-token" -> Json.Str("${{ secrets.GITHUB_TOKEN }}")
+              )
+            ),
+            Step.SingleStep(
+              name = "Download PR Metadata",
+              id = Some("download-pr-metadata"),
+              continueOnError = true,
+              uses = Some(ActionRef(V("actions/download-artifact"))),
+              parameters = Map(
+                "name"         -> Json.Str("pr-metadata"),
+                "path"         -> Json.Str("pr-metadata"),
+                "run-id"       -> Json.Str("${{ github.event.workflow_run.id }}"),
+                "github-token" -> Json.Str("${{ secrets.GITHUB_TOKEN }}")
+              )
+            ),
+            Step.SingleStep(
+              name = "Read PR Number",
+              id = Some("pr"),
+              condition = Some(artifactsDownloaded),
+              run = Some("echo \"number=$(cat pr-metadata/pr-number.txt)\" >> \"$GITHUB_OUTPUT\"")
+            ),
+            Step.SingleStep(
+              name = "Create or Reset Preview Comment",
+              condition = Some(artifactsDownloaded),
+              uses = Some(ActionRef(V("actions/github-script"))),
+              env = Map(
+                "PR_NUMBER" -> "${{ steps.pr.outputs.number }}",
+                "HEAD_SHA"  -> "${{ github.event.workflow_run.head_sha }}"
+              ),
+              parameters = Map(
+                "script" -> Json.Str(
+                  """|const issue_number = parseInt(process.env.PR_NUMBER, 10);
+                     |const sha = process.env.HEAD_SHA;
+                     |const body = [
+                     |  '<!-- netlify-preview-comment -->',
+                     |  `<!-- preview-sha:${sha} -->`,
+                     |  '### 🌐 Website preview',
+                     |  '',
+                     |  `- [ ] **Deploy preview** for commit [\`${sha.slice(0, 7)}\`](https://github.com/${context.repo.owner}/${context.repo.repo}/commit/${sha})`,
+                     |  '',
+                     |  'Tick the checkbox to deploy this commit to Netlify. Previews are not deployed automatically: after a new push, tick the box again.',
+                     |].join('\n');
+                     |
+                     |const comments = await github.paginate(github.rest.issues.listComments, {
+                     |  owner: context.repo.owner,
+                     |  repo: context.repo.repo,
+                     |  issue_number,
+                     |  per_page: 100,
+                     |});
+                     |const existing = comments.find(
+                     |  (c) => c.user.type === 'Bot' && c.body.includes('<!-- netlify-preview-comment -->')
+                     |);
+                     |
+                     |if (existing) {
+                     |  await github.rest.issues.updateComment({
+                     |    owner: context.repo.owner,
+                     |    repo: context.repo.repo,
+                     |    comment_id: existing.id,
+                     |    body,
+                     |  });
+                     |} else {
+                     |  await github.rest.issues.createComment({
+                     |    owner: context.repo.owner,
+                     |    repo: context.repo.repo,
+                     |    issue_number,
+                     |    body,
+                     |  });
+                     |}
+                     |""".stripMargin
+                )
+              )
+            )
+          )
+        ),
+        Job(
+          id = "deploy-preview",
+          name = "deploy-preview",
+          condition = Some(deployCondition),
+          // One deployment at a time per PR, but never cancel one that is already running: the
+          // second tick simply waits for its turn.
+          concurrency = Some(
+            Concurrency(
+              group = "deploy-preview-${{ github.event.issue.number }}",
+              cancelInProgress = CancelInProgress.Never
+            )
+          ),
+          steps = Seq(
+            Step.SingleStep(
+              name = "Check Permission of the Requester",
+              uses = Some(ActionRef(V("actions/github-script"))),
+              parameters = Map(
+                "script" -> Json.Str(
+                  """|const { data } = await github.rest.repos.getCollaboratorPermissionLevel({
+                     |  owner: context.repo.owner,
+                     |  repo: context.repo.repo,
+                     |  username: context.payload.sender.login,
+                     |});
+                     |if (!['admin', 'maintain', 'write'].includes(data.permission)) {
+                     |  core.setFailed(`${context.payload.sender.login} has no write access, refusing to deploy preview.`);
+                     |}
+                     |""".stripMargin
+                )
+              )
+            ),
+            // A 👍 on the comment tells the requester the tick was received. GitHub keeps a single
+            // reaction per user, so on a re-tick (status 200: already there) it is removed and added
+            // again to acknowledge this request too. Purely cosmetic, so it never blocks the deploy.
+            Step.SingleStep(
+              name = "Acknowledge Request",
+              continueOnError = true,
+              uses = Some(ActionRef(V("actions/github-script"))),
+              parameters = Map(
+                "script" -> Json.Str(
+                  """|const params = {
+                     |  owner: context.repo.owner,
+                     |  repo: context.repo.repo,
+                     |  comment_id: context.payload.comment.id,
+                     |};
+                     |const { status, data } = await github.rest.reactions.createForIssueComment({ ...params, content: '+1' });
+                     |if (status === 200) {
+                     |  await github.rest.reactions.deleteForIssueComment({ ...params, reaction_id: data.id });
+                     |  await github.rest.reactions.createForIssueComment({ ...params, content: '+1' });
+                     |}
+                     |""".stripMargin
+                )
+              )
+            ),
+            Step.SingleStep(
+              name = "Find CI Run of the Commit",
+              id = Some("ci"),
+              uses = Some(ActionRef(V("actions/github-script"))),
+              env = Map("COMMENT_BODY" -> "${{ github.event.comment.body }}"),
+              parameters = Map(
+                "script" -> Json.Str(
+                  """|const match = process.env.COMMENT_BODY.match(/<!-- preview-sha:([0-9a-f]{40}) -->/);
+                     |if (!match) {
+                     |  core.setFailed('Cannot find the commit sha in the preview comment.');
+                     |  return;
+                     |}
+                     |const sha = match[1];
+                     |const { data } = await github.rest.actions.listWorkflowRuns({
+                     |  owner: context.repo.owner,
+                     |  repo: context.repo.repo,
+                     |  workflow_id: 'ci.yml',
+                     |  head_sha: sha,
+                     |  event: 'pull_request',
+                     |  status: 'success',
+                     |  per_page: 1,
+                     |});
+                     |if (data.workflow_runs.length === 0) {
+                     |  core.setFailed(`No successful CI run found for commit ${sha}.`);
+                     |  return;
+                     |}
+                     |core.setOutput('sha', sha);
+                     |core.setOutput('run_id', data.workflow_runs[0].id);
+                     |""".stripMargin
+                )
+              )
+            ),
+            Step.SingleStep(
+              name = "Download Website Artifact",
+              uses = Some(ActionRef(V("actions/download-artifact"))),
+              parameters = Map(
+                "name"         -> Json.Str("website-artifact"),
+                "path"         -> Json.Str("website-artifact"),
+                "run-id"       -> Json.Str("${{ steps.ci.outputs.run_id }}"),
+                "github-token" -> Json.Str("${{ secrets.GITHUB_TOKEN }}")
+              )
+            ),
+            Step.SingleStep(
+              name = "Deploy Preview to Netlify",
+              id = Some("netlify-deploy"),
+              uses = Some(ActionRef(V("nwtgck/actions-netlify"))),
+              parameters = Map(
+                "publish-dir"                 -> Json.Str("./website-artifact"),
+                "github-token"                -> Json.Str("${{ secrets.GITHUB_TOKEN }}"),
+                "deploy-message"              -> Json.Str("PR #${{ github.event.issue.number }}"),
+                "alias"                       -> Json.Str("pr-${{ github.event.issue.number }}"),
+                "enable-pull-request-comment" -> Json.Bool(false),
+                "enable-commit-comment"       -> Json.Bool(false)
+              ),
+              env = Map(
+                "NETLIFY_AUTH_TOKEN" -> "${{ secrets.NETLIFY_AUTH_TOKEN }}",
+                "NETLIFY_SITE_ID"    -> "${{ secrets.NETLIFY_SITE_ID }}"
+              )
+            ),
+            Step.SingleStep(
+              name = "Update Preview Comment With Deploy URL",
+              uses = Some(ActionRef(V("actions/github-script"))),
+              env = Map(
+                "SHA"        -> "${{ steps.ci.outputs.sha }}",
+                "DEPLOY_URL" -> "${{ steps.netlify-deploy.outputs.deploy-url }}"
+              ),
+              parameters = Map(
+                "script" -> Json.Str(
+                  """|const sha = process.env.SHA;
+                     |const time = new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+                     |const body = [
+                     |  '<!-- netlify-preview-comment -->',
+                     |  `<!-- preview-sha:${sha} -->`,
+                     |  '### 🌐 Website preview',
+                     |  '',
+                     |  `🚀 Preview deployed to Netlify: ${process.env.DEPLOY_URL}`,
+                     |  '',
+                     |  `🕒 Deployed at: ${time}`,
+                     |  `📌 Commit: [\`${sha.slice(0, 7)}\`](https://github.com/${context.repo.owner}/${context.repo.repo}/commit/${sha})`,
+                     |  '',
+                     |  '- [ ] **Redeploy preview** (tick to deploy this commit again)',
+                     |  '',
+                     |  'Previews are not deployed automatically: after a new push, tick the box again.',
+                     |].join('\n');
+                     |await github.rest.issues.updateComment({
+                     |  owner: context.repo.owner,
+                     |  repo: context.repo.repo,
+                     |  comment_id: context.payload.comment.id,
+                     |  body,
+                     |});
+                     |""".stripMargin
+                )
+              )
+            ),
+            Step.SingleStep(
+              name = "Reset Checkbox on Failure",
+              condition = Some(Condition.Expression("failure()")),
+              uses = Some(ActionRef(V("actions/github-script"))),
+              env = Map(
+                "COMMENT_BODY" -> "${{ github.event.comment.body }}",
+                "RUN_URL"      -> "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+              ),
+              parameters = Map(
+                "script" -> Json.Str(
+                  """|const body = process.env.COMMENT_BODY
+                     |  .replace('- [x]', '- [ ]')
+                     |  .split('\n')
+                     |  .filter((l) => !l.startsWith('⚠️'))
+                     |  .join('\n')
+                     |  .trimEnd() + `\n\n⚠️ Preview deployment failed, see [workflow run](${process.env.RUN_URL}). Tick the box to retry.`;
+                     |await github.rest.issues.updateComment({
+                     |  owner: context.repo.owner,
+                     |  repo: context.repo.repo,
+                     |  comment_id: context.payload.comment.id,
+                     |  body,
+                     |});
+                     |""".stripMargin
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  }
+
+  lazy val generateNetlifyDeployPreviewWorkflowTask: Def.Initialize[Task[Unit]] =
+    Def.task {
+      val baseDir  = (ThisBuild / Keys.baseDirectory).value
+      val enabled  = ciEnableDeployPreview.value
+      val workflow = netlifyDeployPreviewWorkflow.value
+
+      if (enabled)
+        writeWorkflowFile(baseDir, workflow, "deploy-preview.yml")
+      else
+        IO.delete(baseDir / ".github" / "workflows" / "deploy-preview.yml")
+    }
+
+  lazy val releaseDrafterWorkflow: Def.Initialize[Workflow] = Def.setting {
+    // GitHub Actions' `on: push: branches:` list takes literal branch names, not runtime
+    // expressions - unlike `if:` conditions elsewhere in this plugin, it cannot reference
+    // `github.event.repository.default_branch`. So an explicit fallback branch name is needed
+    // here, unlike e.g. `releaseOrSnapshotCondition`'s use of that expression.
+    val branch: Branch = ciReleaseDrafterBranch.value.getOrElse {
+      ciEnabledBranches.value.headOption.map(Branch.Named).getOrElse(Branch.Named("main"))
+    }
+
+    Workflow(
+      name = "Release Drafter",
+      triggers = Seq(Trigger.Push(branches = Seq(branch))),
+      // Least-privilege and explicit, per decision 3 - the community norm (surveyed repos set no
+      // `permissions:` block at all) relies on the repo's default token permissions, which newer
+      // repos increasingly default to read-only, causing a 403 creating the draft release.
+      permissions = Map("contents" -> "write", "pull-requests" -> "read"),
+      jobs = Seq(
+        Job(
+          // Matches release-drafter's own README example and every surveyed repo's job id, so a
+          // repo migrating from a hand-maintained file to this generator sees the same job name
+          // in its Actions run history.
+          id = "update_release_draft",
+          name = "update_release_draft",
+          steps = Seq(
+            Step.SingleStep(
+              name = "Update Release Draft",
+              uses = Some(ActionRef(V("release-drafter/release-drafter"))),
+              env = Map("GITHUB_TOKEN" -> "${{ secrets.GITHUB_TOKEN }}")
+            )
+          )
+        )
+      )
+    )
+  }
+
+  lazy val releaseDrafterConfig: Def.Initialize[ReleaseDrafterConfig] = Def.setting {
+    ReleaseDrafterConfig(
+      categories = ciReleaseDrafterCategories.value,
+      excludeLabels = ciReleaseDrafterExcludeLabels.value,
+      autolabeler = ciReleaseDrafterAutolabeler.value,
+      versionResolver = ciReleaseDrafterVersionResolver.value
+    )
+  }
+
+  lazy val generateReleaseDrafterWorkflowTask: Def.Initialize[Task[Unit]] =
+    Def.task {
+      val baseDir  = (ThisBuild / Keys.baseDirectory).value
+      val enabled  = ciEnableReleaseDrafter.value
+      val workflow = releaseDrafterWorkflow.value
+      val config   = releaseDrafterConfig.value
+
+      // `release-drafter.yml` is a filename many repos already hand-maintain before adopting
+      // this plugin (release-drafter's own README convention). ciEnableReleaseDrafter defaults
+      // to true, so when enabled the plugin adopts (overwrites) a pre-existing hand-maintained
+      // copy, exactly like ci.yml and the other generated workflows - otherwise those repos would
+      // never get the generated workflow by default. When disabled, it only deletes a copy it
+      // created itself, identified by the same "autogenerated" header every generated workflow
+      // carries, so turning the feature off never removes a hand-written file.
+      val workflowFile     = baseDir / ".github" / "workflows" / "release-drafter.yml"
+      val weOwnTheWorkflow = !workflowFile.exists || IO.read(workflowFile).startsWith(AutogeneratedHeaderPrefix)
+
+      if (enabled) {
+        writeWorkflowFile(baseDir, workflow, "release-drafter.yml")
+
+        val configFile = baseDir / ".github" / "release-drafter.yml"
+        if (!configFile.exists) writeGeneratedFile(baseDir, configFile, renderReleaseDrafterConfig(config))
+      } else {
+        if (workflowFile.exists && weOwnTheWorkflow) IO.delete(workflowFile)
+        // .github/release-drafter.yml (the config) is deliberately left alone here - see §5.2/decision 5.
+      }
+    }
+
+  lazy val scalaStewardWorkflow: Def.Initialize[Workflow] = Def.setting {
+    val schedule = ciScalaStewardSchedule.value
+    val timeout  = ciScalaStewardTimeoutMinutes.value
+    val perms    = ciScalaStewardPermissions.value
+    val env      = ciScalaStewardWorkflowEnv.value
+
+    Workflow(
+      name = "Scala Steward",
+      triggers = Seq(Trigger.Schedule(Seq(schedule)), Trigger.WorkflowDispatch()),
+      permissions = perms,
+      jobs = Seq(
+        Job(
+          id = "scala-steward",
+          name = "Scala Steward",
+          jobTimeout = Some(timeout),
+          steps = Seq(
+            Step.SingleStep(
+              name = "Scala Steward",
+              uses = Some(ActionRef(V("scala-steward-org/scala-steward-action"))),
+              env = env,
+              parameters = Map(
+                "github-app-id"              -> Json.Str("${{ secrets.SCALA_STEWARD_GITHUB_APP_ID }}"),
+                "github-app-installation-id" ->
+                  Json.Str("${{ secrets.SCALA_STEWARD_GITHUB_APP_INSTALLATION_ID }}"),
+                "github-app-key"       -> Json.Str("${{ secrets.SCALA_STEWARD_GITHUB_APP_PRIVATE_KEY }}"),
+                "github-app-auth-only" -> Json.Bool(true)
+              )
+            )
+          )
+        )
+      )
+    )
+  }
+
+  lazy val generateScalaStewardWorkflowTask: Def.Initialize[Task[Unit]] =
+    Def.task {
+      val baseDir  = (ThisBuild / Keys.baseDirectory).value
+      val enabled  = ciEnableScalaSteward.value
+      val workflow = scalaStewardWorkflow.value
+      val config   = ciScalaStewardConfig.value
+
+      // Same rule as release-drafter.yml (see generateReleaseDrafterWorkflowTask): adopt a
+      // pre-existing scala-steward.yml when enabled, but when disabled only delete a copy this
+      // plugin generated itself.
+      val workflowFile     = baseDir / ".github" / "workflows" / "scala-steward.yml"
+      val weOwnTheWorkflow = !workflowFile.exists || IO.read(workflowFile).startsWith(AutogeneratedHeaderPrefix)
+
+      if (enabled) {
+        writeWorkflowFile(baseDir, workflow, "scala-steward.yml")
+
+        // At the repo root, not .github/ - matching every ZIO-ecosystem repo's actual layout
+        // (verified directly, not from the action's own doc default).
+        val configFile = baseDir / ".scala-steward.conf"
+        ScalaStewardConfig.render(config).foreach { rendered =>
+          if (!configFile.exists) writeGeneratedFile(baseDir, configFile, rendered)
+        }
+      } else {
+        if (workflowFile.exists && weOwnTheWorkflow) IO.delete(workflowFile)
+        // .scala-steward.conf is deliberately left alone here, always - same as
+        // .github/release-drafter.yml in generateReleaseDrafterWorkflowTask.
+      }
+    }
+
+  lazy val generateDependabotConfigTask: Def.Initialize[Task[Unit]] =
+    Def.task {
+      val baseDir = (ThisBuild / Keys.baseDirectory).value
+      val enabled = ciEnableDependabot.value
+      val config  = ciDependabotConfig.value
+
+      // Same ownership rule as the generated workflows: adopt a pre-existing file when enabled,
+      // but when disabled only delete a copy this plugin generated itself.
+      val file  = baseDir / DependabotConfigFile
+      val weOwn = !file.exists || IO.read(file).startsWith(AutogeneratedHeaderPrefix)
+
+      if (enabled) writeGeneratedFile(baseDir, file, renderDependabotConfig(config))
+      else if (file.exists && weOwn) IO.delete(file)
+    }
+
+  override lazy val buildSettings: Seq[Setting[_]] =
     Seq(
-      ciWorkflowName           := "CI",
-      ciEnabledBranches        := Seq.empty,
-      ciGenerateGithubWorkflow := generateGithubWorkflowTask.value,
-      ciDocsVersioningScheme   := DocsVersioning.SemanticVersioning,
-      ciCheckGithubWorkflow    := checkGithubWorkflowTask.value,
-      ciTargetScalaVersions    := Map.empty,
-      ciTargetMinJavaVersions  := Map.empty,
-      ciJvmOptions             := Seq.empty,
-      ciNodeOptions            := Seq.empty,
-      ciUpdateReadmeCondition  := None,
-      ciGroupSimilarTests      := false,
-      ciExtraTestSteps         := Seq.empty,
-      ciSwapSizeGB             := 0,
-      ciTargetJavaVersions     := Seq("8", "11", "17"),
+      ciWorkflowTitle        := "CI",
+      ciEnabledBranches      := Seq.empty,
+      ciDependencyUpdateBots := Seq(
+        DependencyBot.Dependabot,
+        DependencyBot.Renovate,
+        DependencyBot.ScalaSteward("zio-scala-steward")
+      ),
+      ciGenerateAutoApproveWorkflow := generateAutoApproveWorkflowTask.value,
+      ciGenerateAutoMergeWorkflow   := generateAutoMergeWorkflowTask.value,
+      ciGenerateGithubWorkflow      := Def
+        .sequential(
+          generateGithubWorkflowTask,
+          generateAutoApproveWorkflowTask,
+          generateAutoMergeWorkflowTask,
+          generateRegenerateWorkflowsWorkflowTask,
+          generateNetlifyDeployPreviewWorkflowTask,
+          generateReleaseDrafterWorkflowTask,
+          generateScalaStewardWorkflowTask,
+          generateDependabotConfigTask
+        )
+        .value,
+      ciDocsVersioningScheme  := DocsVersioning.SemanticVersioning,
+      ciCheckGithubWorkflow   := checkGithubWorkflowTask.value,
+      ciTargetScalaVersions   := Map.empty,
+      ciTargetMinJavaVersions := Map.empty,
+      ciJvmOptions            := Seq.empty,
+      ciNodeOptions           := Seq.empty,
+      ciWorkflowEnv           := {
+        val jvmOptions  = Seq("-XX:+PrintCommandLineFlags") ++ ciJvmOptions.value
+        val nodeOptions = ciNodeOptions.value
+
+        Map("JDK_JAVA_OPTIONS" -> jvmOptions.mkString(" ")) ++
+          (if (nodeOptions.nonEmpty) Map("NODE_OPTIONS" -> nodeOptions.mkString(" ")) else Map.empty)
+      },
+      ciWorkflowTriggers := Seq(
+        Trigger.WorkflowDispatch(),
+        Trigger.Release(Seq("published")),
+        Trigger.Push(branches = ciEnabledBranches.value.map(Branch.Named)),
+        Trigger.PullRequest(ignoredBranches = Seq(Branch.Named("gh-pages")))
+      ),
+      ciConcurrency              := Some(Workflow.defaultConcurrency),
+      ciWorkflowPermissions      := Some(Workflow.defaultPermissions),
+      ciUpdateReadmeCondition    := None,
+      ciGroupSimilarTests        := false,
+      ciSwapSizeGB               := 0,
+      ciTargetJavaVersions       := Seq("17", "21", "25"),
       ciCheckArtifactsBuildSteps :=
         Seq(
           Step.SingleStep(
             name = "Check artifacts build process",
-            run = Some("sbt +publishLocal")
+            run = Some(SbtCommand + " +publishLocal")
           )
         ),
       ciCheckWebsiteBuildProcess := CheckWebsiteBuildProcess.value,
+      ciEnableDeployPreview      := false,
+      ciDeployPreviewMode        := DeployPreviewMode.Automatic,
+      ciEnableReleaseDrafter     := true,
+      ciReleaseDrafterCategories := Seq(
+        ReleaseDrafterCategory("🚀 Features", Seq("feature")),
+        ReleaseDrafterCategory("🐛 Bug Fixes", Seq("bug")),
+        ReleaseDrafterCategory("🧰 Maintenance", Seq("build")),
+        ReleaseDrafterCategory("🌱 Dependency Updates", Seq("dependency-update"))
+      ),
+      ciReleaseDrafterVersionResolver  := None,
+      ciReleaseDrafterAutolabeler      := Seq.empty,
+      ciReleaseDrafterExcludeLabels    := Seq("skip-changelog"),
+      ciReleaseDrafterBranch           := None,
+      ciEnableScalaSteward             := true,
+      ciScalaStewardSchedule           := "0 0 * * *",
+      ciScalaStewardTimeoutMinutes     := 45,
+      ciScalaStewardPermissions        := Map("contents" -> "read"),
+      ciScalaStewardWorkflowEnv        := Map.empty,
+      ciScalaStewardConfig             := ScalaStewardConfig(),
+      ciEnableDependabot               := true,
+      ciEnableRegenerateWorkflows      := true,
+      ciDependabotConfig               := DependabotConfig(),
       ciCheckArtifactsCompilationSteps := Seq(
         Step.SingleStep(
           name = "Check all code compiles",
-          run = Some(makePrefixJobs(ciBackgroundJobs.value) + "sbt +Test/compile")
+          run = Some(makePrefixJobs(ciBackgroundJobs.value) + SbtCommand + " +Test/compile")
         )
       ),
       ciCheckGithubWorkflowSteps := Seq(
         Step.SingleStep(
           name = "Check if the site workflow is up to date",
           run = Some(
-            makePrefixJobs(ciBackgroundJobs.value) + "sbt ciCheckGithubWorkflow"
+            makePrefixJobs(ciBackgroundJobs.value) + SbtCommand + " ciCheckGithubWorkflow"
           )
         )
       ),
-      ciBackgroundJobs     := Seq.empty,
-      ciMatrixMaxParallel  := None,
-      ciDefaultJavaVersion := "8",
-      ciBuildJobs          := buildJobs.value,
-      ciLintJobs           := lintJobs.value,
-      ciTestJobs           := testJobs.value,
-      ciUpdateReadmeJobs   := updateReadmeJobs.value,
-      ciReleaseJobs        := releaseJobs.value,
-      ciPostReleaseJobs    := postReleaseJobs.value,
+      ciBackgroundJobs          := Seq.empty,
+      ciMatrixMaxParallel       := None,
+      ciDefaultJavaVersion      := "17",
+      ciPublishSnapshots        := true,
+      ciBuildJobs               := buildJobs.value,
+      ciLintJobs                := lintJobs.value,
+      ciTestJobs                := testJobs.value,
+      ciUpdateReadmeJobs        := updateReadmeJobs.value,
+      ciReportSuccessfulJobs    := reportSuccessfulJobs.value,
+      ciReleaseJobs             := releaseJobs.value,
+      ciPostReleaseJobs         := postReleaseJobs.value,
       ciPullRequestApprovalJobs := Def.setting {
-        val test = ciTestJobs.value.map(_ => "test")
-        Seq("lint") ++ test ++ Seq("build")
+        // The real job ids: a build that renames a job, or adds a second test job, needs the
+        // aggregate job to wait on what actually exists.
+        ciLintJobs.value.map(_.id) ++ ciTestJobs.value.map(_.id) ++ ciBuildJobs.value.map(_.id)
       }.value,
       ciReleaseApprovalJobs := Seq("ci")
     )
-  }
 
   abstract class DocsVersioning(val npmCommand: String)
   object DocsVersioning {
@@ -625,16 +1940,54 @@ object ZioSbtCiPlugin extends AutoPlugin {
     object HashVersioning     extends DocsVersioning("publishHashverToNpm")
   }
 
+  private val WorkflowsDir = ".github/workflows"
+
+  /** Runs git, returning its exit code and stdout lines. */
+  private def git(args: String*): (Int, Seq[String]) = {
+    val out  = scala.collection.mutable.ListBuffer.empty[String]
+    val code = Process("git" +: args) ! ProcessLogger(out += _, _ => ())
+    (code, out.toList)
+  }
+
   lazy val checkGithubWorkflowTask: Def.Initialize[Task[Unit]] =
     Def.task {
       val _ = ciGenerateGithubWorkflow.value
 
-      if ("git diff --exit-code".! == 1) {
+      // Regeneration has just overwritten the workflow files, so anything git still reports as
+      // changed is a difference between what the build produces and what was committed.
+      //
+      // The comparison is deliberately scoped to the workflow directory: a whole-tree `git diff`
+      // reports every unrelated edit in the working copy as workflow drift, which is a confusing
+      // failure for anyone running `sbt lint` locally with work in progress.
+      if (git("rev-parse", "--git-dir")._1 != 0)
         sys.error(
-          "The ci.yml workflow is not up-to-date!\n" +
-            "Please run `sbt ciGenerateGithubWorkflow` and commit new changes."
+          "`ciCheckGithubWorkflow` needs a git repository to compare the generated workflows " +
+            "against, and none was found."
         )
-      }
+
+      // Comparing against HEAD rather than the index, so a staged-but-uncommitted edit still counts.
+      // A repository with no commits yet has no HEAD; there everything is simply untracked.
+      val modified =
+        if (git("rev-parse", "--verify", "--quiet", "HEAD")._1 == 0)
+          git("diff", "--name-only", "HEAD", "--", WorkflowsDir, DependabotConfigFile) match {
+            case (0, files) => files
+            case (code, _)  => sys.error(s"`git diff` exited with $code; cannot verify the workflows.")
+          }
+        else Seq.empty
+
+      val untracked =
+        git("ls-files", "--others", "--exclude-standard", "--", WorkflowsDir, DependabotConfigFile) match {
+          case (0, files) => files
+          case (code, _)  => sys.error(s"`git ls-files` exited with $code; cannot verify the workflows.")
+        }
+
+      val stale = (modified ++ untracked).map(_.trim).filter(_.nonEmpty).distinct.sorted
+
+      if (stale.nonEmpty)
+        sys.error(
+          stale.mkString("These workflow files are not up to date:\n  ", "\n  ", "\n") +
+            "Please run `sbt ciGenerateGithubWorkflow` and commit the result."
+        )
     }
 
   def makePrefixJobs(backgroundJobs: Seq[String]): String =
@@ -649,7 +2002,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
       Step.SingleStep(
         name = "Set Swap Space",
         uses = Some(ActionRef(V("pierotofy/set-swap-space"))),
-        parameters = Map("swap-size-gb" -> swapSizeGB.asJson)
+        parameters = Map("swap-size-gb" -> Json.Num(swapSizeGB))
       )
     }
 
@@ -658,7 +2011,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
       Step.SingleStep(
         name = "Git Checkout",
         uses = Some(ActionRef(V("actions/checkout"))),
-        parameters = Map("fetch-depth" -> "0".asJson)
+        parameters = Map("fetch-depth" -> Json.Str("0"))
       )
     }
 
@@ -667,14 +2020,19 @@ object ZioSbtCiPlugin extends AutoPlugin {
     run = Some("sudo apt-get update && sudo apt-get install -y libuv1-dev")
   )
 
-  def SetupJava(version: String = "8"): Step.SingleStep = Step.SingleStep(
+  def SetupJava(version: String = "17"): Step.SingleStep = Step.SingleStep(
     name = "Setup Scala",
     uses = Some(ActionRef(V("actions/setup-java"))),
     parameters = Map(
-      "distribution" -> "temurin".asJson,
-      "java-version" -> version.asJson,
-      "check-latest" -> true.asJson
+      "distribution" -> Json.Str("corretto"),
+      "java-version" -> Json.Str(version),
+      "check-latest" -> Json.Bool(true)
     )
+  )
+
+  lazy val SetupSBT: Step.SingleStep = Step.SingleStep(
+    name = "Setup SBT",
+    uses = Some(ActionRef(V("sbt/setup-sbt")))
   )
 
   lazy val CacheDependencies: Step.SingleStep = Step.SingleStep(
@@ -690,7 +2048,95 @@ object ZioSbtCiPlugin extends AutoPlugin {
       Seq(
         Step.SingleStep(
           name = "Check website build process",
-          run = Some(prefixJobs + "sbt docs/clean; sbt docs/buildWebsite")
+          run = Some(prefixJobs + SbtCommand + " docs/clean; " + SbtCommand + " docs/buildWebsite")
+        ),
+        // A committed `website/` is built with whatever Docusaurus it pins, which can be too old
+        // to reject what the ZIO website's (zio/zio) current Docusaurus rejects -- duplicate doc
+        // ids, for one. This builds the same docs on a fresh scaffold, as zio/zio does, so the
+        // failure shows up here instead of in a dependency-bump PR there. A no-op when there is
+        // no committed website, since `docs/buildWebsite` then already builds on a fresh one.
+        Step.SingleStep(
+          name = "Check docs build on a fresh ZIO website",
+          run = Some(prefixJobs + SbtCommand + " docs/checkDocsOnFreshWebsite")
+        )
+      )
+    }
+
+  // Only meaningful on a pull_request run: a push or release has no base to diff against, and the
+  // artifact this feeds (`website-artifact`) is only ever consumed by a pull-request-triggered
+  // deploy-preview run.
+  private val isPullRequest: Condition = Condition.Expression("github.event_name == 'pull_request'")
+
+  private val docsOrWebsiteChanged: Condition =
+    Condition.Expression("steps.detect-docs-changes.outputs.changed == 'true'")
+
+  // `website/package.json` is the exact signal `WebsitePlugin.installWebsiteTask` itself keys off
+  // of to decide whether a Docusaurus site is actually scaffolded there, as opposed to a
+  // `website/` directory holding nothing but `mdocOut`'s generated `website/docs` output (see its
+  // comment referencing #749). `docusaurus.config.js` is checked too, so a `website/` with some
+  // other, non-Docusaurus package.json isn't mistaken for an installed site.
+  private val websiteInstalled: Condition =
+    Condition.Expression("steps.check-website-installed.outputs.installed == 'true'")
+
+  lazy val NetlifyPreviewBuildSteps: Def.Initialize[Seq[Step.SingleStep]] =
+    Def.setting {
+      Seq(
+        Step.SingleStep(
+          name = "Check website is installed",
+          id = Some("check-website-installed"),
+          condition = Some(isPullRequest),
+          run = Some(
+            """|if [ -f website/package.json ] && [ -f website/docusaurus.config.js ]; then
+               |  echo "installed=true" >> "$GITHUB_OUTPUT"
+               |else
+               |  echo "installed=false" >> "$GITHUB_OUTPUT"
+               |fi
+               |""".stripMargin
+          )
+        ),
+        Step.SingleStep(
+          name = "Detect docs/website changes",
+          id = Some("detect-docs-changes"),
+          condition = Some(isPullRequest && websiteInstalled),
+          run = Some(
+            // A continuation line whose first non-space character is `|` is misrendered by the
+            // YAML block-scalar writer (the leading `|` and its indentation are silently
+            // dropped), so the `git diff | grep` pipeline stays on one line rather than
+            // continuing onto the next.
+            """|BASE_SHA=${{ github.event.pull_request.base.sha }}
+               |git fetch origin "$BASE_SHA" --depth=1
+               |if git diff --name-only "$BASE_SHA" ${{ github.sha }} | grep -E '^(docs/|website/)' > /dev/null; then
+               |  echo "changed=true" >> "$GITHUB_OUTPUT"
+               |else
+               |  echo "changed=false" >> "$GITHUB_OUTPUT"
+               |fi
+               |""".stripMargin
+          )
+        ),
+        Step.SingleStep(
+          name = "Upload website build artifact",
+          condition = Some(isPullRequest && websiteInstalled && docsOrWebsiteChanged),
+          uses = Some(ActionRef(V("actions/upload-artifact"))),
+          parameters = Map(
+            "name"           -> Json.Str("website-artifact"),
+            "path"           -> Json.Str("./website/build"),
+            "retention-days" -> Json.Num(30),
+            "overwrite"      -> Json.Bool(true)
+          )
+        ),
+        Step.SingleStep(
+          name = "Save PR number",
+          condition = Some(isPullRequest && websiteInstalled),
+          run = Some("mkdir -p pr-metadata && echo ${{ github.event.pull_request.number }} > pr-metadata/pr-number.txt")
+        ),
+        Step.SingleStep(
+          name = "Upload PR metadata",
+          condition = Some(isPullRequest && websiteInstalled),
+          uses = Some(ActionRef(V("actions/upload-artifact"))),
+          parameters = Map(
+            "name" -> Json.Str("pr-metadata"),
+            "path" -> Json.Str("pr-metadata/pr-number.txt")
+          )
         )
       )
     }
@@ -701,7 +2147,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
 
     Step.SingleStep(
       name = "Lint",
-      run = Some(prefixJobs + "sbt lint")
+      run = Some(prefixJobs + SbtCommand + " lint")
     )
   }
 
@@ -712,7 +2158,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
 
     Step.SingleStep(
       name = "Release",
-      run = Some(prefixJobs + "sbt ci-release"),
+      run = Some(prefixJobs + SbtCommand + " ci-release"),
       env = Map(
         "PGP_PASSPHRASE"    -> "${{ secrets.PGP_PASSPHRASE }}",
         "PGP_SECRET"        -> "${{ secrets.PGP_SECRET }}",
@@ -726,8 +2172,8 @@ object ZioSbtCiPlugin extends AutoPlugin {
     name = "Setup NodeJs",
     uses = Some(ActionRef(V("actions/setup-node"))),
     parameters = Map(
-      "node-version" -> "16.x".asJson,
-      "registry-url" -> "https://registry.npmjs.org".asJson
+      "node-version" -> Json.Str("24.12.0"),
+      "registry-url" -> Json.Str("https://registry.npmjs.org")
     )
   )
 
@@ -739,8 +2185,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
 
     Step.SingleStep(
       name = "Publish Docs to NPM Registry",
-      run = Some(prefixJobs + s"sbt docs/${docsVersioning.npmCommand}"),
-      env = Map("NODE_AUTH_TOKEN" -> "${{ secrets.NPM_TOKEN }}")
+      run = Some(prefixJobs + SbtCommand + s" docs/${docsVersioning.npmCommand}")
     )
   }
 
@@ -751,18 +2196,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
 
     Step.SingleStep(
       name = "Generate Readme",
-      run = Some(prefixJobs + "sbt docs/generateReadme")
-    )
-  }
-
-  val CheckReadme: Def.Initialize[SingleStep] = Def.setting {
-    val backgroundJobs = ciBackgroundJobs.value
-
-    val prefixJobs = makePrefixJobs(backgroundJobs)
-
-    Step.SingleStep(
-      name = "Check if the README file is up to date",
-      run = Some(prefixJobs + "sbt docs/checkReadme")
+      run = Some(prefixJobs + SbtCommand + " docs/generateReadme")
     )
   }
 

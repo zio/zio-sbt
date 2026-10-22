@@ -1,2 +1,3 @@
-libraryDependencies += "dev.zio"  %% "zio"        % "2.0.15"
-libraryDependencies += "io.circe" %% "circe-yaml" % "0.14.2"
+libraryDependencies += "dev.zio" %% "zio"           % "2.1.26"
+libraryDependencies += "dev.zio" %% "zio-json"      % "0.9.2"
+libraryDependencies += "dev.zio" %% "zio-json-yaml" % "0.9.2"

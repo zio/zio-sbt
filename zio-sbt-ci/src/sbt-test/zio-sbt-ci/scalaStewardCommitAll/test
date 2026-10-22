@@ -1,0 +1,14 @@
+# Baseline: generate everything, commit it, then delete scala-steward.yml so the repo looks
+# like one that predates the workflow (the zio-logging situation).
+> ciGenerateGithubWorkflow
+> gitInit
+> removeScalaStewardWorkflow
+
+# Regenerating creates scala-steward.yml as a NEW file. Scala Steward then commits with
+# `git commit --all`, which must include it.
+> ciGenerateGithubWorkflow
+> commitAll
+
+# Nothing may be left behind: the drift check passes right after the hook-style commit.
+> ciCheckGithubWorkflow
+> checkWorkflowCommitted

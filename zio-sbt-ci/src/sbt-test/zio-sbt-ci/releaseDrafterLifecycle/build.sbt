@@ -1,0 +1,73 @@
+// Enable/disable/hand-edit-preservation lifecycle for `ciEnableReleaseDrafter`, following
+// `driftCheck`'s pattern of ad hoc `TaskKey`s doing direct `IO.read`/`.exists` assertions, and
+// `workflowTriggers`'s precedent of `set ThisBuild / <key> := ...` taking effect for the very next
+// task invocation in the same scripted session (no `reload` needed - verified against that fixture).
+
+ThisBuild / name := "Test Project"
+
+// spec.md §5.2's "exact default content" - the scaffolded config the very first time the feature
+// is enabled, from the plugin's own default settings (no setting overridden in this fixture).
+val expectedDefaultConfig =
+  """|name-template: v$NEXT_PATCH_VERSION
+     |tag-template: v$NEXT_PATCH_VERSION
+     |categories:
+     |- title: 🚀 Features
+     |  labels:
+     |  - feature
+     |- title: 🐛 Bug Fixes
+     |  labels:
+     |  - bug
+     |- title: 🧰 Maintenance
+     |  labels:
+     |  - build
+     |- title: 🌱 Dependency Updates
+     |  labels:
+     |  - dependency-update
+     |exclude-labels:
+     |- skip-changelog
+     |change-template: '- $TITLE @$AUTHOR (#$NUMBER)'
+     |template: |
+     |  ## Changes
+     |  $CHANGES
+     |""".stripMargin
+
+val handEditMarker = "# hand-edited-marker\n"
+
+lazy val root = (project in file("."))
+  .settings(
+    version := "0.1",
+
+    TaskKey[Unit]("checkWorkflowExists") := {
+      val f = baseDirectory.value / ".github" / "workflows" / "release-drafter.yml"
+      if (!f.exists) sys.error(s"expected $f to exist")
+    },
+
+    TaskKey[Unit]("checkWorkflowAbsent") := {
+      val f = baseDirectory.value / ".github" / "workflows" / "release-drafter.yml"
+      if (f.exists) sys.error(s"expected $f to have been deleted")
+    },
+
+    TaskKey[Unit]("checkConfigExists") := {
+      val f = baseDirectory.value / ".github" / "release-drafter.yml"
+      if (!f.exists) sys.error(s"expected $f to exist")
+      val actual = IO.read(f)
+      if (actual != expectedDefaultConfig)
+        sys.error(
+          s"scaffolded config does not match the expected default content.\n" +
+            s"--- expected ---\n$expectedDefaultConfig\n--- actual ---\n$actual"
+        )
+    },
+
+    TaskKey[Unit]("handEditConfig") := {
+      val f = baseDirectory.value / ".github" / "release-drafter.yml"
+      IO.write(f, IO.read(f) + handEditMarker)
+    },
+
+    TaskKey[Unit]("checkConfigHandEditPreserved") := {
+      val f       = baseDirectory.value / ".github" / "release-drafter.yml"
+      if (!f.exists) sys.error(s"expected $f to exist")
+      val content = IO.read(f)
+      if (!content.contains(handEditMarker))
+        sys.error(s"expected the hand-edit marker to still be present in $f, but it was overwritten:\n$content")
+    }
+  )

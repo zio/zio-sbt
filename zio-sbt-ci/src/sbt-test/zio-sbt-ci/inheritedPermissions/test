@@ -1,0 +1,8 @@
+# Generate the workflows for this configuration.
+> ciGenerateGithubWorkflow
+
+# Nothing the plugin adds by default is left in ci.yml.
+> checkNoPermissionsBlock
+
+# Compare against the recorded golden copy.
+> checkWorkflows

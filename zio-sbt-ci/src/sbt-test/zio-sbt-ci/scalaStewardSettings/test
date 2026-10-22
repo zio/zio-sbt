@@ -1,0 +1,8 @@
+# Generate the workflows and scaffold the config with every scala-steward setting overridden.
+> ciGenerateGithubWorkflow
+
+# Compare the generated scala-steward.yml against its recorded golden copy.
+> checkWorkflows
+
+# Compare the scaffolded .scala-steward.conf against its recorded golden copy.
+> checkConfig
