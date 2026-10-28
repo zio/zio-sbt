@@ -1,5 +1,5 @@
 {
-  description = "Node.js 24.12.0 (prebuilt binary)";
+  description = "Node.js 24.22.1 (prebuilt binary)";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -13,11 +13,11 @@
 
         nodejs_24 = pkgs.stdenv.mkDerivation rec {
           pname = "nodejs";
-          version = "24.12.0";
+          version = "24.22.1";
 
           src = pkgs.fetchurl {
             url = "https://nodejs.org/dist/v${version}/node-v${version}-linux-x64.tar.xz";
-            sha256 = "sha256-vevuJ25Y0O9USPPVrBLGfaqWPdXgqbtiGlPRzvvIUv0=";
+            sha256 = "sha256-bBcqmrZxj3uAH7WnvUhq8u5eMnWAhqBLhPzOKqdwleY=";
           };
 
           nativeBuildInputs = [ pkgs.autoPatchelfHook ];

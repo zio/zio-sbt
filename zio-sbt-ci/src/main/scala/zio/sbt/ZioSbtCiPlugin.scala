@@ -2172,7 +2172,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
     name = "Setup NodeJs",
     uses = Some(ActionRef(V("actions/setup-node"))),
     parameters = Map(
-      "node-version" -> Json.Str("24.12.0"),
+      "node-version" -> Json.Str("24.22.1"),
       "registry-url" -> Json.Str("https://registry.npmjs.org")
     )
   )
