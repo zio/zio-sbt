@@ -7,7 +7,7 @@ object V {
       "zio/generate-github-app-token"          -> "v1.0.0",
       "pierotofy/set-swap-space"               -> "v1.0",
       "actions/checkout"                       -> "v7.0.1",
-      "coursier/cache-action"                  -> "v8.1.1",
+      "coursier/cache-action"                  -> "v8.2.0",
       "actions/setup-java"                     -> "v6.0.1",
       "actions/setup-node"                     -> "v7.0.0",
       "sbt/setup-sbt"                          -> "v1.5.7",
