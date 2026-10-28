@@ -920,18 +920,37 @@ object ZioSbtCiPlugin extends AutoPlugin {
   }
 
   // `gh pr merge --auto` only waits for checks that branch protection *requires*; on a branch
-  // with none it merges at once, before CI has even finished (see zio/zio-process#700). So this
-  // waits for CI itself and merges directly, failing the job - leaving the PR open - on a red
-  // check. The bot workflows' own jobs are excluded, or this would wait on itself forever.
-  // Checks for the new head commit register a few seconds after the push, so "no checks yet" is
-  // treated as pending rather than as success.
-  private def waitForCiScript(ownJobs: Seq[String]): String = {
+  // with none it merges at once, before CI has even finished (see zio/zio-process#700). So when
+  // the base branch requires checks - via classic branch protection or a ruleset, both readable
+  // with the job's token - this hands the PR to GitHub's native auto-merge and exits at once.
+  // Otherwise it waits for CI itself and merges directly, failing the job - leaving the PR open -
+  // on a red check. Waiting is the fallback only: the app token expires after an hour, so a slow
+  // CI run used to outlive it and the loop spun on "0 checks" until the job timed out.
+  // The bot workflows' own jobs are excluded, or this would wait on itself forever. Checks for
+  // the new head commit register a few seconds after the push, so "no checks reported yet" is
+  // treated as pending rather than as success; any other `gh pr checks` error fails the job.
+  private def mergeWhenCiPassesScript(ownJobs: Seq[String]): String = {
     val excluded = ownJobs.map(job => s""".name != "$job"""").mkString(" and ")
 
     s"""|set -euo pipefail
+        |protected=$$(gh api "repos/$$GH_REPO/branches/$$BASE" \\
+        |  --jq '.protection.required_status_checks.contexts | length')
+        |ruleset=$$(gh api "repos/$$GH_REPO/rules/branches/$$BASE" \\
+        |  --jq '[.[] | select(.type == "required_status_checks")] | length')
+        |if [ $$((protected + ruleset)) -gt 0 ]; then
+        |  echo "$$BASE requires status checks, enabling auto-merge"
+        |  gh pr merge --auto --squash "$$PR"
+        |  exit 0
+        |fi
+        |echo "$$BASE has no required status checks, waiting for CI before merging"
         |while true; do
-        |  checks=$$(gh pr checks "$$PR" --json name,bucket \\
-        |    --jq '[.[] | select($excluded)]' 2>/dev/null || true)
+        |  if ! checks=$$(gh pr checks "$$PR" --json name,bucket \\
+        |    --jq '[.[] | select($excluded)]' 2>&1); then
+        |    case "$$checks" in
+        |      *"no checks reported"*) checks='[]' ;;
+        |      *) echo "$$checks" >&2; exit 1 ;;
+        |    esac
+        |  fi
         |  checks=$${checks:-[]}
         |  total=$$(jq length <<< "$$checks")
         |  pending=$$(jq '[.[] | select(.bucket == "pending")] | length' <<< "$$checks")
@@ -1062,8 +1081,11 @@ object ZioSbtCiPlugin extends AutoPlugin {
             Step.SingleStep(
               name = "Merge bot PR once CI passes",
               condition = Some(Condition.Expression("github.event_name == 'pull_request_target'")),
-              run = Some(waitForCiScript(Seq("auto-merge", "auto-approve-bot-prs"))),
-              env = mergeTokenEnv + ("PR" -> "${{ github.event.number }}")
+              run = Some(mergeWhenCiPassesScript(Seq("auto-merge", "auto-approve-bot-prs"))),
+              env = mergeTokenEnv ++ Map(
+                "PR"   -> "${{ github.event.number }}",
+                "BASE" -> "${{ github.event.pull_request.base.ref }}"
+              )
             ),
             Step.SingleStep(
               name = "Backfill auto-merge for existing bot PRs",

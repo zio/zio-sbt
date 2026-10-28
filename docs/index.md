@@ -194,7 +194,7 @@ The default value mirrors the bots used by the `zio/zio` repository: `Seq(Depend
 
 > **Note:**
 >
-> `auto-merge.yml` waits for every check on the PR (other than its own bot jobs) to finish and merges with `gh pr merge --squash` only if none failed, so it is safe on branches without required status checks. A red check fails the job and leaves the PR open. The `workflow_dispatch` backfill still uses `gh pr merge --auto`, which merges immediately on a branch with no required status checks, so configure branch protection with required checks before relying on it.
+> When the PR's base branch requires status checks (through classic branch protection or a ruleset), `auto-merge.yml` enables GitHub's native auto-merge with `gh pr merge --auto --squash` and finishes at once; GitHub merges the PR when the required checks pass. On a branch without required status checks, where `--auto` would merge before CI finishes, it instead waits for every check on the PR (other than its own bot jobs) to finish and merges with `gh pr merge --squash` only if none failed. A red check fails the job and leaves the PR open. The `workflow_dispatch` backfill still uses `gh pr merge --auto`, which merges immediately on a branch with no required status checks, so configure branch protection with required checks before relying on it.
 
 > **Note:**
 >
