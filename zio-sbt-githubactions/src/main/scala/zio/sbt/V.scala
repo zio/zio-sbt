@@ -9,7 +9,7 @@ object V {
       "actions/checkout"                       -> "v7.0.1",
       "coursier/cache-action"                  -> "v8.2.0",
       "actions/setup-java"                     -> "v6.0.1",
-      "actions/setup-node"                     -> "v7.0.0",
+      "actions/setup-node"                     -> "v7.1.0",
       "sbt/setup-sbt"                          -> "v1.5.7",
       "actions/upload-artifact"                -> "v4",
       "actions/download-artifact"              -> "v8",
