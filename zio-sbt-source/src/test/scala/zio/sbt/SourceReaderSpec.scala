@@ -18,11 +18,10 @@ package zio.sbt
 
 import java.nio.file.Files
 
-import zio.Scope
 import zio.test._
 
 object SourceReaderSpec extends ZIOSpecDefault {
-  def spec: Spec[Environment with TestEnvironment with Scope, Any] =
+  def spec: Spec[TestEnvironment, Any] =
     suite("SourceReaderSpec")(
       test("non-existent file returns empty list") {
         val result = SourceReader.commentsAbove("/nonexistent/path/file.scala", 1)

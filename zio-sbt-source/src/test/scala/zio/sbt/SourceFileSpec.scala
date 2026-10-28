@@ -20,7 +20,6 @@ import java.io.{ByteArrayOutputStream, PrintStream}
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 
-import zio.Scope
 import zio.test._
 
 object SourceFileSpec extends ZIOSpecDefault {
@@ -44,7 +43,7 @@ object SourceFileSpec extends ZIOSpecDefault {
     baos.toString(StandardCharsets.UTF_8.name())
   }
 
-  def spec: Spec[Environment with TestEnvironment with Scope, Any] =
+  def spec: Spec[TestEnvironment, Any] =
     suite("SourceFileSpec")(
       suite("fileExtension")(
         test("extracts scala extension") {

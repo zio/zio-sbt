@@ -18,7 +18,6 @@ package zio.sbt
 
 import java.io.{ByteArrayOutputStream, PrintStream}
 
-import zio.Scope
 import zio.test._
 
 object ExprEvalSpec extends ZIOSpecDefault {
@@ -31,7 +30,7 @@ object ExprEvalSpec extends ZIOSpecDefault {
     baos.toString("UTF-8")
   }
 
-  def spec: Spec[Environment with TestEnvironment with Scope, Any] =
+  def spec: Spec[TestEnvironment, Any] =
     suite("ExprEvalSpec")(
       test("single literal expression prints source and result") {
         val output = capture {
