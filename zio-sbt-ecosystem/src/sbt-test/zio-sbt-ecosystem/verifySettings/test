@@ -1,3 +1,5 @@
 > clean
 > compile
-> check 
+> check
+> undeclaredCompileDependenciesTest
+> unusedCompileDependenciesTest

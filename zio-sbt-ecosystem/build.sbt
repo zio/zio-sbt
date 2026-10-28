@@ -1,7 +1,7 @@
 // Linting Plugins
-addSbtPlugin("org.scalameta"    % "sbt-scalafmt"              % "2.6.2")
-addSbtPlugin("ch.epfl.scala"    % "sbt-scalafix"              % "0.14.9")
-addSbtPlugin("com.github.cb372" % "sbt-explicit-dependencies" % "0.3.1")
+addSbtPlugin("org.scalameta"  % "sbt-scalafmt"               % "2.6.2")
+addSbtPlugin("ch.epfl.scala"  % "sbt-scalafix"               % "0.14.9")
+addSbtPlugin("me.mnedokushev" % "sbt2-explicit-dependencies" % "0.2.2")
 
 // Versioning and Release Plugins
 addSbtPlugin("com.eed3si9n"   % "sbt-buildinfo"  % "0.13.2")
@@ -26,15 +26,11 @@ addSbtPlugin("pl.project13.scala" % "sbt-jcstress" % "0.2.0")
 // Binary Compatibility Plugin
 addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "1.2.1")
 
-// None of sbt-explicit-dependencies, sbt-platform-deps, or sbt-jcstress has an sbt-2.x / Scala-3
-// release yet. sbt-jcstress is unused in this module's own source (dropped outright); the other
-// two ARE used (see zio-sbt/PlatformCompat.scala's scala-2.12/scala-3 split for how the code
-// copes), so they are simply omitted here on the Scala-3 axis rather than blocking the whole
-// module's sbt-2.x cross-build on them.
+// sbt-platform-deps and sbt-jcstress are unavailable on the sbt-2.x / Scala-3 axis.
 libraryDependencies := {
   if (scalaBinaryVersion.value == "3")
     libraryDependencies.value
-      .filterNot(m => Set("sbt-explicit-dependencies", "sbt-platform-deps", "sbt-jcstress").contains(m.name))
+      .filterNot(m => Set("sbt-platform-deps", "sbt-jcstress").contains(m.name))
   else
     libraryDependencies.value
 }
