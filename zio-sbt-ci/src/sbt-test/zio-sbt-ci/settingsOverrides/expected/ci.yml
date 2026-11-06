@@ -280,7 +280,7 @@ jobs:
       run: |
         PACKAGE_NAME=$(cat docs/package.json | grep '"name"' | awk -F'"' '{print $4}')
         PACKAGE_VERSION=$(npm view $PACKAGE_NAME version)
-        curl -L \
+        curl -sSL --fail-with-body \
           -X POST \
           -H "Accept: application/vnd.github+json" \
           -H "Authorization: token $NOTIFY_TOKEN"\

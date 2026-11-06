@@ -755,12 +755,14 @@ object ZioSbtCiPlugin extends AutoPlugin {
               "github_repo"     -> Json.Str("zio/zio")
             )
           ),
+          // --fail-with-body (not -f, which discards the response) so an HTTP 4xx/5xx fails the
+          // job and GitHub's error message is still printed, instead of curl exiting 0.
           SingleStep(
             name = "notify the main repo about the new release of docs package",
             env = Map("NOTIFY_TOKEN" -> "${{ steps.generate-token.outputs.token || secrets.PAT_TOKEN }}"),
             run = Some("""|PACKAGE_NAME=$(cat docs/package.json | grep '"name"' | awk -F'"' '{print $4}')
                           |PACKAGE_VERSION=$(npm view $PACKAGE_NAME version)
-                          |curl -L \
+                          |curl -sSL --fail-with-body \
                           |  -X POST \
                           |  -H "Accept: application/vnd.github+json" \
                           |  -H "Authorization: token $NOTIFY_TOKEN"\
