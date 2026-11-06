@@ -737,6 +737,12 @@ object ZioSbtCiPlugin extends AutoPlugin {
           // scoped to only the repository the workflow is running in. A minted app token works
           // only if that app is installed on zio/zio too; PAT_TOKEN remains the fallback for repos
           // relying on it (or where the app lacks that installation).
+          //
+          // github_repo must be zio/zio: the action defaults it to the current repository and
+          // mints a token restricted to that repository only, which GitHub rejects on the
+          // zio/zio dispatch endpoint with 403 "Resource not accessible by integration". Scoping
+          // to zio/zio (rather than using the action's `unscoped_token` output, which covers every
+          // repository the installation can reach) keeps the token least-privilege.
           checkAppTokenStep,
           SingleStep(
             name = "Generate Token",
@@ -745,15 +751,18 @@ object ZioSbtCiPlugin extends AutoPlugin {
             uses = Some(ActionRef(V("zio/generate-github-app-token"))),
             parameters = Map(
               "app_id"          -> Json.Str("${{ secrets.APP_ID }}"),
-              "app_private_key" -> Json.Str("${{ secrets.APP_PRIVATE_KEY }}")
+              "app_private_key" -> Json.Str("${{ secrets.APP_PRIVATE_KEY }}"),
+              "github_repo"     -> Json.Str("zio/zio")
             )
           ),
+          // --fail-with-body (not -f, which discards the response) so an HTTP 4xx/5xx fails the
+          // job and GitHub's error message is still printed, instead of curl exiting 0.
           SingleStep(
             name = "notify the main repo about the new release of docs package",
             env = Map("NOTIFY_TOKEN" -> "${{ steps.generate-token.outputs.token || secrets.PAT_TOKEN }}"),
             run = Some("""|PACKAGE_NAME=$(cat docs/package.json | grep '"name"' | awk -F'"' '{print $4}')
                           |PACKAGE_VERSION=$(npm view $PACKAGE_NAME version)
-                          |curl -L \
+                          |curl -sSL --fail-with-body \
                           |  -X POST \
                           |  -H "Accept: application/vnd.github+json" \
                           |  -H "Authorization: token $NOTIFY_TOKEN"\
