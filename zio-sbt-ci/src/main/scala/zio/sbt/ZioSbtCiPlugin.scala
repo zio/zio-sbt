@@ -737,6 +737,12 @@ object ZioSbtCiPlugin extends AutoPlugin {
           // scoped to only the repository the workflow is running in. A minted app token works
           // only if that app is installed on zio/zio too; PAT_TOKEN remains the fallback for repos
           // relying on it (or where the app lacks that installation).
+          //
+          // github_repo must be zio/zio: the action defaults it to the current repository and
+          // mints a token restricted to that repository only, which GitHub rejects on the
+          // zio/zio dispatch endpoint with 403 "Resource not accessible by integration". Scoping
+          // to zio/zio (rather than using the action's `unscoped_token` output, which covers every
+          // repository the installation can reach) keeps the token least-privilege.
           checkAppTokenStep,
           SingleStep(
             name = "Generate Token",
@@ -745,7 +751,8 @@ object ZioSbtCiPlugin extends AutoPlugin {
             uses = Some(ActionRef(V("zio/generate-github-app-token"))),
             parameters = Map(
               "app_id"          -> Json.Str("${{ secrets.APP_ID }}"),
-              "app_private_key" -> Json.Str("${{ secrets.APP_PRIVATE_KEY }}")
+              "app_private_key" -> Json.Str("${{ secrets.APP_PRIVATE_KEY }}"),
+              "github_repo"     -> Json.Str("zio/zio")
             )
           ),
           SingleStep(

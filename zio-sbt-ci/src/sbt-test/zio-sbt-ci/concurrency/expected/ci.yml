@@ -266,6 +266,7 @@ jobs:
       with:
         app_id: ${{ secrets.APP_ID }}
         app_private_key: ${{ secrets.APP_PRIVATE_KEY }}
+        github_repo: zio/zio
     - name: notify the main repo about the new release of docs package
       run: |
         PACKAGE_NAME=$(cat docs/package.json | grep '"name"' | awk -F'"' '{print $4}')
