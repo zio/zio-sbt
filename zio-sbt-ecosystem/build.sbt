@@ -1,6 +1,6 @@
 // Linting Plugins
 addSbtPlugin("org.scalameta"  % "sbt-scalafmt"               % "2.6.2")
-addSbtPlugin("ch.epfl.scala"  % "sbt-scalafix"               % "0.14.9")
+addSbtPlugin("ch.epfl.scala"  % "sbt-scalafix"               % "0.14.10")
 addSbtPlugin("me.mnedokushev" % "sbt2-explicit-dependencies" % "0.2.2")
 
 // Versioning and Release Plugins
