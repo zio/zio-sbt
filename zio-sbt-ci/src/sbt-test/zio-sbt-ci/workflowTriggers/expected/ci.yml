@@ -28,8 +28,6 @@ jobs:
       uses: actions/checkout@v7.0.1
       with:
         fetch-depth: '0'
-    - name: Install libuv
-      run: sudo apt-get update && sudo apt-get install -y libuv1-dev
     - name: Setup Scala
       uses: actions/setup-java@v6.2.0
       with:
@@ -57,8 +55,6 @@ jobs:
       uses: actions/checkout@v7.0.1
       with:
         fetch-depth: '0'
-    - name: Install libuv
-      run: sudo apt-get update && sudo apt-get install -y libuv1-dev
     - name: Setup Scala
       uses: actions/setup-java@v6.2.0
       with:
@@ -85,8 +81,6 @@ jobs:
         - '21'
         - '25'
     steps:
-    - name: Install libuv
-      run: sudo apt-get update && sudo apt-get install -y libuv1-dev
     - name: Setup Scala
       uses: actions/setup-java@v6.2.0
       with:
@@ -116,8 +110,6 @@ jobs:
       uses: actions/checkout@v7.0.1
       with:
         fetch-depth: '0'
-    - name: Install libuv
-      run: sudo apt-get update && sudo apt-get install -y libuv1-dev
     - name: Setup Scala
       uses: actions/setup-java@v6.2.0
       with:
@@ -192,8 +184,6 @@ jobs:
       uses: actions/checkout@v7.0.1
       with:
         fetch-depth: '0'
-    - name: Install libuv
-      run: sudo apt-get update && sudo apt-get install -y libuv1-dev
     - name: Setup Scala
       uses: actions/setup-java@v6.2.0
       with:
@@ -223,8 +213,6 @@ jobs:
       uses: actions/checkout@v7.0.1
       with:
         fetch-depth: '0'
-    - name: Install libuv
-      run: sudo apt-get update && sudo apt-get install -y libuv1-dev
     - name: Setup Scala
       uses: actions/setup-java@v6.2.0
       with:

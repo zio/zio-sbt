@@ -307,7 +307,6 @@ object ZioSbtCiPlugin extends AutoPlugin {
           (if (swapSizeGB > 0) Seq(setSwapSpace) else Seq.empty) ++
             Seq(
               checkout,
-              SetupLibuv,
               SetupJava(javaVersion),
               SetupSBT,
               CacheDependencies
@@ -331,7 +330,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
         id = "lint",
         name = "Lint",
         steps = (if (swapSizeGB > 0) Seq(setSwapSpace) else Seq.empty) ++
-          Seq(checkout, SetupLibuv, SetupJava(javaVersion), SetupSBT, CacheDependencies) ++ checkGithubWorkflow ++ Seq(
+          Seq(checkout, SetupJava(javaVersion), SetupSBT, CacheDependencies) ++ checkGithubWorkflow ++ Seq(
             lint
           )
       )
@@ -372,7 +371,6 @@ object ZioSbtCiPlugin extends AutoPlugin {
         ),
         steps = {
           (if (swapSizeGB > 0) Seq(setSwapSpace) else Seq.empty) ++ Seq(
-            SetupLibuv,
             SetupJava("${{ matrix.java }}"),
             SetupSBT,
             CacheDependencies,
@@ -453,7 +451,6 @@ object ZioSbtCiPlugin extends AutoPlugin {
         ),
         steps = (if (swapSizeGB > 0) Seq(setSwapSpace) else Seq.empty) ++
           Seq(
-            SetupLibuv,
             SetupJava("${{ matrix.java }}"),
             SetupSBT,
             CacheDependencies,
@@ -493,7 +490,6 @@ object ZioSbtCiPlugin extends AutoPlugin {
         ),
         steps = (if (swapSizeGB > 0) Seq(setSwapSpace) else Seq.empty) ++
           Seq(
-            SetupLibuv,
             SetupJava("${{ matrix.java }}"),
             SetupSBT,
             CacheDependencies,
@@ -574,7 +570,6 @@ object ZioSbtCiPlugin extends AutoPlugin {
         steps = (if (swapSizeGB > 0) Seq(setSwapSpace) else Seq.empty) ++
           Seq(
             checkout,
-            SetupLibuv,
             SetupJava(javaVersion),
             SetupSBT,
             CacheDependencies,
@@ -687,7 +682,6 @@ object ZioSbtCiPlugin extends AutoPlugin {
         steps = (if (swapSizeGB > 0) Seq(setSwapSpace) else Seq.empty) ++
           Seq(
             checkout,
-            SetupLibuv,
             SetupJava(javaVersion),
             SetupSBT,
             CacheDependencies,
@@ -715,7 +709,6 @@ object ZioSbtCiPlugin extends AutoPlugin {
             Step.StepSequence(
               Seq(
                 checkout,
-                SetupLibuv,
                 SetupJava(javaVersion),
                 SetupSBT,
                 CacheDependencies,
@@ -2046,6 +2039,10 @@ object ZioSbtCiPlugin extends AutoPlugin {
       )
     }
 
+  @deprecated(
+    "No longer added to any generated job: Scala Native does not need libuv, and the apt install made CI depend on the Ubuntu mirror. Remove it from custom jobs.",
+    "0.8.9"
+  )
   lazy val SetupLibuv: Step.SingleStep = Step.SingleStep(
     name = "Install libuv",
     run = Some("sudo apt-get update && sudo apt-get install -y libuv1-dev")

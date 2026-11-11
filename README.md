@@ -446,7 +446,7 @@ produce, so replacing `test` with `integration-test` above is enough on its own.
 ciPullRequestApprovalJobs := Seq("lint", "integration-test")
 ```
 
-`Checkout`, `SetupLibuv`, `SetupJava(version)`, `SetupSBT`, `CacheDependencies`, `SetupNodeJs` and `SetSwapSpace` are all available; the ones defined as settings need `.value`.
+`Checkout`, `SetupJava(version)`, `SetupSBT`, `CacheDependencies`, `SetupNodeJs` and `SetSwapSpace` are all available; the ones defined as settings need `.value`. (`SetupLibuv` is deprecated and no longer used by the generated jobs; Scala Native does not need libuv, so drop it from custom jobs.)
 
 ### A Workflow of Only Custom Jobs
 
@@ -667,8 +667,6 @@ test:
     matrix:
       java: ['17', '21', '25']
   steps:
-  - name: Install libuv
-    run: sudo apt-get update && sudo apt-get install -y libuv1-dev
   - name: Setup Scala
     uses: actions/setup-java@v5
     with:
@@ -736,8 +734,6 @@ test:
       - ++2.13.18 submoduleB
       - ++3.3.7 submoduleB
   steps:
-  - name: Install libuv
-    run: sudo apt-get update && sudo apt-get install -y libuv1-dev
   - name: Setup Scala
     uses: actions/setup-java@v5
     with:
