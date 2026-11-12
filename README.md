@@ -158,7 +158,7 @@ This will generate a GitHub workflow file inside the `.github/workflows` directo
 | `update-readme` | Regenerates `README.md` from `docs/index.md` and opens a PR |
 | `ci` | Aggregate gate: succeeds only if the jobs above did. Point branch protection at this one |
 | `release` | Runs `sbt ci-release` on a published release, and on pushes to enabled branches for SNAPSHOTs |
-| `release-docs` | Publishes the docs to npm |
+| `release-docs` | Publishes the docs to npm after a successful `release`, or on a manual run with `docs-only` set to `true` |
 | `notify-docs-release` | Tells `zio/zio` to rebuild the docs site |
 
 Note that the plugin declares `trigger = allRequirements`, so having it on the classpath is enough — `enablePlugins(ZioSbtCiPlugin)` is not strictly required. Its settings are defined at `ThisBuild` level, so set them as `ThisBuild / ciSomething := ...`, or inside `inThisBuild(...)`.
@@ -166,6 +166,22 @@ Note that the plugin declares `trigger = allRequirements`, so having it on the c
 > **Note:**
 > 
 > To use this plugin, we also need to install [ZIO Assistant](https://github.com/apps/zio-assistant) bot.
+
+### Publishing a Release's Docs Again
+
+`release-docs` needs `release`, and Maven Central rejects a version it already has. So when `release` has published a version but `release-docs` failed (for example, because the npm package was not set up yet), running `release` again fails with `already exists` and the docs are skipped again.
+
+To publish the docs without the Maven release, run the CI workflow by hand with the `docs-only` input set to `true`:
+
+```bash
+gh workflow run ci.yml --ref main -f docs-only=true
+```
+
+Or open **Actions → CI → Run workflow**, pick the branch, and type `true` in `docs-only`. The `release` job is skipped, `release-docs` publishes the docs, and `notify-docs-release` runs once they are published. The docs version is the newest `v*` tag in the repository; the docs content comes from the branch or tag the workflow runs on.
+
+The run uses the `ci.yml` of that branch or tag, so the input is only there once the workflow has been regenerated with this version of the plugin. Every `workflow_dispatch` trigger of `ci.yml` gets the input, including one in a custom `ciWorkflowTriggers`, as long as the workflow has a `release-docs` job.
+
+If the failure is caught right away, **Re-run failed jobs** on the original run also works: it keeps the successful `release` result and only runs `release-docs` and `notify-docs-release` again. **Re-run all jobs** runs `release` again and fails.
 
 ### Auto-Approving and Auto-Merging Dependency Update PRs
 
