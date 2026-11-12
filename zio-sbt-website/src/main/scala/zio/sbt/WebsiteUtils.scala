@@ -140,7 +140,9 @@ object WebsiteUtils {
          |[//]: # (So please do not edit it manually. Instead, change "docs/index.md" file or sbt setting keys)
          |[//]: # (e.g. "readmeDocumentation" and "readmeSupport".)
          |""".stripMargin
-    val introductionSection    = s"\n# $projectName\n\n$introduction\n"
+    // A banner (usually a logo) already shows the project name, so skip the "# <projectName>" title.
+    val introductionSection =
+      if (banner.trim.nonEmpty) s"\n$introduction\n" else s"\n# $projectName\n\n$introduction\n"
     val creditsSection         = if (credits.nonEmpty) s"\n## Credits\n\n$credits\n" else ""
     val supportSection         = s"\n## Support\n\n$support\n"
     val codeOfConductSection   = s"\n## Code of Conduct\n\n$codeOfConduct\n"
