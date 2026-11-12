@@ -64,7 +64,9 @@ object ZioSbtCiPlugin extends AutoPlugin {
           "pushes (to `ciEnabledBranches` if set, otherwise to every branch), and pull requests not " +
           "targeting gh-pages. Worth narrowing if a job's condition would let a manual run do " +
           "something it should not, such as release. Must not be empty: a workflow with no `on:` " +
-          "block is rejected by GitHub"
+          "block is rejected by GitHub. When the workflow has a `release-docs` job, every " +
+          "`workflow_dispatch` trigger gets a `docs-only` input, which publishes a release's docs " +
+          "without running the Maven release"
       )
     val ciConcurrency: SettingKey[Option[Concurrency]] =
       settingKey[Option[Concurrency]](
@@ -664,6 +666,49 @@ object ZioSbtCiPlugin extends AutoPlugin {
         Condition.Expression("github.ref == format('refs/heads/{0}', github.event.repository.default_branch)"))
     )
 
+  // A manual run with `docs-only` set to `true` publishes a release's docs without running the
+  // Maven release. Maven Central rejects a version it already has, so once `release` has published,
+  // every later run of it fails with "already exists" - and `release-docs`, which needs it, is
+  // skipped for good. A release whose docs step failed (say, npm was not set up yet) could then only
+  // get its docs by cutting a new version. See zio/zio-sbt#869.
+  //
+  // The input is read through `github.event.inputs` rather than the `inputs` context: the latter is
+  // type-checked by actionlint against the declared inputs, which a build's own
+  // `ciWorkflowTriggers` may not declare. For any event other than `workflow_dispatch` the value is
+  // empty, so the comparisons below hold or fail the same way they would without the input.
+  private[sbt] val DocsOnlyInputKey = "docs-only"
+
+  private[sbt] val docsOnlyInput: Input = Input(
+    key = DocsOnlyInputKey,
+    description = "Set to true to skip the Maven release and only publish the docs to npm and notify zio/zio, " +
+      "for a version Maven Central already has",
+    required = false,
+    defaultValue = "false"
+  )
+
+  private val docsOnlyRequested: Condition =
+    Condition.Expression("github.event_name == 'workflow_dispatch'") &&
+      Condition.Expression(s"github.event.inputs.$DocsOnlyInputKey == 'true'")
+
+  private val docsOnlyNotRequested: Condition =
+    Condition.Expression(s"github.event.inputs.$DocsOnlyInputKey != 'true'")
+
+  /**
+   * Adds the `docs-only` input to every `workflow_dispatch` trigger of the CI
+   * workflow that lacks it, so the "Run workflow" form always offers the switch
+   * the release jobs check for - including in a build that sets its own
+   * `ciWorkflowTriggers`. Does nothing when the workflow has no `release-docs`
+   * job for the switch to run.
+   */
+  private[sbt] def withDocsOnlyInput(triggers: Seq[Trigger], jobs: Seq[Job]): Seq[Trigger] =
+    if (!jobs.exists(_.id == "release-docs")) triggers
+    else
+      triggers.map {
+        case dispatch: Trigger.WorkflowDispatch if !dispatch.inputs.exists(_.key == DocsOnlyInputKey) =>
+          Trigger.WorkflowDispatch(dispatch.inputs :+ docsOnlyInput)
+        case other => other
+      }
+
   lazy val releaseJobs: Def.Initialize[Seq[Job]] = Def.setting {
     val swapSizeGB       = ciSwapSizeGB.value
     val setSwapSpace     = SetSwapSpace.value
@@ -678,7 +723,9 @@ object ZioSbtCiPlugin extends AutoPlugin {
         id = "release",
         name = "Release",
         need = jobs,
-        condition = if (publishSnapshots) releaseOrSnapshotCondition else releaseCondition,
+        // Skipped on a docs-only run: the version is already on Maven Central.
+        condition = (if (publishSnapshots) releaseOrSnapshotCondition else releaseCondition)
+          .map(_ && docsOnlyNotRequested),
         steps = (if (swapSizeGB > 0) Seq(setSwapSpace) else Seq.empty) ++
           Seq(
             checkout,
@@ -703,7 +750,15 @@ object ZioSbtCiPlugin extends AutoPlugin {
         id = "release-docs",
         name = "Release Docs",
         need = Seq("release"),
-        condition = releaseCondition,
+        // Without a status function GitHub skips this job whenever `release` did not succeed,
+        // which is also what a docs-only run does to `release` on purpose. `!cancelled()` lets the
+        // condition decide instead: run after a successful release, or on a docs-only run. A
+        // release that failed still keeps the docs back, and `releaseCondition` still keeps them
+        // off snapshot pushes.
+        condition = releaseCondition.map(
+          Condition.Expression("!cancelled()") && _ &&
+            (Condition.Expression("needs.release.result == 'success'") || docsOnlyRequested)
+        ),
         steps = (if (swapSizeGB > 0) Seq(setSwapSpace) else Seq.empty) ++
           Seq(
             Step.StepSequence(
@@ -722,7 +777,13 @@ object ZioSbtCiPlugin extends AutoPlugin {
         id = "notify-docs-release",
         name = "Notify Docs Release",
         need = Seq("release-docs"),
-        condition = releaseCondition,
+        // The implicit `success()` checks every job upstream, not only `release-docs`, so on a
+        // docs-only run the skipped `release` would skip this job too. Ask for the docs result
+        // directly.
+        condition = releaseCondition.map(
+          Condition.Expression("!cancelled()") && _ &&
+            Condition.Expression("needs.release-docs.result == 'success'")
+        ),
         steps = Seq(
           checkout,
           // Unlike the auto-merge app-token fallback, this has no GITHUB_TOKEN path to fall back
@@ -882,15 +943,17 @@ object ZioSbtCiPlugin extends AutoPlugin {
             "GitHub requires at least one trigger."
         )
 
+      val jobs =
+        buildJobs ++ lintJobs ++ testJobs ++ updateReadmeJobs ++ reportSuccessful ++ releaseJobs ++ postReleaseJobs
+
       val workflow = {
         val base = Workflow(
           name = workflowName,
           env = workflowEnv,
           concurrency = concurrency,
-          triggers = triggers,
+          triggers = withDocsOnlyInput(triggers, jobs),
           permissions = permissions.getOrElse(Workflow.defaultPermissions),
-          jobs =
-            buildJobs ++ lintJobs ++ testJobs ++ updateReadmeJobs ++ reportSuccessful ++ releaseJobs ++ postReleaseJobs
+          jobs = jobs
         )
 
         if (permissions.isEmpty) base.withoutPermissions else base
