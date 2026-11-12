@@ -1,0 +1,8 @@
+# Custom triggers: the dispatch trigger keeps its own input and gains docs-only after it.
+> ciGenerateGithubWorkflow
+> checkWorkflows
+
+# No release-docs job: no docs-only input, and the build's own input is untouched.
+> set ThisBuild / ciPostReleaseJobs := Seq.empty
+> ciGenerateGithubWorkflow
+> checkNoDocsOnlyInput
