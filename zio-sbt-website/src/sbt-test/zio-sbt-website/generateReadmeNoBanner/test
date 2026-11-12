@@ -1,0 +1,7 @@
+# Without readmeBanner, generateReadme keeps the "# <projectName>" title heading.
+
+> generateReadme
+
+$ exists README.md
+$ exec grep -qx '# ZIO SBT' README.md
+$ exec grep -q 0.1.0 README.md
