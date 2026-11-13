@@ -80,7 +80,10 @@ object Trigger {
     inputs: Chunk[Input]
   ) extends Trigger {
     override def toKeyValuePair: (String, Json) = {
-      val inputsMap = inputs.map { i =>
+      // GitHub reads the inputs from an `inputs` key under `workflow_dispatch`; inputs placed
+      // directly under it are not offered on the "Run workflow" form. Json.Obj keeps them in the
+      // order they were declared, which is the order the form lists them in.
+      val inputsObj = Json.Obj(inputs.map { i =>
         (
           i.key,
           Json.Obj(
@@ -89,8 +92,8 @@ object Trigger {
             ("default", Json.Str(i.defaultValue))
           )
         )
-      }.toMap
-      ("workflow_dispatch", inputsMap.toJsonAST.getOrElse(Json.Null))
+      })
+      ("workflow_dispatch", if (inputs.isEmpty) Json.Obj() else Json.Obj("inputs" -> inputsObj))
     }
   }
 
