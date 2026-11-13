@@ -1,0 +1,11 @@
+# When readmeBanner is set, generateReadme must not emit the "# <projectName>"
+# title heading, otherwise a logo banner shows the project name twice
+# (https://github.com/zio/zio-sbt/issues/868).
+
+> generateReadme
+
+$ exists README.md
+$ exec grep -q BANNER-MARKER README.md
+-$ exec grep -qx '# ZIO SBT' README.md
+# the introduction from docs/index.md is still present
+$ exec grep -q 0.1.0 README.md

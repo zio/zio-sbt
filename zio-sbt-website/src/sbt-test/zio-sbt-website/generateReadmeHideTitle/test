@@ -1,0 +1,8 @@
+# readmeShowTitle := Some(false) hides the "# <projectName>" heading even
+# when no readmeBanner is set.
+
+> generateReadme
+
+$ exists README.md
+-$ exec grep -qx '# ZIO SBT' README.md
+$ exec grep -q 0.1.0 README.md

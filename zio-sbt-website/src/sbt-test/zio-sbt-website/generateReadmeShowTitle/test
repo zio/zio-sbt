@@ -1,0 +1,8 @@
+# readmeShowTitle := Some(true) forces the "# <projectName>" heading even when
+# readmeBanner is set.
+
+> generateReadme
+
+$ exists README.md
+$ exec grep -q BANNER-MARKER README.md
+$ exec grep -qx '# ZIO SBT' README.md
