@@ -55,9 +55,12 @@ object WebsitePlugin extends sbt.AutoPlugin {
         "Artifact id used in version badges (default: mainModuleName_scalaBinaryVersion). " +
           "Override it for artifacts with non-standard coordinates, e.g. sbt plugins (name_2.12_1.0)."
       )
-    val ciWorkflowName: SettingKey[String]                 = settingKey[String]("CI Workflow Name")
-    val projectHomePage: SettingKey[String]                = settingKey[String]("Project home page url e.g. https://zio.dev/zio-sbt")
-    val readmeBanner: SettingKey[String]                   = settingKey[String]("Readme banner section")
+    val ciWorkflowName: SettingKey[String]           = settingKey[String]("CI Workflow Name")
+    val projectHomePage: SettingKey[String]          = settingKey[String]("Project home page url e.g. https://zio.dev/zio-sbt")
+    val readmeBanner: SettingKey[String]             = settingKey[String]("Readme banner section")
+    val readmeShowTitle: SettingKey[Option[Boolean]] = settingKey[Option[Boolean]](
+      "Whether the generated README starts with a '# <projectName>' heading. None (default): shown unless readmeBanner is set"
+    )
     val readmeDocumentation: SettingKey[String]            = settingKey[String]("Readme documentation section")
     val readmeContribution: SettingKey[String]             = settingKey[String]("Readme contribution section")
     val readmeCodeOfConduct: SettingKey[String]            = settingKey[String]("Readme code of conduct")
@@ -150,6 +153,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
       readmeCodeOfConduct     := readmeCodeOfConductSection,
       readmeCredits           := "",
       readmeBanner            := "",
+      readmeShowTitle         := None,
       readmeMaintainers       := "",
       ciWorkflowName          := "CI",
       docsVersioningScheme    := VersioningScheme.SemanticVersioning,
@@ -585,6 +589,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
                 WebsiteUtils.generateReadme(
                   projectName = projectName.value,
                   banner = readmeBanner.value,
+                  showTitle = readmeShowTitle.value,
                   introduction = prefixUrlsWith(introduction, "docs/").trim,
                   documentation = readmeDocumentation.value.trim,
                   codeOfConduct = readmeCodeOfConduct.value.trim,
