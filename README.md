@@ -37,7 +37,7 @@ Then you can enable them by using the following code in your `build.sbt` file:
 
 ```scala
 enablePlugins(
-  ZioSbtWebsitePlugin,
+  WebsitePlugin,
   ZioSbtEcosystemPlugin,
   ZioSbtCiPlugin
 )
