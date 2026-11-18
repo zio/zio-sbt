@@ -82,9 +82,9 @@ sidebar_label: "Introduction"
 ---
 
 ZIO Greeter greets people.
-
-@PROJECT_BADGES@
 ```
+
+Writing `@PROJECT_BADGES@` on its own line of the introduction adds the stage, CI and release badges to the page and to the README.
 
 Compile the docs and create the website:
 
