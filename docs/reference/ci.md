@@ -17,7 +17,7 @@ To use the plugin, install the [ZIO Assistant](https://github.com/apps/zio-assis
 
 | File                                       | Generated when                                                                              |
 | ------------------------------------------ | ------------------------------------------------------------------------------------------- |
-| `.github/workflows/ci.yml`                 | Always. The file name is the lower-cased `ciWorkflowTitle`                                  |
+| `.github/workflows/ci.yml`                 | Always. The file name is `ciWorkflowTitle` lower-cased, with non-alphanumeric characters turned into `-` |
 | `.github/workflows/auto-approve.yml`       | Always                                                                                      |
 | `.github/workflows/auto-merge.yml`         | Always                                                                                      |
 | `.github/workflows/deploy-preview.yml`     | `ciEnableDeployPreview` is `true`                                                           |
@@ -37,7 +37,7 @@ The generated `ci.yml` contains these jobs:
 | `test` | Runs the test suite across the target Java versions |
 | `update-readme` | Regenerates `README.md` from `docs/index.md` and opens a PR |
 | `ci` | Aggregate gate: succeeds only if the jobs above did. Point branch protection at this one |
-| `release` | Runs `sbt ci-release` on a published release, and on pushes to enabled branches for SNAPSHOTs |
+| `release` | Runs `sbt ci-release` on a published release or a manual run, and on pushes to the default branch for SNAPSHOTs |
 | `release-docs` | Publishes the docs to npm after a successful `release`, or on a manual run with `docs-only` set to `true` |
 | `notify-docs-release` | Dispatches an `update-docs` event to `zio/zio` with the docs package name and version, so the ZIO website picks up the new docs |
 
@@ -61,7 +61,7 @@ All settings are `ThisBuild`-scoped.
 
 | Setting | Type | Default | Description |
 | --- | --- | --- | --- |
-| `ciWorkflowTitle` | `String` | `"CI"` | Workflow name, lowercased to form the filename (`ci.yml`). Named this way to avoid colliding with zio-sbt-website's `ciWorkflowName`, which sets the README badge |
+| `ciWorkflowTitle` | `String` | `"CI"` | Workflow name. The file name is its lower-cased form with each run of non-alphanumeric characters replaced by `-` (`ci.yml` for `CI`). Named this way to avoid colliding with zio-sbt-website's `ciWorkflowName`, which sets the README badge |
 | `ciEnabledBranches` | `Seq[String]` | `Seq.empty` | Branches the workflow runs on. Empty means every branch |
 | `ciWorkflowEnv` | `Map[String, String]` | derived from `ciJvmOptions`/`ciNodeOptions` | Workflow-level environment. Assigning **replaces** the derived map, which is how a build opts out of `JDK_JAVA_OPTIONS` |
 | `ciJvmOptions` | `Seq[String]` | `Seq.empty` | Appended to `JDK_JAVA_OPTIONS` |
@@ -116,7 +116,7 @@ All settings are `ThisBuild`-scoped.
 | `ciReleaseApprovalJobs` | `Seq[String]` | `Seq("ci")` | Job ids the release waits on |
 | `ciCheckArtifactsCompilationSteps` | `Seq[Step]` | `sbt +Test/compile` | |
 | `ciCheckArtifactsBuildSteps` | `Seq[Step]` | `sbt +publishLocal` | |
-| `ciCheckWebsiteBuildProcess` | `Seq[Step]` | `sbt docs/buildWebsite` | Set to `Seq.empty` in a build with no `docs` project |
+| `ciCheckWebsiteBuildProcess` | `Seq[Step]` | `sbt docs/clean; sbt docs/buildWebsite`, then `sbt docs/checkDocsOnFreshWebsite` | Set to `Seq.empty` in a build with no `docs` project |
 | `ciCheckGithubWorkflowSteps` | `Seq[Step]` | `sbt ciCheckGithubWorkflow` | |
 
 ### Release and Docs
@@ -124,7 +124,7 @@ All settings are `ThisBuild`-scoped.
 
 | Setting | Type | Default | Description |
 | --- | --- | --- | --- |
-| `ciPublishSnapshots` | `Boolean` | `true` | Also publish SNAPSHOTs on pushes to enabled branches |
+| `ciPublishSnapshots` | `Boolean` | `true` | Also publish SNAPSHOTs on pushes to the default branch |
 | `ciUpdateReadmeCondition` | `Option[Condition]` | `None` | When to run the README job. Defaults to published releases |
 | `ciDocsVersioningScheme` | `DocsVersioning` | `SemanticVersioning` | `SemanticVersioning` or `HashVersioning` |
 | `ciDependencyUpdateBots` | `Seq[DependencyBot]` | Dependabot, Renovate, `ScalaSteward("zio-scala-steward")` | Bots whose PRs are auto-approved and auto-merged |

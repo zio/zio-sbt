@@ -71,7 +71,7 @@ The plugin also passes `--markdown-extensions` for `md`, `html` and `mdx` to mdo
 
 ## README Settings
 
-`generateReadme` builds `README.md` from the introduction in `docs/index.md` and these settings. Each one is a `String` with Markdown content, and an empty string omits the section.
+`generateReadme` builds `README.md` from the introduction in `docs/index.md` and these settings. Each one is a `String` with Markdown content, except `readmeShowTitle`. An empty string omits the Acknowledgement, Credits and Maintainers sections. The other sections are always written, so an empty string leaves their heading with no content.
 
 | Setting                | Default                                                                          | Section it fills                                           |
 | ---------------------- | -------------------------------------------------------------------------------- | ---------------------------------------------------------- |

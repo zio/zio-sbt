@@ -84,7 +84,7 @@ sidebar_label: "Introduction"
 ZIO Greeter greets people.
 ```
 
-Writing `@PROJECT_BADGES@` on its own line of the introduction adds the stage, CI and release badges to the page and to the README.
+Writing `@PROJECT_BADGES@` on its own line of the introduction adds the stage, CI, snapshot and GitHub star badges to the page and to the README. The release and javadoc badges appear once the project has a release.
 
 Compile the docs and create the website:
 

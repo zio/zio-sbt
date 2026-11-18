@@ -15,7 +15,7 @@ A `Workflow` holds a name, environment variables, triggers, jobs and an optional
 | `Job`                 | `id`, `name`, `runsOn`, `continueOnError`, `strategy`, `steps`, `need`, `services`, `condition`, `jobTimeout`, `concurrency` and `permissions`    |
 | `Strategy`            | `Strategy(matrix, maxParallel = None, failFast = true)`, the matrix of a job                                                                      |
 | `Step`                | `Step.SingleStep` has `name`, `id`, `uses`, `condition`, `parameters`, `run` and `env`. `Step.StepSequence` groups several steps                  |
-| `ActionRef`           | The `uses` reference of a step, such as `actions/checkout@v6`                                                                                     |
+| `ActionRef`           | The `uses` reference of a step, such as `actions/checkout@v7.0.1`                                                                                     |
 | `Trigger`             | `WorkflowDispatch`, `Schedule`, `Release`, `PullRequest`, `PullRequestTarget`, `Push`, `Create`, `WorkflowRun` and `IssueComment`                 |
 | `Branch`              | `Branch.All` or `Branch.Named(name)`, used by push and pull request triggers                                                                      |
 | `Condition`           | `Condition.Expression(expression)` renders as `${{ expression }}`. `Condition.Function(expression)` renders as written. Both combine with `&&` and `\|\|`, but a `Function` cannot be combined |
