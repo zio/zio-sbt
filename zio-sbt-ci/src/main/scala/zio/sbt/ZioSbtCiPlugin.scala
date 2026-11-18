@@ -744,6 +744,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
     val checkout             = Checkout.value
     val javaVersion          = ciDefaultJavaVersion.value
     val publishToNpmRegistry = PublishToNpmRegistry.value
+    val docsVersioning       = ciDocsVersioningScheme.value
 
     Seq(
       Job(
@@ -813,27 +814,76 @@ object ZioSbtCiPlugin extends AutoPlugin {
           // job and GitHub's error message is still printed, instead of curl exiting 0.
           SingleStep(
             name = "notify the main repo about the new release of docs package",
-            env = Map("NOTIFY_TOKEN" -> "${{ steps.generate-token.outputs.token || secrets.PAT_TOKEN }}"),
-            run = Some("""|PACKAGE_NAME=$(cat docs/package.json | grep '"name"' | awk -F'"' '{print $4}')
-                          |PACKAGE_VERSION=$(npm view $PACKAGE_NAME version)
-                          |curl -sSL --fail-with-body \
-                          |  -X POST \
-                          |  -H "Accept: application/vnd.github+json" \
-                          |  -H "Authorization: token $NOTIFY_TOKEN"\
-                          |    https://api.github.com/repos/zio/zio/dispatches \
-                          |    -d '{
-                          |          "event_type":"update-docs",
-                          |          "client_payload":{
-                          |            "package_name":"'"${PACKAGE_NAME}"'",
-                          |            "package_version": "'"${PACKAGE_VERSION}"'"
-                          |          }
-                          |        }'
-                          |""".stripMargin)
+            // The tag goes through env rather than straight into the script, so its text is never
+            // parsed as shell.
+            env = Map("NOTIFY_TOKEN" -> "${{ steps.generate-token.outputs.token || secrets.PAT_TOKEN }}") ++
+              (if (docsVersioning == DocsVersioning.SemanticVersioning)
+                 Map("RELEASE_TAG" -> "${{ github.event.release.tag_name }}")
+               else Map.empty),
+            run = Some(
+              """|PACKAGE_NAME=$(cat docs/package.json | grep '"name"' | awk -F'"' '{print $4}')
+                 |""".stripMargin +
+                notifyPackageVersion(docsVersioning) +
+                """|curl -sSL --fail-with-body \
+                   |  -X POST \
+                   |  -H "Accept: application/vnd.github+json" \
+                   |  -H "Authorization: token $NOTIFY_TOKEN"\
+                   |    https://api.github.com/repos/zio/zio/dispatches \
+                   |    -d '{
+                   |          "event_type":"update-docs",
+                   |          "client_payload":{
+                   |            "package_name":"'"${PACKAGE_NAME}"'",
+                   |            "package_version": "'"${PACKAGE_VERSION}"'"
+                   |          }
+                   |        }'
+                   |""".stripMargin
+            )
           )
         )
       )
     )
   }
+
+  /**
+   * The shell lines of the docs notify step that set `PACKAGE_VERSION`, the
+   * version zio/zio's `update-docs` job installs with `yarn add`.
+   *
+   * With semantic versioning that is the version `publishToNpm` just published:
+   * the release's tag, or on a manual docs-only run the latest `v` tag, the
+   * same rule zio-sbt-website's `releaseVersion` uses. It is not read back with
+   * `npm view <package> version`: right after a publish the registry can take
+   * over a minute to list the new version, so that returned the previous one
+   * and zio/zio opened no update (zio-schema v1.9.2, zio-logging v2.5.4). The
+   * step then waits until npm serves that exact version, since `yarn add` fails
+   * on one npm does not list yet, and fails after five minutes rather than
+   * notify for a version that never arrived.
+   *
+   * Hash versioning publishes under the `hash` dist-tag, not `latest`, so it
+   * keeps reading the `latest` version as before.
+   */
+  private[sbt] def notifyPackageVersion(docsVersioning: DocsVersioning): String =
+    if (docsVersioning == DocsVersioning.SemanticVersioning)
+      """|TAG="${RELEASE_TAG:-$(git tag --sort=committerdate | grep '^v' | tail -1 || true)}"
+         |if [ -z "$TAG" ]; then
+         |  echo "::error::No release tag to take the docs package version from"
+         |  exit 1
+         |fi
+         |PACKAGE_VERSION="${TAG#v}"
+         |for attempt in $(seq 1 30); do
+         |  if [ "$(npm view "$PACKAGE_NAME@$PACKAGE_VERSION" version --prefer-online 2>/dev/null)" = "$PACKAGE_VERSION" ]; then
+         |    break
+         |  fi
+         |  if [ "$attempt" = 30 ]; then
+         |    echo "::error::$PACKAGE_NAME@$PACKAGE_VERSION is not on npm after 5 minutes"
+         |    exit 1
+         |  fi
+         |  echo "Waiting for npm to list $PACKAGE_NAME@$PACKAGE_VERSION ($attempt/30)"
+         |  sleep 10
+         |done
+         |""".stripMargin
+    else
+      """|PACKAGE_VERSION=$(npm view $PACKAGE_NAME version)
+         |""".stripMargin
 
   // Shared between renderWorkflow (which writes the full header) and the release-drafter
   // enable/disable guards (which only need to recognize it) - a single source of truth so the
