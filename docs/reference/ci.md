@@ -41,7 +41,7 @@ The generated `ci.yml` contains these jobs:
 | `release-docs` | Publishes the docs to npm after a successful `release`, or on a manual run with `docs-only` set to `true` |
 | `notify-docs-release` | Dispatches an `update-docs` event to `zio/zio` with the docs package name and version, so the ZIO website picks up the new docs |
 
-`notify-docs-release` reads the docs version with `npm view <package> version`, which asks the npm registry for the `latest` dist-tag. The step does not use the version that `release-docs` just published and does not wait for the registry. If the registry still lists the previous version at that moment, `zio/zio` is notified of the previous version.
+`notify-docs-release` takes the docs version from the release tag, or from the newest `v` tag on a manual `docs-only` run, and waits for up to five minutes until npm lists exactly that version. It fails if the version never appears. With `HashVersioning` as `ciDocsVersioningScheme`, it still reads the `latest` version with `npm view <package> version`.
 
 The default workflow runs on `workflow_dispatch`, published releases, pushes (to `ciEnabledBranches` when set, otherwise every branch) and pull requests that do not target `gh-pages`.
 
