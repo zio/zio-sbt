@@ -78,7 +78,7 @@ The Scala 3 version is an `inline def` that uses `scala.quoted` to capture the s
 | `SourceFile.fileExtension(path)`                         | Returns the extension of the file name, used as the language of the fence                                                                    |
 | `SourceFile.printSource(path, comment = true, showLineNumbers = false)` | Prints a code fence whose language is the file extension. With `comment` the fence has `title="<path>"`, and with `showLineNumbers` it has the `showLineNumbers` flag |
 
-To print a source file from an mdoc block:
+`SourceFile.printSource` prints a source file from an mdoc block:
 
 ```scala
 import zio.sbt.SourceFile
@@ -99,7 +99,7 @@ An empty path, or a file that cannot be read, is reported as an mdoc error.
 
 ### Line Numbers
 
-To enable line numbers in [Docusaurus](https://docusaurus.io) code blocks, add the `:showLineNumbers` flag, or its kebab-case alias `:show-line-numbers`:
+The `:showLineNumbers` flag, or its kebab-case alias `:show-line-numbers`, enables line numbers in [Docusaurus](https://docusaurus.io) code blocks:
 
 ```
 \`\`\`scala mdoc:embed:path/to/Example.scala:showLineNumbers

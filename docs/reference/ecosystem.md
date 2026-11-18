@@ -59,7 +59,7 @@ The plugin registers these sbt commands. Each one first turns the welcome banner
 The `site` command runs `docs/docusaurusCreateSite`. That task comes from the old sbt-docusaurus plugin, and none of the ZIO SBT plugins define it, so use the [`buildWebsite`](./website.md#tasks) task of the website plugin instead.
 :::
 
-To add a command of your own that is listed in the welcome banner, call `addCommand` in the build:
+`addCommand(commands, name, description)` adds a command of your own that the welcome banner lists:
 
 ```scala
 addCommand(List("scalafmtAll", "Test / compile"), "check-all", "Formats and compiles everything")
@@ -93,7 +93,7 @@ The plugin's own settings do not read the `enable.strict.compilation` property. 
 
 Besides these, `stdSettings` adds the standard `scalacOptions` for the Scala version, runs `Test / parallelExecution` on Scala 2 only, enables `autoAPIMappings` and adds the better-monadic-for compiler plugin.
 
-To configure a project with the standard settings:
+`stdSettings` takes the project name and, optionally, the package name for build info:
 
 ```scala
 lazy val core = project
@@ -139,7 +139,7 @@ Each helper takes the Scala binary versions it applies to, such as `"2.13"` or `
 | `dependenciesOnOrElse(versions*)(modules*)(other*)` | The modules on the listed versions and the other modules everywhere else                  |
 | `addDependenciesOn`, `addDependenciesOnExcept`, `addDependenciesOnOrElse` | The same three, as a setting that appends to `libraryDependencies`           |
 
-To add a compiler option on Scala 2.13 only:
+`addOptionsOn` adds compiler options for the listed Scala binary versions only:
 
 ```scala
 addOptionsOn("2.13")("-Ymacro-annotations")

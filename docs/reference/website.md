@@ -86,7 +86,7 @@ The plugin also passes `--markdown-extensions` for `md`, `html` and `mdx` to mdo
 | `readmeCredits`        | `""`                                                                             | Credits                                                    |
 | `readmeMaintainers`    | `""`                                                                             | Maintainers                                                |
 
-To extend a default section instead of replacing it, append to its current value:
+A README setting can be appended to as well as replaced:
 
 ```scala
 readmeContribution := readmeContribution.value + "\n\nRun `sbt prepare` before you submit a pull request."
