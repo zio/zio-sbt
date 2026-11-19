@@ -40,7 +40,9 @@ object WebsiteUtils {
   def npmPublishTag(version: String, currentLatest: Option[String]): Option[String] = {
     val prereleasePattern = """^\d+\.\d+\.\d+-([a-zA-Z]+).*""".r
     version match {
-      case prereleasePattern(tag) =>
+      // A snapshot must never take over `latest`; it goes under the `snapshot` tag, like `publishSnapshotToNpm`.
+      case v if v.endsWith("-SNAPSHOT") || v.contains("--SNAPSHOT") => Some("snapshot")
+      case prereleasePattern(tag)                                   =>
         val latestIsStable = currentLatest.exists(!_.contains("-"))
         Some(if (latestIsStable) tag.toLowerCase else "latest")
       case _ => None
