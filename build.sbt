@@ -153,7 +153,12 @@ lazy val `zio-sbt-website` =
       crossScalaVersions := Seq(Scala212, Scala3),
       pluginCrossBuildSettings,
       scala3JavaPlatformSettings,
-      scriptedTestSettings
+      scriptedTestSettings,
+      libraryDependencies ++= Seq(
+        "dev.zio" %% "zio-test"     % zio % Test,
+        "dev.zio" %% "zio-test-sbt" % zio % Test
+      ),
+      testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
     )
     .enablePlugins(SbtPlugin)
 
