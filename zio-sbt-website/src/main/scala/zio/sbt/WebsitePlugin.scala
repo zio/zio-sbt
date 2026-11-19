@@ -411,20 +411,12 @@ object WebsitePlugin extends sbt.AutoPlugin {
       .map(_.browseUrl.toString)
       .getOrElse(sys.error("scmInfo must be set for npm provenance verification"))
 
-    // Extract prerelease tag from version (e.g., "1.0.0-beta.1" -> "beta")
-    val prereleaseTag: Option[String] = {
-      val prereleasePattern = """^\d+\.\d+\.\d+-([a-zA-Z]+).*""".r
-      version match {
-        case prereleasePattern(tag) => Some(tag.toLowerCase)
-        case _                      => None
-      }
-    }
-
     // Sideline a prerelease under its own dist-tag only when a stable release
     // already holds `latest`. For a project that has never released a stable
     // version the prerelease *is* the current release, and parking it under
     // `rc` freezes `latest` on an older version - which hides the docs from
     // dependency bots, since Renovate's respectLatest will not go past `latest`.
+    // npm refuses a prerelease without `--tag`, so that case passes `--tag latest`.
     val packageName: String =
       """"name"\s*:\s*"([^"]+)"""".r
         .findFirstMatchIn(IO.read(new File(docsDir, "package.json")))
@@ -437,8 +429,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
         .!(ProcessLogger(line => { out.append(line); () }, _ => ()))
       Some(out.toString.trim).filter(_.nonEmpty && code == 0)
     }
-    val latestIsStable = currentLatest.exists(!_.contains("-"))
-    val npmTag         = prereleaseTag.filter(_ => latestIsStable).map(tag => s"--tag $tag").getOrElse("")
+    val npmTag = WebsiteUtils.npmPublishTag(version, currentLatest).map(tag => s"--tag $tag").getOrElse("")
 
     exit(Process(s"npm version $version --no-git-tag-version", docsDir).!)
     exit(Process(s"npm pkg set repository.url=$repoUrl", docsDir).!)

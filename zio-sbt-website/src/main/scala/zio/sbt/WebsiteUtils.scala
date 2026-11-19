@@ -28,6 +28,25 @@ import zio._
 @nowarn("msg=detected an interpolated expression")
 object WebsiteUtils {
 
+  /**
+   * The dist-tag `npm publish` must be given for `version`, if any.
+   *
+   * npm refuses to publish a prerelease without an explicit `--tag`. A
+   * prerelease is sidelined under its own tag (e.g. `rc`) only when a stable
+   * release already holds `latest`; otherwise the prerelease is the current
+   * release and is published as `latest`, so the docs stay visible to
+   * dependency bots. A stable version needs no tag.
+   */
+  def npmPublishTag(version: String, currentLatest: Option[String]): Option[String] = {
+    val prereleasePattern = """^\d+\.\d+\.\d+-([a-zA-Z]+).*""".r
+    version match {
+      case prereleasePattern(tag) =>
+        val latestIsStable = currentLatest.exists(!_.contains("-"))
+        Some(if (latestIsStable) tag.toLowerCase else "latest")
+      case _ => None
+    }
+  }
+
   import java.nio.charset.StandardCharsets
 
   def removeYamlHeader(markdown: String): String =

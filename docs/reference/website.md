@@ -24,7 +24,7 @@ The plugin defines these tasks. Run them on the docs project, for example `sbt d
 | `generateReadme`          | `TaskKey`   | Generates `README.md` from `docs/index.md` and the `readme*` settings                                                                                        |
 | `checkReadme`             | `TaskKey`   | Runs `generateReadme` and fails when `git diff` shows that `README.md` changed                                                                               |
 
-`publishToNpm` puts a prerelease version, such as `1.0.0-beta.1`, under its own dist-tag (`beta`) only when the `latest` tag already points at a stable release. Otherwise the version goes to `latest`. The `publishToNpm`, `publishSnapshotToNpm` and `publishHashverToNpm` tasks need `scmInfo` to be set, because they record the repository URL in the package.
+`publishToNpm` puts a prerelease version, such as `1.0.0-beta.1`, under its own dist-tag (`beta`) only when the `latest` tag already points at a stable release. Otherwise the version goes to `latest`, published with an explicit `--tag latest` because npm refuses a prerelease without a tag. The `publishToNpm`, `publishSnapshotToNpm` and `publishHashverToNpm` tasks need `scmInfo` to be set, because they record the repository URL in the package.
 
 The `website/docs` directory is generated output, not source. `mdocOut` points there, so `compileDocs`, and anything that runs it, including `generateReadme`, writes compiled documentation into it. To keep it out of version control, add these lines to `.gitignore`:
 
