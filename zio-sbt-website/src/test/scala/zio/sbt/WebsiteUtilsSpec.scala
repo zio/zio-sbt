@@ -31,6 +31,12 @@ object WebsiteUtilsSpec extends ZIOSpecDefault {
       test("prerelease with no latest yet is published as latest") {
         assertTrue(WebsiteUtils.npmPublishTag("1.0.0-RC1", None).contains("latest"))
       },
+      test("snapshot never takes latest") {
+        assertTrue(
+          WebsiteUtils.npmPublishTag("1.0.0-SNAPSHOT", Some("1.0.0-RC44")).contains("snapshot"),
+          WebsiteUtils.npmPublishTag("1.0.0--SNAPSHOT", None).contains("snapshot")
+        )
+      },
       test("stable version needs no tag") {
         assertTrue(
           WebsiteUtils.npmPublishTag("1.0.0", Some("0.9.0")).isEmpty,

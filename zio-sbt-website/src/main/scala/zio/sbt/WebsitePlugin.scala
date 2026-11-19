@@ -372,7 +372,8 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
       exit("npm config set access public".!)
 
-      exit(Process("npm publish", new File(s"${websiteDir.value.toString}/docs/")).!)
+      val docsDir = new File(s"${websiteDir.value.toString}/docs/")
+      exit(Process(s"npm publish ${npmPublishFlag(docsDir, refinedNpmVersion)}".trim, docsDir).!)
     }
 
   private val docsVersionTask: Def.Initialize[String] =
@@ -401,16 +402,10 @@ object WebsitePlugin extends sbt.AutoPlugin {
       }
     }
 
-  lazy val publishToNpmTask: Def.Initialize[Task[Unit]] = Def.task {
-    val _             = compileDocs.toTask("").value
-    val version       = docsVersionTask.value
-    val docsDir: File = new File(websiteDir.value.toString, "docs")
-
-    // Get repository URL from scmInfo
-    val repoUrl: String = scmInfo.value
-      .map(_.browseUrl.toString)
-      .getOrElse(sys.error("scmInfo must be set for npm provenance verification"))
-
+  /**
+   * The `--tag` flag for `npm publish` of `version`, or an empty string.
+   */
+  private def npmPublishFlag(docsDir: File, version: String): String = {
     // Sideline a prerelease under its own dist-tag only when a stable release
     // already holds `latest`. For a project that has never released a stable
     // version the prerelease *is* the current release, and parking it under
@@ -429,7 +424,20 @@ object WebsitePlugin extends sbt.AutoPlugin {
         .!(ProcessLogger(line => { out.append(line); () }, _ => ()))
       Some(out.toString.trim).filter(_.nonEmpty && code == 0)
     }
-    val npmTag = WebsiteUtils.npmPublishTag(version, currentLatest).map(tag => s"--tag $tag").getOrElse("")
+    WebsiteUtils.npmPublishTag(version, currentLatest).map(tag => s"--tag $tag").getOrElse("")
+  }
+
+  lazy val publishToNpmTask: Def.Initialize[Task[Unit]] = Def.task {
+    val _             = compileDocs.toTask("").value
+    val version       = docsVersionTask.value
+    val docsDir: File = new File(websiteDir.value.toString, "docs")
+
+    // Get repository URL from scmInfo
+    val repoUrl: String = scmInfo.value
+      .map(_.browseUrl.toString)
+      .getOrElse(sys.error("scmInfo must be set for npm provenance verification"))
+
+    val npmTag = npmPublishFlag(docsDir, version)
 
     exit(Process(s"npm version $version --no-git-tag-version", docsDir).!)
     exit(Process(s"npm pkg set repository.url=$repoUrl", docsDir).!)
