@@ -184,6 +184,13 @@ lazy val `zio-sbt-scaladoc` =
       pluginCrossBuildSettings,
       scala3JavaPlatformSettings,
       scriptedTestSettings,
+      // `scriptedTestSettings` turns `Test / test` into `scripted` alone, which would skip this module's
+      // unit tests; run them first, on both axes, and the scripted fixtures after them on the 2.12 axis.
+      Test / test := Def.taskDyn {
+        val unitTests = (Test / testOnly).toTask("")
+        if (scalaBinaryVersion.value == "3") unitTests
+        else Def.sequential(unitTests, scripted.toTask(""))
+      }.value,
       libraryDependencies ++= Seq(
         "dev.zio" %% "zio-test"     % zio % Test,
         "dev.zio" %% "zio-test-sbt" % zio % Test
