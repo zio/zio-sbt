@@ -40,19 +40,24 @@ Nothing of it is published, so another repo can only use it by **copying** it. T
 zio-sbt has released the plugin, zio-blocks *may* switch to it in a separate PR, which deletes its 337-line
 extractor; section 13 lists what that needs. That decision is not part of this PR.
 
-**Which zio-sbt module.** Two choices:
+**Which zio-sbt module: a new module `zio-sbt-scaladoc` (decided by Milad, 2026-11-20).** It is published as
+its own sbt plugin artifact, `dev.zio:zio-sbt-scaladoc`, cross-built for sbt 1 (Scala 2.12) and sbt 2
+(Scala 3) like the other modules. A repo loads it with one `addSbtPlugin` line. (The alternative, putting it
+inside `zio-sbt-website` next to `UnifiedScaladocPlugin`, was not chosen.)
 
-- **C1. Inside `zio-sbt-website` (recommended).** It already holds the other Scaladoc plugin
-  (`UnifiedScaladocPlugin`, also opt-in), and every target repo, zio-blocks included, already loads
-  zio-sbt-website. So a repo adds **no** line to `project/plugins.sbt`; it only bumps the zio-sbt version.
-- C2. A new module `zio-sbt-scaladoc`. Cleaner separation, but one more artifact to release and one more
-  `addSbtPlugin` line in every repo.
+New module in zio-sbt's `build.sbt`, set up like `zio-sbt-ecosystem`: `stdSettings()`,
+`crossScalaVersions := Seq(Scala212, Scala3)`, `pluginCrossBuildSettings`, `scala3JavaPlatformSettings`,
+`scriptedTestSettings`, zio-test for the unit tests, `enablePlugins(SbtPlugin)`, and added to `root`'s
+`aggregate`. It depends on nothing but sbt.
 
 ## 4. What a library writes (the downstream setup)
 
 Example for zio-query (one JVM module `zioQueryJVM`, Scala 2.12, 2.13 and 3):
 
 ```scala
+// project/plugins.sbt
+addSbtPlugin("dev.zio" % "zio-sbt-scaladoc" % "<zio-sbt version>")
+
 // build.sbt
 lazy val scaladocCheck = project
   .dependsOn(zioQueryJVM)               // the modules whose Scaladoc examples are compiled
@@ -183,7 +188,7 @@ When the switch is on, the **build** job gets one more step after "Check artifac
 - The build job runs once (not per Java version), so it adds one compile per Scala version, not a matrix.
 - When the switch is off (the default), `ci.yml` is byte-for-byte the same as today, so no existing repo changes.
 - zio-sbt-ci does **not** depend on the plugin; it only writes the sbt command, so repos using a custom
-  checker project name or C2 still work.
+  checker project name still work.
 
 ## 10. zio-sbt's own CI (dogfooding)
 
@@ -193,9 +198,10 @@ use names they never define (`isPrimitive`, `TypeId`), so they would fail today.
 
 Proposal for this PR:
 
-1. zio-sbt's meta-build already loads the plugin sources it ships (`project/build.sbt` adds each module's
-   `src/main/scala`), so the new plugin file is available to zio-sbt's own build with no extra step.
-2. Add `scaladocCheck` (2.12 and 3, depends on `zio-sbt-githubactions`, `zio-sbt-ci`, `zio-sbt-website`,
+1. zio-sbt's meta-build loads the plugin sources it ships (`project/build.sbt` adds each module's
+   `src/main/scala` and `src/main/scala-2.12`). Add the same lines for `zio-sbt-scaladoc`, so zio-sbt's own
+   build can enable the plugin.
+2. Add `scaladocCheck` (2.12 and 3, depends on `zio-sbt-githubactions`, `zio-sbt-ci`, `zio-sbt-website`, `zio-sbt-scaladoc`,
    `zio-sbt-ecosystem`) and `scaladocCheckSource` (2.13 and 3, depends on `zio-sbt-source`; different Scala
    versions, so a second checker project, the same way zio-blocks has `scaladoc-check-scala3`).
 3. Make the 6 blocks compile, or mark a block `// no-check: <reason>` where it truly cannot.
@@ -212,16 +218,17 @@ If the `model.scala` example needs sbt types, the checker adds the sbt dependenc
 1. **Unit tests** (zio-test, in the module's `src/test`): port zio-blocks' `ScaladocSnippetsSpec`, minus the
    folder-to-package tests, plus new ones for package-clause imports (one clause, nested clauses, Scala 3
    colon syntax, no package, `package object`), object names, and the line mapping.
-2. **Scripted tests** (sbt 1 fixtures, run by `sbt zio-sbt-website/scripted`, the module's existing
-   `Test / test`), each a tiny build with two modules:
+2. **Scripted tests** in `zio-sbt-scaladoc/src/sbt-test/zio-sbt-scaladoc/` (sbt 1 fixtures, run by the
+   module's `Test / test` through `scriptedTestSettings`), each a tiny build with two modules:
    - `scaladocCheck/good`: examples that need the package imports, nested package clauses, both markers and a
      `no-check`, cross-built on 2.12, 2.13 and 3 → `> +scaladocCheck/compile` passes, and the generated files
      are checked for the expected imports.
    - `scaladocCheck/broken`: one wrong example → `-> scaladocCheck/compile` fails, and the error log names the
      source file and line.
    - `scaladocCheck/badMarker`: `// no-check` without a reason → fails with the extractor message.
-   - `scaladocCheck/good-sbt2`: the `good` fixture on sbt 2.0.7, added to the existing "Check sbt-2.x scripted
-     fixtures" CI step (like `installWebsite-sbt2`).
+   - `good-sbt2`: the `good` fixture on sbt 2.0.7, added to the existing "Check sbt-2.x scripted fixtures" CI
+     step in zio-sbt's `build.sbt` as `"zio-sbt-scaladoc/scripted zio-sbt-scaladoc/good-sbt2"` (like
+     `installWebsite-sbt2`).
 3. **zio-sbt-ci golden test**: new fixture `scaladocExamples` with the switch on; its `expected/ci.yml` has the
    new step. All existing golden files stay unchanged (proves the default is off).
 4. **Manual check (phase 2, step 5):** a scratch clone of zio-query with the snapshot plugin: a broken example
@@ -250,7 +257,7 @@ If the `model.scala` example needs sbt types, the checker adds the sbt dependenc
 
 ## 14. Open questions for Milad
 
-1. Home: **C1, inside zio-sbt-website** (recommended) or C2, a new `zio-sbt-scaladoc` module?
+1. ~~Home~~: **decided: a new `zio-sbt-scaladoc` module** (section 3).
 2. Unused imports: **silence the warning in the checker** (recommended, simple) or port zio-blocks' name scan
    so only needed imports are written?
 3. Dogfooding zio-sbt (section 10) in **this** PR (recommended: it proves the plugin on a real build and
