@@ -5,6 +5,8 @@ Compile / unmanagedSourceDirectories += file("zio-sbt-ecosystem/src/main/scala-2
 Compile / unmanagedResourceDirectories += file("zio-sbt-ecosystem/src/main/resources")
 
 Compile / unmanagedSourceDirectories += file("zio-sbt-website/src/main/scala")
+// Same for zio-sbt-website's WebsitePluginCompat.scala.
+Compile / unmanagedSourceDirectories += file("zio-sbt-website/src/main/scala-2.12")
 Compile / unmanagedResourceDirectories += file("zio-sbt-website/src/main/resources")
 
 Compile / unmanagedSourceDirectories += file("zio-sbt-ci/src/main/scala")
