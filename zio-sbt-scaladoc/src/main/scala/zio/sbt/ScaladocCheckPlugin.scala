@@ -57,6 +57,11 @@ import zio.sbt.scaladoc.ScaladocSnippets.{Generated, Platform}
  *   - One-line `{{{ x }}}` blocks and blocks outside `/** */` are not checked.
  *   - Examples are compiled, not run: a result shown in a comment is not
  *     checked.
+ *   - On Scala.js and Scala Native, examples are compiled, not linked. A JDK
+ *     class the platform lacks (`java.io.File` on Scala.js) is only reported
+ *     by the linker, so the check does not catch it; a library the platform's
+ *     module does not depend on, and the platform compiler's own checks, are
+ *     caught.
  *   - An example sees only its own module and the modules it depends on. An
  *     example that needs another library gets it with
  *     `libraryDependencies += ... % ScaladocCheck`, which the published module
