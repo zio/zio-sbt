@@ -1,0 +1,5 @@
+# Generate ci.yml with the Scaladoc example check enabled.
+> ciGenerateGithubWorkflow
+
+# Compare it against the recorded golden copy.
+> checkWorkflows
