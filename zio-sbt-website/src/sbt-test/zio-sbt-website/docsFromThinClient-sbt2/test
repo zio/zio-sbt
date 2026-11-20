@@ -1,0 +1,14 @@
+# sbt 2 runs every command through the thin client (sbtn). For such a command, sbt 2's `runMain`,
+# which mdoc runs on, by default only hands the run over to the client and returns at once, so
+# a task that ran `compileDocs` and then read website/docs found nothing there yet. Each command
+# below runs one task the way a thin-client command would, starting from an empty website/docs.
+
+$ absent website/docs/index.md
+> compileDocsFromThinClient
+$ exists website/docs/index.md
+$ exec grep -q 'answer: Int = 42' website/docs/index.md
+
+$ delete website/docs
+> generateReadmeFromThinClient
+$ exists README.md
+$ exec grep -q 'answer: Int = 42' README.md
