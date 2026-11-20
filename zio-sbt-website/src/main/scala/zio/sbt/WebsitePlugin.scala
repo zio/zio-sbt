@@ -89,7 +89,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
   override def requires: Plugins = MdocPlugin && UnifiedScaladocPlugin
 
-  override lazy val projectSettings: Seq[Setting[_ <: Object]] =
+  override lazy val projectSettings: Seq[Setting[_]] =
     Seq(
       compileDocs             := compileDocsTask.evaluated,
       websiteDir              := Paths.get((ThisBuild / baseDirectory).value.getPath, "website"),
@@ -159,7 +159,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
       docsVersioningScheme    := VersioningScheme.SemanticVersioning,
       docsVersion             := docsVersionTask.value,
       createZioWebsiteVersion := "0.1.0"
-    )
+    ) ++ WebsitePluginCompat.runMdocInServerSettings
 
   private def exit(exitCode: Int, errorMessage: String = "") = if (exitCode != 0) sys.error(errorMessage: String)
 
