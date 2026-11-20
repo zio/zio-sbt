@@ -92,7 +92,6 @@ Settings the plugin sets on the checker project:
   runs on the same versions as the library. A repo can override them.
 - `Compile / scalacOptions`: removes `-Xfatal-warnings` and `-Werror`. Examples are user code; a warning in an
   example (a deprecation, say) must not fail the build. zio-blocks does the same.
-- `Compile / scalacOptions`: silences unused-import warnings (see section 7).
 - `publish / skip := true`, `publishLocal / skip := true`, `Compile / doc / sources := Nil`.
 - `Compile / compile / sourcePositionMappers`: maps errors back to the Scaladoc (section 8).
 
@@ -140,10 +139,25 @@ object DataSource_L57_3f9a1c2e {
   - Scala 3 `package zio.query:` is read the same way; a file with no package clause gets no import.
 - **Why imports and not the same `package` clause:** a wrapper inside `package zio.query` could use
   `private[query]` members, which a user cannot. An import gives exactly the user's view.
-- **Unused imports:** most examples don't need every import, and zio-sbt's `stdSettings` warns about unused
-  imports. zio-blocks solved that with ~120 lines of name-scanning regexes (#1969, #1977). The proposal is
-  simpler: the checker project silences only the unused-import warning (`-Wconf:cat=unused-imports:s` on 2.12
-  and 2.13, the matching `-Wconf` filter on Scala 3). Other warnings stay visible in the log.
+- **Only needed imports are written (name scan, ported from zio-blocks #1969 and #1977; decided by Milad,
+  2026-11-20).** Many examples don't use their package at all, and zio-sbt's `stdSettings` warns about unused
+  imports. So, before writing the import of the file's own package `P`, the plugin checks whether the example
+  needs it:
+  1. It collects the **names of `P`**: every non-private `class`, `trait`, `object`, `type`, `enum`, `def`,
+     `val` and `var` declared in the checked projects' files whose package is `P` (read from their package
+     clauses), plus the first segment of each sub-package (`stream` for `zio.query.stream`). In a file that
+     defines implicit members (an `implicit class`, an `extension`, a `package object`, a trait), indented
+     declarations count too, because users call those members without naming their owner (`md"..."`).
+  2. It collects the names the **example uses** (identifiers not after a `.`, outside `//` comments) and the
+     names it **binds itself** (its own imports and declarations, which hide the wrapper's import).
+  3. It writes `import P._` only if the example uses a name of `P` that it does not bind itself, and the
+     example does not already write `import P._` (or `import P.syntax._`) itself.
+
+  The scan errs towards keeping the import: when in doubt it is written, and at worst warns as before.
+- **Outer package clauses are always imported.** For a file with `package zio` + `package query`, only the
+  file's own package (`zio.query`) goes through the name scan; `import zio._` is always written. The scan only
+  sees the checked projects' **sources**, and an outer package such as `zio` gets most of its names (`ZIO`,
+  `Chunk`) from library jars, so the scan would wrongly drop it. Such an import may warn when unused.
 - **Object name:** `<FileName>_L<line>_<8-char hash of the path>`. Short (no class-file name limits on 2.12),
   stable, and unique even when two modules have a file with the same name.
 - **Each Scala version** gets only the examples it should compile (the markers in section 6). The whole folder
@@ -215,8 +229,9 @@ If the `model.scala` example needs sbt types, the checker adds the sbt dependenc
 
 ## 11. Tests
 
-1. **Unit tests** (zio-test, in the module's `src/test`): port zio-blocks' `ScaladocSnippetsSpec`, minus the
-   folder-to-package tests, plus new ones for package-clause imports (one clause, nested clauses, Scala 3
+1. **Unit tests** (zio-test, in the module's `src/test`): port zio-blocks' `ScaladocSnippetsSpec`, including
+   its name-scan tests (`packageNames`, `needsModuleImport`), minus the folder-to-package tests, plus new
+   ones for package-clause imports (one clause, nested clauses with the outer import always kept, Scala 3
    colon syntax, no package, `package object`), object names, and the line mapping.
 2. **Scripted tests** in `zio-sbt-scaladoc/src/sbt-test/zio-sbt-scaladoc/` (sbt 1 fixtures, run by the
    module's `Test / test` through `scriptedTestSettings`), each a tiny build with two modules:
@@ -244,9 +259,13 @@ If the `model.scala` example needs sbt types, the checker adds the sbt dependenc
   `import zio.blocks.sql._` hides the root `zio` package. Fix per repo with `scaladocCheckImports`
   (e.g. `zio.blocks.sql.{zio => _, _}`), or write `_root_.zio` in the example.
 - Results in comments (`// Some(80)`) are not checked, only compilation.
-- Examples that need a given or implicit from a package object get it through the wildcard import; examples
-  that need an implicit from somewhere else must import it themselves.
-- Silencing unused-import warnings also hides an unused import that the example itself writes.
+- The name scan cannot see names that an example uses without writing them: a `given`, an anonymous
+  implicit. If such an example uses no other name of its package, the import is dropped and the example fails
+  to compile, loudly; it then needs its own import.
+- The name scan reads only the checked projects' sources. A package split across a checked project and a
+  library jar (both declare `package zio.stream`, say) has names the scan cannot see; an example that uses
+  only those fails to compile and needs its own import.
+- Outer package-clause imports (section 7) are always written and may warn when unused.
 
 ## 13. What zio-blocks would need to switch later (not in this PR)
 
@@ -258,8 +277,7 @@ If the `model.scala` example needs sbt types, the checker adds the sbt dependenc
 ## 14. Open questions for Milad
 
 1. ~~Home~~: **decided: a new `zio-sbt-scaladoc` module** (section 3).
-2. Unused imports: **silence the warning in the checker** (recommended, simple) or port zio-blocks' name scan
-   so only needed imports are written?
+2. ~~Unused imports~~: **decided: port zio-blocks' name scan** (section 7).
 3. Dogfooding zio-sbt (section 10) in **this** PR (recommended: it proves the plugin on a real build and
    gives zio-sbt the CI check you asked for), or in a follow-up PR?
 4. CI key: `ciScaladocCheckProject: String` or `ciScaladocCheckProjects: Seq[String]`? zio-sbt itself needs two
