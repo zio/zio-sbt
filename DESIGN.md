@@ -38,7 +38,7 @@ Nothing of it is published, so another repo can only use it by **copying** it. T
 
 **Recommendation: C.** zio-blocks keeps its own copy for now (it works and is tuned to its 40 modules). Once
 zio-sbt has released the plugin, zio-blocks *may* switch to it in a separate PR, which deletes its 337-line
-extractor; section 13 lists what that needs. That decision is not part of this PR.
+extractor; section 14 lists what that needs. That decision is not part of this PR.
 
 **Which zio-sbt module: a new module `zio-sbt-scaladoc` (decided by Milad, 2026-11-20).** It is published as
 its own sbt plugin artifact, `dev.zio:zio-sbt-scaladoc`, cross-built for sbt 1 (Scala 2.12) and sbt 2
@@ -76,14 +76,42 @@ Then regenerate CI with `sbt ciGenerateGithubWorkflow`. Run it locally with `sbt
   `+publishLocal` stay as fast as today, and the examples are compiled only by the CI step (or by hand).
   If a repo aggregates it anyway, nothing breaks: the plugin sets `publish / skip := true`.
 
-## 5. Keys and tasks
+## 5. Implementation language and file layout
+
+Everything is **Scala**. No Python, shell or JavaScript is added, and a library needs nothing beyond sbt.
+(The out-of-tree checker of plan §3 step 1, `snippets-scala-cli.py`, is a separate dev tool in the skill folder
+and is not part of this PR.)
+
+| Part | Language | Compiled with | File |
+|---|---|---|---|
+| The plugin: keys, settings, task wiring | Scala, using the sbt plugin API (`AutoPlugin`, `Def.task`, `Def.taskDyn`, `ScopeFilter`, `sourceGenerators`, `sourcePositionMappers`) | Scala 2.12.21 (for sbt 1.x) **and** Scala 3.8.4 (for sbt 2.x), zio-sbt's two cross-build axes | `zio-sbt-scaladoc/src/main/scala/zio/sbt/ScaladocCheckPlugin.scala` |
+| The extractor, wrapper writer and name scan (the port of zio-blocks' `ScaladocSnippets`) | Plain Scala: pure functions from strings to strings, using only the Scala standard library and `java.util.regex`. **No sbt types**, so it is unit-tested without sbt | the same two | `zio-sbt-scaladoc/src/main/scala/zio/sbt/scaladoc/ScaladocSnippets.scala` |
+| Any sbt 1 / sbt 2 difference | Scala, one copy per sbt version | 2.12 copy for sbt 1, Scala 3 copy for sbt 2 | `src/main/scala-2.12/zio/sbt/ScaladocCheckCompat.scala` and `src/main/scala-3/zio/sbt/ScaladocCheckCompat.scala`, the same pattern as `WebsitePluginCompat` (#885). Created only if a real difference shows up |
+| The generated wrappers | Scala | the **library's** Scala versions (2.12, 2.13, 3.x), by the checker project's normal `compile` | written at build time into the checker project's `target/.../src_managed/main/scaladoc-snippets/`; never committed |
+| The CI switch | Scala, inside zio-sbt-ci; it emits YAML through zio-sbt-githubactions' existing `Step`/`Job` model, never hand-written YAML | 2.12 and 3.8.4 | `zio-sbt-ci/src/main/scala/zio/sbt/ZioSbtCiPlugin.scala` |
+| Unit tests | Scala, zio-test (as in zio-sbt-website) | 2.12 and 3.8.4 | `zio-sbt-scaladoc/src/test/scala/zio/sbt/scaladoc/ScaladocSnippetsSpec.scala` |
+| Scripted tests | Tiny sbt builds (`build.sbt`, `project/plugins.sbt`, a few `.scala` files with Scaladoc examples) driven by sbt's scripted `test` scripts | sbt 1.13.1 and sbt 2.0.7 | `zio-sbt-scaladoc/src/sbt-test/zio-sbt-scaladoc/<fixture>/` |
+
+Rules for the plugin code:
+
+- **One source for both sbt versions.** The shared files compile on Scala 2.12 and 3.8.4, using the syntax the
+  other zio-sbt modules already use. Only a real API difference between sbt 1 and sbt 2 goes into the
+  `ScaladocCheckCompat` pair.
+- **Why Scala and not a script:** the check runs inside the library's own sbt build, on its own classpath and
+  Scala versions, so CI runners need no extra tool, and the same code runs on a laptop and in CI.
+- **Why the extractor has no sbt types:** zio-blocks' extractor is already plain Scala, so the port stays close
+  to it; it can be tested with plain unit tests; and zio-blocks could call the same functions later.
+- **Formatting and lint:** zio-sbt's own scalafmt and scalafix settings, `sbt fmt` and `sbt lint` must pass, and
+  the standard license header is added to every new file.
+
+## 6. Keys and tasks
 
 All in `ScaladocCheckPlugin.autoImport`. The plugin is `noTrigger` (opt-in) and `requires = plugins.JvmPlugin`.
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
 | `scaladocCheckProjects` | `SettingKey[Seq[ProjectReference]]` | the project's direct `dependsOn` projects | Whose Scaladoc examples are compiled |
-| `scaladocCheckImports` | `SettingKey[String => Seq[String]]` | package `a.b` gives `Seq("a.b._")` | Turns a source file's package into the wrapper's imports. Lets a repo handle a package that would shadow something (zio-blocks' `sql` case, section 12) |
+| `scaladocCheckImports` | `SettingKey[String => Seq[String]]` | package `a.b` gives `Seq("a.b._")` | Turns a source file's package into the wrapper's imports. Lets a repo handle a package that would shadow something (zio-blocks' `sql` case, section 13) |
 | `scaladocCheckSnippets` | `TaskKey[Seq[File]]` | (task) | Writes the wrapper files; registered in `Compile / sourceGenerators`. Run alone to see what is generated |
 
 Settings the plugin sets on the checker project:
@@ -93,9 +121,9 @@ Settings the plugin sets on the checker project:
 - `Compile / scalacOptions`: removes `-Xfatal-warnings` and `-Werror`. Examples are user code; a warning in an
   example (a deprecation, say) must not fail the build. zio-blocks does the same.
 - `publish / skip := true`, `publishLocal / skip := true`, `Compile / doc / sources := Nil`.
-- `Compile / compile / sourcePositionMappers`: maps errors back to the Scaladoc (section 8).
+- `Compile / compile / sourcePositionMappers`: maps errors back to the Scaladoc (section 9).
 
-## 6. How examples are found (ported from zio-blocks, unchanged rules)
+## 7. How examples are found (ported from zio-blocks, unchanged rules)
 
 The extractor reads each `.scala` file in `Compile / unmanagedSources` of each checked project. That list
 already holds exactly the files for the current Scala version (`scala/`, `scala-2/`, `scala-2.13/`,
@@ -115,7 +143,7 @@ Rules, the same as zio-blocks so the style guide and the writers' habits carry o
    - a block that is never closed;
    - a code line containing `}}}`, which ends the Scaladoc block early.
 
-## 7. How each example is compiled
+## 8. How each example is compiled
 
 Each example becomes one file in `target/.../src_managed/main/scaladoc-snippets/`:
 
@@ -160,13 +188,13 @@ object DataSource_L57_3f9a1c2e {
   `Chunk`) from library jars, so the scan would wrongly drop it. Such an import may warn when unused.
 - **Object name:** `<FileName>_L<line>_<8-char hash of the path>`. Short (no class-file name limits on 2.12),
   stable, and unique even when two modules have a file with the same name.
-- **Each Scala version** gets only the examples it should compile (the markers in section 6). The whole folder
+- **Each Scala version** gets only the examples it should compile (the markers in section 7). The whole folder
   is rewritten on each run, and files of removed examples are deleted; unchanged files keep their content so
   incremental compilation stays fast.
 - **Classpath:** the checker project's own classpath, i.e. the checked projects (through `dependsOn`) plus their
   libraries plus any `libraryDependencies` the repo adds for examples.
 
-## 8. What a failure looks like
+## 9. What a failure looks like
 
 The compiler error points at the Scaladoc line, not the generated file:
 
@@ -180,9 +208,9 @@ line is mapped to `example start line + offset` in the source file, and the colu
 margin. If the mapping can't be done (e.g. an error in the import lines), the error shows the generated file,
 whose first line names the source file and line.
 
-Extractor errors (section 6, rule 4) fail the task before compiling, with `path:line: message`.
+Extractor errors (section 7, rule 4) fail the task before compiling, with `path:line: message`.
 
-## 9. The CI switch (zio-sbt-ci)
+## 10. The CI switch (zio-sbt-ci)
 
 New keys, build-scoped like the other `ci*` keys:
 
@@ -204,13 +232,13 @@ When the switch is on, the **build** job gets one more step after "Check artifac
 - zio-sbt-ci does **not** depend on the plugin; it only writes the sbt command, so repos using a custom
   checker project name still work.
 
-## 10. zio-sbt's own CI (dogfooding)
+## 11. zio-sbt's own CI (dogfooding)
 
 zio-sbt itself has 6 example blocks (`zio-sbt-githubactions/.../model.scala:417` and 5 in
 `zio-sbt-source/.../ExprEval.scala`, scala-2 and scala-3 copies). The 5 `ExprEval` blocks are fragments that
 use names they never define (`isPrimitive`, `TypeId`), so they would fail today.
 
-Proposal for this PR:
+Done in **this** PR (decided by Milad, 2026-11-20):
 
 1. zio-sbt's meta-build loads the plugin sources it ships (`project/build.sbt` adds each module's
    `src/main/scala` and `src/main/scala-2.12`). Add the same lines for `zio-sbt-scaladoc`, so zio-sbt's own
@@ -227,7 +255,7 @@ Proposal for this PR:
 Risk: the sbt plugin projects get sbt on the classpath as `Provided`, which `dependsOn` doesn't pass on.
 If the `model.scala` example needs sbt types, the checker adds the sbt dependency itself. To verify in phase 2.
 
-## 11. Tests
+## 12. Tests
 
 1. **Unit tests** (zio-test, in the module's `src/test`): port zio-blocks' `ScaladocSnippetsSpec`, including
    its name-scan tests (`packageNames`, `needsModuleImport`), minus the folder-to-package tests, plus new
@@ -249,11 +277,11 @@ If the `model.scala` example needs sbt types, the checker adds the sbt dependenc
 4. **Manual check (phase 2, step 5):** a scratch clone of zio-query with the snapshot plugin: a broken example
    must fail, a good one must pass, on 2.12, 2.13 and 3.
 
-## 12. Limitations (written into the plugin's Scaladoc)
+## 13. Limitations (written into the plugin's Scaladoc)
 
 - Only multi-line blocks inside `/** */` are checked.
 - A checker project has one Scala version set. Modules with different version sets need separate checker
-  projects (as in section 10).
+  projects (as in section 11).
 - JVM only: list the `.jvm` side of a cross project. Scala.js/Native-only examples need `// no-check: <reason>`.
 - A package import can shadow a root package. zio-blocks' `sql` module has a sub-package named `zio`, so
   `import zio.blocks.sql._` hides the root `zio` package. Fix per repo with `scaladocCheckImports`
@@ -265,20 +293,19 @@ If the `model.scala` example needs sbt types, the checker adds the sbt dependenc
 - The name scan reads only the checked projects' sources. A package split across a checked project and a
   library jar (both declare `package zio.stream`, say) has names the scan cannot see; an example that uses
   only those fails to compile and needs its own import.
-- Outer package-clause imports (section 7) are always written and may warn when unused.
+- Outer package-clause imports (section 8) are always written and may warn when unused.
 
-## 13. What zio-blocks would need to switch later (not in this PR)
+## 14. What zio-blocks would need to switch later (not in this PR)
 
 - Its three checker projects become three projects with `enablePlugins(ScaladocCheckPlugin)`.
 - `packageOverrides` and the folder rule go away (imports come from package clauses).
 - The `sql` exception becomes a `scaladocCheckImports` override.
 - Its Scala 3 "drop `-experimental` on the main line" rule stays in its own build (repo-specific).
 
-## 14. Open questions for Milad
+## 15. Open questions for Milad
 
 1. ~~Home~~: **decided: a new `zio-sbt-scaladoc` module** (section 3).
-2. ~~Unused imports~~: **decided: port zio-blocks' name scan** (section 7).
-3. Dogfooding zio-sbt (section 10) in **this** PR (recommended: it proves the plugin on a real build and
-   gives zio-sbt the CI check you asked for), or in a follow-up PR?
+2. ~~Unused imports~~: **decided: port zio-blocks' name scan** (section 8).
+3. ~~Dogfooding~~: **decided: in this PR** (section 11).
 4. CI key: `ciScaladocCheckProject: String` or `ciScaladocCheckProjects: Seq[String]`? zio-sbt itself needs two
    checker projects, so the recommendation is `Seq[String]`, default `Seq("scaladocCheck")`.
