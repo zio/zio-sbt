@@ -177,9 +177,13 @@ the module's main code**:
 - **IDE:** `ScaladocCheck / bspEnabled := false`, so Metals and IntelliJ don't show it as an extra target.
 - **Publishing:** the configuration is not published and not added to the POM.
 
-**To check in the first implementation step (spike):** that the JS and Native compiler flags really are in
-`Compile / scalacOptions` on both sbt 1 and sbt 2, for Scala 2.12, 2.13 and 3. If one isn't, the plugin copies
-it from wherever that platform plugin keeps it, looked up by key name (no dependency on the platform plugin).
+**Spike result (2026-11-20):** a throwaway plugin with exactly this configuration compiled a generated file
+in a JVM, a Scala.js 1.23.0 and a Scala Native 0.5.12 module, on Scala 2.12.21, 2.13.18 and 3.3.7, on both
+sbt 1.13.1 and sbt 2.0.7. `ScaladocCheck / scalacOptions` held the `-Xplugin:...scalajs-compiler...` and
+`-Xplugin:...nscplugin...` flags, and the output folders held `.sjsir` (Scala.js) and `.nir` (Scala Native)
+files, so the platforms' own compilers ran. The only sbt 2 difference found: sbt 2 caches task results, so
+tasks whose result can't be cached (a classpath, the `scaladocCheck` task itself) are wrapped in
+`Def.uncached(...)`, which sbt 1 does not have. That goes into the `ScaladocCheckCompat` pair (section 5).
 
 ### The generated wrapper
 
