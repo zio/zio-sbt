@@ -1,0 +1,14 @@
+# `compile` does not touch the examples
+> compile
+> checkNoWrappers
+# every module, every Scala version; `skipped` has a broken example but is skipped
+> +scaladocCheck
+> ++2.13.18
+> scaladocCheck
+> checkWrappers
+> ++3.3.7
+> scaladocCheck
+> checkWrappers
+> ++2.12.21
+> scaladocCheck
+> checkWrappers

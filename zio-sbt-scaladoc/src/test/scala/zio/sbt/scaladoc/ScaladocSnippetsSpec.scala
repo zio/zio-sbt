@@ -32,7 +32,7 @@ object ScaladocSnippetsSpec extends ZIOSpecDefault {
   private def example(line: Int, code: String*): Snippet =
     Snippet(path, line, code.toList, code.toList.map(_ => 3), code.toList.map(" * " + _), None, Platform.all)
 
-  private def block(lines: String*): String = source(("/**" +: " * {{{" +: lines.map(" * " + _)) ++ Seq(" * }}}", " */")*)
+  private def block(lines: String*): String = source(((("/**" +: " * {{{" +: lines.map(" * " + _)) ++ Seq(" * }}}", " */")))*)
 
   private val knownMarkers =
     "`// scala-3-only`, `// scala-2-only`, `// jvm-only`, `// js-only`, `// native-only`, `// no-js`, `// no-native` or `// no-check: <reason>`"
@@ -146,7 +146,7 @@ object ScaladocSnippetsSpec extends ZIOSpecDefault {
       },
       test("records platform markers") {
         def platforms(markers: String*): List[Set[Platform]] =
-          ScaladocSnippets.extract(path, block(markers :+ "val a = 1"*)).map(_.platforms)
+          ScaladocSnippets.extract(path, block((markers :+ "val a = 1")*)).map(_.platforms)
         assertTrue(
           platforms("// jvm-only") == List(Set[Platform](Platform.Jvm)),
           platforms("// js-only") == List(Set[Platform](Platform.Js)),

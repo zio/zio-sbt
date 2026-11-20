@@ -1,0 +1,9 @@
+# a wrong example does not break `compile`, only `scaladocCheck`
+> compile
+-> core/scaladocCheck
+> checkMapper
+# `// no-check` without a reason fails before compiling
+-> marker/scaladocCheck
+# an example in shared sources that uses a JVM-only library compiles on the JVM and fails on Scala.js
+> sharedJvm/scaladocCheck
+-> sharedJs/scaladocCheck

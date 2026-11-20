@@ -1,0 +1,4 @@
+# every platform, every Scala version: each compiles the shared example and its own ones
+> +scaladocCheck
+> scaladocCheck
+> checkPlatforms
