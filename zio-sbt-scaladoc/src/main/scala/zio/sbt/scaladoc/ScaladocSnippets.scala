@@ -19,10 +19,10 @@ package zio.sbt.scaladoc
 import scala.collection.mutable.ListBuffer
 
 /**
- * Finds the code examples in Scaladoc comments and turns each one into a
- * source file that a compiler can check. Plain functions from strings to
- * strings: no sbt types, so [[zio.sbt.ScaladocCheckPlugin]] calls them from a
- * task and the unit tests call them directly.
+ * Finds the code examples in Scaladoc comments and turns each one into a source
+ * file that a compiler can check. Plain functions from strings to strings: no
+ * sbt types, so [[zio.sbt.ScaladocCheckPlugin]] calls them from a task and the
+ * unit tests call them directly.
  *
  * Ported from zio-blocks' `project/ScaladocSnippets.scala`. The changes: the
  * wrapper's imports come from each file's `package` clauses instead of a
@@ -179,8 +179,8 @@ object ScaladocSnippets {
 
   /**
    * The packages whose names the code of a file sees without importing them,
-   * one per package clause, outermost first: `package zio` then
-   * `package query` gives `List("zio", "zio.query")`.
+   * one per package clause, outermost first: `package zio` then `package query`
+   * gives `List("zio", "zio.query")`.
    */
   def openedPackages(clauses: List[String]): List[String] =
     clauses.indices.toList.map(i => clauses.take(i + 1).mkString("."))
@@ -269,10 +269,10 @@ object ScaladocSnippets {
 
   /**
    * Whether `snippet` already imports everything it gets from `pkg`: a line
-   * starting `import <pkg>._` (or `.*`), or `import <pkg>.syntax` (`_` or
-   * `{`), whose `syntax` objects hold extension methods that no name check can
-   * find. Other sub-package imports do not count: they bring in only part of
-   * the package.
+   * starting `import <pkg>._` (or `.*`), or `import <pkg>.syntax` (`_` or `{`),
+   * whose `syntax` objects hold extension methods that no name check can find.
+   * Other sub-package imports do not count: they bring in only part of the
+   * package.
    */
   def importsPackage(snippet: Snippet, pkg: String): Boolean = {
     val quoted   = java.util.regex.Pattern.quote(pkg)
@@ -284,8 +284,8 @@ object ScaladocSnippets {
    * Whether the wrapper of `snippet` needs `import <pkg>._`: the example uses
    * one of `names`, the names of `pkg` from [[packageNames]], that it does not
    * bind itself by an import or a declaration of its own (those hide the
-   * wrapper's import, which would then be unused), and it does not import
-   * `pkg` itself ([[importsPackage]]).
+   * wrapper's import, which would then be unused), and it does not import `pkg`
+   * itself ([[importsPackage]]).
    *
    * The check errs towards keeping the import: a name it cannot tell apart
    * keeps it, which is then used or at worst warns. The one way to drop it
@@ -310,10 +310,9 @@ object ScaladocSnippets {
   /**
    * The imports of the wrapper of `snippet`, a file whose package clauses are
    * `clauses`. Every package the file's clauses open is imported, outermost
-   * first; the file's own package (the last one) only when [[needsImport]]
-   * says so. The outer ones are always imported: an outer package such as
-   * `zio` gets most of its names from library jars, which [[packageNames]]
-   * cannot see.
+   * first; the file's own package (the last one) only when [[needsImport]] says
+   * so. The outer ones are always imported: an outer package such as `zio` gets
+   * most of its names from library jars, which [[packageNames]] cannot see.
    */
   def imports(snippet: Snippet, clauses: List[String], namesByPackage: Map[String, Set[String]]): List[String] = {
     val opened = openedPackages(clauses)

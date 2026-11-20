@@ -22,18 +22,17 @@ import zio.sbt.scaladoc.ScaladocSnippets.Generated
 
 /**
  * sbt 2.x caches task results, which needs a way to serialize them. A
- * classpath, a function and a compile analysis have none, so these settings
- * opt out of the cache with `Def.uncached`, which sbt 1.x does not have (see
- * the `scala-2.12` [[ScaladocCheckCompat]]). `Def.uncached` has to appear
- * directly in the setting, like `.value`, so the settings themselves live
- * here.
+ * classpath, a function and a compile analysis have none, so these settings opt
+ * out of the cache with `Def.uncached`, which sbt 1.x does not have (see the
+ * `scala-2.12` [[ScaladocCheckCompat]]). `Def.uncached` has to appear directly
+ * in the setting, like `.value`, so the settings themselves live here.
  */
 private[sbt] object ScaladocCheckCompat {
 
   /**
    * The examples' classpath (the module's main classpath plus the libraries
-   * added with `% ScaladocCheck`) and the mapping of compile errors back to
-   * the Scaladoc lines.
+   * added with `% ScaladocCheck`) and the mapping of compile errors back to the
+   * Scaladoc lines.
    */
   def classpathAndPositionSettings(
     config: Configuration,

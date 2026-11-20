@@ -32,7 +32,9 @@ object ScaladocSnippetsSpec extends ZIOSpecDefault {
   private def example(line: Int, code: String*): Snippet =
     Snippet(path, line, code.toList, code.toList.map(_ => 3), code.toList.map(" * " + _), None, Platform.all)
 
-  private def block(lines: String*): String = source(((("/**" +: " * {{{" +: lines.map(" * " + _)) ++ Seq(" * }}}", " */")))*)
+  private def block(lines: String*): String = source(
+    ((("/**" +: " * {{{" +: lines.map(" * " + _)) ++ Seq(" * }}}", " */")))*
+  )
 
   private val knownMarkers =
     "`// scala-3-only`, `// scala-2-only`, `// jvm-only`, `// js-only`, `// native-only`, `// no-js`, `// no-native` or `// no-check: <reason>`"
@@ -119,12 +121,18 @@ object ScaladocSnippetsSpec extends ZIOSpecDefault {
       },
       test("does not read a plain comment as a marker") {
         assertTrue(
-          ScaladocSnippets.extract(path, block("// Build a cache:", "val a = 1")).map(_.platforms) == List(Platform.all),
+          ScaladocSnippets.extract(path, block("// Build a cache:", "val a = 1")).map(_.platforms) == List(
+            Platform.all
+          ),
           ScaladocSnippets.extract(path, block("// JSON output:", "val a = 1")).map(_.platforms) == List(Platform.all)
         )
       },
       test("fails with path and line when the comment ends before the block closes") {
-        assertTrue(failure(source("/**", " * {{{", " * val x = 1", " */", "object A")) == Some(s"$path:2: code block is never closed"))
+        assertTrue(
+          failure(source("/**", " * {{{", " * val x = 1", " */", "object A")) == Some(
+            s"$path:2: code block is never closed"
+          )
+        )
       },
       test("fails with path and line when the file ends before the block closes") {
         assertTrue(failure(source("/**", " * {{{", " * val x = 1")) == Some(s"$path:2: code block is never closed"))
@@ -204,7 +212,7 @@ object ScaladocSnippetsSpec extends ZIOSpecDefault {
     ),
     suite("imports")(
       test("always import the outer clauses and the file's own package only when the example uses it") {
-        val names                                         = Map("zio.query" -> Set("ZQuery"))
+        val names                                        = Map("zio.query" -> Set("ZQuery"))
         def imports(code: String, clauses: List[String]) = ScaladocSnippets.imports(example(4, code), clauses, names)
         assertTrue(
           imports("val q = ZQuery.succeed(1)", List("zio", "query")) == List("zio._", "zio.query._"),
@@ -235,7 +243,8 @@ object ScaladocSnippetsSpec extends ZIOSpecDefault {
         )
       },
       test("keep the import next to an import of another package") {
-        val needs = ScaladocSnippets.needsImport(example(4, "import zio._", "val a = ZQuery"), "zio.query", Set("ZQuery"))
+        val needs =
+          ScaladocSnippets.needsImport(example(4, "import zio._", "val a = ZQuery"), "zio.query", Set("ZQuery"))
         assertTrue(needs)
       }
     ),
@@ -260,14 +269,21 @@ object ScaladocSnippetsSpec extends ZIOSpecDefault {
       test("reads indented declarations only from a file that defines implicit members") {
         val names = ScaladocSnippets.packageNames(
           Seq(
-            "a/package.scala" -> source("package zio.docs", "implicit class Interp(sc: StringContext) {", "  def md = 1", "}"),
-            "a/Plain.scala"   -> source("package zio.docs", "object Plain {", "  val local = 1", "}")
+            "a/package.scala" -> source(
+              "package zio.docs",
+              "implicit class Interp(sc: StringContext) {",
+              "  def md = 1",
+              "}"
+            ),
+            "a/Plain.scala" -> source("package zio.docs", "object Plain {", "  val local = 1", "}")
           )
         )("zio.docs")
         assertTrue(names == Set("Interp", "md", "Plain"))
       },
       test("reads the members of a package object at any indentation") {
-        val names = ScaladocSnippets.packageNames(Seq("a/p.scala" -> source("package zio", "package object query {", "  def helper = 1")))
+        val names = ScaladocSnippets.packageNames(
+          Seq("a/p.scala" -> source("package zio", "package object query {", "  def helper = 1"))
+        )
         assertTrue(names("zio.query") == Set("helper"))
       },
       test("reads a file by its package clause, not its directory") {
@@ -299,8 +315,9 @@ object ScaladocSnippetsSpec extends ZIOSpecDefault {
     ),
     suite("render")(
       test("wraps the code in an object with the imports and the source location") {
-        val generated = ScaladocSnippets.render(example(4, "val a = ZQuery", "", "  || b"), List("zio._", "zio.query._"))
-        val name      = ScaladocSnippets.objectName(path, 4)
+        val generated =
+          ScaladocSnippets.render(example(4, "val a = ZQuery", "", "  || b"), List("zio._", "zio.query._"))
+        val name = ScaladocSnippets.objectName(path, 4)
         assertTrue(
           generated.fileName == name + ".scala",
           generated.firstCodeLine == 8,
@@ -364,7 +381,10 @@ object ScaladocSnippetsSpec extends ZIOSpecDefault {
           " */"
         )
         val sources = Seq("a/ZQuery.scala" -> "package zio.query\n\nobject ZQuery", "a/Demo.scala" -> demo)
-        val files   = ScaladocSnippets.generate(Seq(sources(1)), sources, 3, Platform.Jvm).map(g => g.snippet.line -> g.content).toMap
+        val files   = ScaladocSnippets
+          .generate(Seq(sources(1)), sources, 3, Platform.Jvm)
+          .map(g => g.snippet.line -> g.content)
+          .toMap
         assertTrue(files(3).contains("import zio.query._"), !files(9).contains("import zio.query._"))
       },
       test("keeps each example for the Scala versions and platforms its markers allow") {
@@ -391,10 +411,13 @@ object ScaladocSnippetsSpec extends ZIOSpecDefault {
       },
       test("fails when two examples would get the same wrapper name") {
         val content = block("val a = 1")
-        val result  = Try(ScaladocSnippets.generate(Seq(path -> content, path -> content), Nil, 3, Platform.Jvm)).failed.toOption
-          .map(_.getMessage)
+        val result  =
+          Try(ScaladocSnippets.generate(Seq(path -> content, path -> content), Nil, 3, Platform.Jvm)).failed.toOption
+            .map(_.getMessage)
         assertTrue(
-          result == Some(s"two examples generate ${ScaladocSnippets.objectName(path, 2)}.scala; rename one of their source files")
+          result == Some(
+            s"two examples generate ${ScaladocSnippets.objectName(path, 2)}.scala; rename one of their source files"
+          )
         )
       }
     )

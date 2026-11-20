@@ -307,7 +307,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
     val checkWebsiteBuildProcess  = ciCheckWebsiteBuildProcess.value
     val checkScaladocExamples     =
       if (ciCheckScaladocExamples.value) Seq(CheckScaladocExamples) else Seq.empty
-    val netlifyPreviewBuildSteps  =
+    val netlifyPreviewBuildSteps =
       if (ciEnableDeployPreview.value) NetlifyPreviewBuildSteps.value else Seq.empty
 
     Seq(

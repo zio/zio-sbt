@@ -172,10 +172,9 @@ object ScaladocCheckPlugin extends AutoPlugin {
   private val fatalWarningFlags = Set("-Xfatal-warnings", "-Werror", "-Wconf:any:error", "-Wconf:any:e")
 
   /**
-   * The module's compiler options for its examples: without the flags that
-   * turn warnings into errors (an example's deprecation warning must not fail
-   * the build) and without SemanticDB, whose output directory is the main
-   * code's.
+   * The module's compiler options for its examples: without the flags that turn
+   * warnings into errors (an example's deprecation warning must not fail the
+   * build) and without SemanticDB, whose output directory is the main code's.
    */
   private[sbt] def exampleScalacOptions(options: Seq[String]): Seq[String] = {
     def isSemanticdb(option: String) =
@@ -183,13 +182,15 @@ object ScaladocCheckPlugin extends AutoPlugin {
         option == "-Ysemanticdb"
     @annotation.tailrec
     def loop(rest: List[String], acc: List[String]): List[String] = rest match {
-      case "-semanticdb-target" :: _ :: tail                    => loop(tail, acc)
-      case option :: tail if fatalWarningFlags(option)          => loop(tail, acc)
-      case option :: tail if isSemanticdb(option)               => loop(tail, acc)
-      case option :: tail if option.startsWith("-Xplugin:") &&
-          option.contains("semanticdb")                         => loop(tail, acc)
-      case option :: tail                                       => loop(tail, option :: acc)
-      case Nil                                                  => acc.reverse
+      case "-semanticdb-target" :: _ :: tail           => loop(tail, acc)
+      case option :: tail if fatalWarningFlags(option) => loop(tail, acc)
+      case option :: tail if isSemanticdb(option)      => loop(tail, acc)
+      case option :: tail
+          if option.startsWith("-Xplugin:") &&
+            option.contains("semanticdb") =>
+        loop(tail, acc)
+      case option :: tail => loop(tail, option :: acc)
+      case Nil            => acc.reverse
     }
     loop(options.toList, Nil)
   }
@@ -219,10 +220,10 @@ object ScaladocCheckPlugin extends AutoPlugin {
 
   private def sourcePosition(file: File, lineNumber: Int, column: Option[Int], content: String): xsbti.Position =
     new xsbti.Position {
-      override def line(): Optional[Integer]        = Optional.of(Integer.valueOf(lineNumber))
-      override def lineContent(): String            = content
-      override def offset(): Optional[Integer]      = Optional.empty[Integer]()
-      override def pointer(): Optional[Integer]     =
+      override def line(): Optional[Integer]    = Optional.of(Integer.valueOf(lineNumber))
+      override def lineContent(): String        = content
+      override def offset(): Optional[Integer]  = Optional.empty[Integer]()
+      override def pointer(): Optional[Integer] =
         column.fold(Optional.empty[Integer]())(c => Optional.of(Integer.valueOf(c)))
       override def pointerSpace(): Optional[String] =
         column.fold(Optional.empty[String]())(c =>

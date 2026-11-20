@@ -28,8 +28,8 @@ private[sbt] object ScaladocCheckCompat {
 
   /**
    * The examples' classpath (the module's main classpath plus the libraries
-   * added with `% ScaladocCheck`) and the mapping of compile errors back to
-   * the Scaladoc lines.
+   * added with `% ScaladocCheck`) and the mapping of compile errors back to the
+   * Scaladoc lines.
    */
   def classpathAndPositionSettings(
     config: Configuration,
