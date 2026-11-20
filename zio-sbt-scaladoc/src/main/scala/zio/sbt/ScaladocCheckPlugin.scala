@@ -211,7 +211,11 @@ object ScaladocCheckPlugin extends AutoPlugin {
         g                          <- byName.get(name)
         line                       <- toOption(position.line).map(_.intValue)
         (srcLine, column, content) <- g.mapPosition(line, toOption(position.pointer).map(_.intValue))
-      } yield sourcePosition(root / g.snippet.sourcePath, srcLine, column, content)
+      } yield {
+        // `sourcePath` is relative to the build root, unless the file lies outside it.
+        val relative = new File(g.snippet.sourcePath)
+        sourcePosition(if (relative.isAbsolute) relative else root / g.snippet.sourcePath, srcLine, column, content)
+      }
     }
   }
 
