@@ -20,14 +20,14 @@ import sbt.Keys._
 import sbt._
 
 /**
- * sbt-mdoc's `mdoc` task is `Compile / runMain`. In sbt 2.x, `runMain`
- * defaults to `clientSide := true`: when a command comes from the thin client
- * (which the sbt 2.x launcher uses by default) it does not run the main class,
- * it hands the run over to the client and returns at once. `compileDocs` then
- * completes before mdoc has written anything, and every task that reads
- * `website/docs` after it (`generateReadme`, `buildWebsite`, `publishToNpm`,
- * ...) finds nothing there. Running it in the server makes `compileDocs`
- * return only after mdoc has finished.
+ * sbt-mdoc's `mdoc` task is `Compile / runMain`. In sbt 2.x, `runMain` defaults
+ * to `clientSide := true`: when a command comes from the thin client (which the
+ * sbt 2.x launcher uses by default) it does not run the main class, it hands
+ * the run over to the client and returns at once. `compileDocs` then completes
+ * before mdoc has written anything, and every task that reads `website/docs`
+ * after it (`generateReadme`, `buildWebsite`, `publishToNpm`, ...) finds
+ * nothing there. Running it in the server makes `compileDocs` return only after
+ * mdoc has finished.
  */
 private[sbt] object WebsitePluginCompat {
   def runMdocInServerSettings: Seq[Setting[_]] = Seq(
