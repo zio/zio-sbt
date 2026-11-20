@@ -131,6 +131,7 @@ lazy val root = project
     `zio-sbt-githubactions`,
     `zio-sbt-website`,
     `zio-sbt-ecosystem`,
+    `zio-sbt-scaladoc`,
     `zio-sbt-ci`,
     `zio-sbt-tests`,
     `zio-sbt-source`
@@ -171,6 +172,23 @@ lazy val `zio-sbt-ecosystem` =
       pluginCrossBuildSettings,
       scala3JavaPlatformSettings,
       scriptedTestSettings
+    )
+    .enablePlugins(SbtPlugin)
+
+lazy val `zio-sbt-scaladoc` =
+  project
+    .settings(stdSettings())
+    .settings(
+      headerEndYear      := Some(2026),
+      crossScalaVersions := Seq(Scala212, Scala3),
+      pluginCrossBuildSettings,
+      scala3JavaPlatformSettings,
+      scriptedTestSettings,
+      libraryDependencies ++= Seq(
+        "dev.zio" %% "zio-test"     % zio % Test,
+        "dev.zio" %% "zio-test-sbt" % zio % Test
+      ),
+      testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
     )
     .enablePlugins(SbtPlugin)
 
