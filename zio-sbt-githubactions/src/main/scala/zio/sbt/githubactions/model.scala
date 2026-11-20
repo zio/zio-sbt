@@ -415,7 +415,11 @@ object ServicePort {
  * but steps may run before it is accepting connections. For example:
  *
  * {{{
- * options = Some("--health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5")
+ * val postgres = Service(
+ *   name = "postgres",
+ *   image = ImageRef("postgres:17"),
+ *   options = Some("--health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5")
+ * )
  * }}}
  */
 case class Service(
