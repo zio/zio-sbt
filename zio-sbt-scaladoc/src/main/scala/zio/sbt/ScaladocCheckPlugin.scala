@@ -83,7 +83,7 @@ object ScaladocCheckPlugin extends AutoPlugin {
      * that only the examples need with
      * `libraryDependencies += "org" %% "name" % "version" % ScaladocCheck`.
      */
-    val ScaladocCheck = config("scaladoccheck").extend(Compile).hide
+    val ScaladocCheck: Configuration = config("scaladoccheck").extend(Compile).hide
 
     @transient
     val scaladocCheck: TaskKey[Unit] =

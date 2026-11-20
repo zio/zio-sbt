@@ -158,7 +158,7 @@ object ScaladocSnippets {
               i += 1
             }
             if (i == lines.length) fail(sourcePath, start, "code block is never closed")
-            result ++= toSnippet(sourcePath, start, code.toList, margins.toList, raw.toList)
+            toSnippet(sourcePath, start, code.toList, margins.toList, raw.toList).foreach(result += _)
           case None => ()
         }
         if (lines(i).contains("*/")) inDoc = false
@@ -423,8 +423,8 @@ object ScaladocSnippets {
       val scalaMajors = markers.collect { case "// scala-3-only" => 3; case "// scala-2-only" => 2 }.distinct
       if (scalaMajors.size > 1)
         fail(sourcePath, line, "`// scala-2-only` and `// scala-3-only` contradict each other; keep one")
-      val only      = markers.flatMap(platformOnly.get).toSet
-      val excluded  = markers.flatMap(platformNot.get).toSet
+      val only      = markers.collect(platformOnly).toSet
+      val excluded  = markers.collect(platformNot).toSet
       val platforms = (if (only.isEmpty) Platform.all else only) -- excluded
       if (only.size > 1 || platforms.isEmpty)
         fail(sourcePath, line, s"the markers ${markers.mkString("`", "`, `", "`")} leave no platform to compile on")
