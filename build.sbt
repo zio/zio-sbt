@@ -116,7 +116,7 @@ ThisBuild / ciCheckArtifactsBuildSteps += Step.SingleStep(
   run = Some(
     "sbt --no-colors " +
       "\"zio-sbt-ecosystem/scripted zio-sbt-ecosystem/verifySettings-sbt2\" " +
-      "\"zio-sbt-website/scripted zio-sbt-website/installWebsite-sbt2\" " +
+      "\"zio-sbt-website/scripted zio-sbt-website/installWebsite-sbt2 zio-sbt-website/docsFromThinClient-sbt2\" " +
       "\"zio-sbt-ci/scripted zio-sbt-ci/defaults-sbt2\""
   )
 )
