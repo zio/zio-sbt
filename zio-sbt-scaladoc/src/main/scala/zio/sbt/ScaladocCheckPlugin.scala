@@ -30,36 +30,37 @@ import zio.sbt.scaladoc.ScaladocSnippets.{Generated, Platform}
  *
  * Loading the plugin (`addSbtPlugin("dev.zio" % "zio-sbt-scaladoc" % ...)`)
  * switches it on in every module. `sbt +scaladocCheck` then compiles, in each
- * module and for each of its Scala versions, every multi-line `{{{ }}}` (or
- * ```` ```scala ````) block inside a `/** */` comment of the module's main
- * sources. `compile`, `test` and `publish` do not run it.
+ * module and for each of its Scala versions, every multi-line code block
+ * (between triple braces, or a fence opened with three backticks and `scala`)
+ * inside a Scaladoc comment of the module's main sources. `compile`, `test` and
+ * `publish` do not run it.
  *
  * How an example is compiled:
  *   - It is wrapped in an `object` of its own, in a file under the module's
  *     `target`, and compiled in the `ScaladocCheck` configuration, which sees
- *     the module's main classpath (its own classes and every library it
- *     depends on) and uses its `Compile / scalacOptions`, minus the flags that
- *     turn warnings into errors. A Scala.js or Scala Native module therefore
+ *     the module's main classpath (its own classes and every library it depends
+ *     on) and uses its `Compile / scalacOptions`, minus the flags that turn
+ *     warnings into errors. A Scala.js or Scala Native module therefore
  *     compiles its examples with the Scala.js or Scala Native compiler.
- *   - The wrapper imports the packages that the source file's `package`
- *     clauses open, so an example sees what the code around it sees, without
- *     the package-private members. The file's own package is imported only
- *     when the example uses one of its names, so the import is never unused.
+ *   - The wrapper imports the packages that the source file's `package` clauses
+ *     open, so an example sees what the code around it sees, without the
+ *     package-private members. The file's own package is imported only when the
+ *     example uses one of its names, so the import is never unused.
  *   - A compile error is reported at the Scaladoc line of the source file.
  *
  * The first lines of a block can be markers: `// scala-3-only`,
- * `// scala-2-only`, `// jvm-only`, `// js-only`, `// native-only`,
- * `// no-js`, `// no-native`, and `// no-check: <reason>` (the reason is
- * required). A line that looks like a marker but is not one of these fails the
- * check.
+ * `// scala-2-only`, `// jvm-only`, `// js-only`, `// native-only`, `// no-js`,
+ * `// no-native`, and `// no-check: <reason>` (the reason is required). A line
+ * that looks like a marker but is not one of these fails the check.
  *
  * Limitations:
- *   - One-line `{{{ x }}}` blocks and blocks outside `/** */` are not checked.
+ *   - One-line code blocks and blocks outside Scaladoc comments are not
+ *     checked.
  *   - Examples are compiled, not run: a result shown in a comment is not
  *     checked.
  *   - On Scala.js and Scala Native, examples are compiled, not linked. A JDK
- *     class the platform lacks (`java.io.File` on Scala.js) is only reported
- *     by the linker, so the check does not catch it; a library the platform's
+ *     class the platform lacks (`java.io.File` on Scala.js) is only reported by
+ *     the linker, so the check does not catch it; a library the platform's
  *     module does not depend on, and the platform compiler's own checks, are
  *     caught.
  *   - An example sees only its own module and the modules it depends on. An

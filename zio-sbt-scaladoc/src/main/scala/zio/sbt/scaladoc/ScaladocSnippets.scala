@@ -48,7 +48,7 @@ object ScaladocSnippets {
    * @param sourcePath
    *   path of the source file, relative to the build root, with `/` separators
    * @param line
-   *   1-based line of the opening `{{{` (or ```` ```scala ````) marker
+   *   1-based line of the line that opens the code block
    * @param code
    *   the example, with the comment margin removed and each `\$` read as `$`,
    *   as Scaladoc renders it
@@ -120,11 +120,11 @@ object ScaladocSnippets {
   def stripMargin(line: String): String = line.replaceFirst("""^\s*\*(?: |$)""", "")
 
   /**
-   * Returns the `{{{ }}}` and ```` ```scala ```` blocks inside the Scaladoc
-   * comments of `content`, leaving out the ones marked `// no-check: <reason>`.
-   * Throws `IllegalArgumentException`, with `path:line: message`, for an
-   * unknown or contradicting marker, a block that is never closed, and a code
-   * line that contains `}}}`.
+   * Returns the multi-line code blocks (between triple braces, or in a `scala`
+   * fence) inside the Scaladoc comments of `content`, leaving out the ones
+   * marked `// no-check: <reason>`. Throws `IllegalArgumentException`, with
+   * `path:line: message`, for an unknown or contradicting marker, a block that
+   * is never closed, and a code line that contains three closing braces.
    */
   def extract(sourcePath: String, content: String): List[Snippet] = {
     val lines  = content.split("\n", -1).map(_.stripSuffix("\r"))
