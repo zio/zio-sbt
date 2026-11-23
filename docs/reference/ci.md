@@ -32,7 +32,7 @@ The generated `ci.yml` contains these jobs:
 
 | Job | What it does |
 | --- | --- |
-| `build` | Compiles everything, publishes locally, and builds the website |
+| `build` | Compiles everything, publishes locally, and builds the website. With `ciCheckScaladocExamples`, also compiles the Scaladoc examples |
 | `lint` | Checks the generated workflow is up to date, then runs `sbt lint` |
 | `test` | Runs the test suite across the target Java versions |
 | `update-readme` | Regenerates `README.md` from `docs/index.md` and opens a PR |
@@ -70,6 +70,7 @@ All settings are `ThisBuild`-scoped.
 | `ciWorkflowPermissions` | `Option[Map[String, String]]` | `Some(id-token: write, contents: read)` | Workflow-level `permissions`. `None` omits the block, so the workflow runs with the repository's default token permissions; `Some(Map.empty)` instead renders `permissions: {}`, which grants nothing |
 | `ciSwapSizeGB` | `Int` | `0` | Adds a swap-space step to every job when greater than zero |
 | `ciBackgroundJobs` | `Seq[String]` | `Seq.empty` | Commands prefixed to each `run`, for daemons a job needs |
+| `ciCheckScaladocExamples` | `Boolean` | `false` | Adds a "Check Scaladoc examples" step to `build` that runs `sbt +scaladocCheck`. Needs the [ZIO SBT Scaladoc](./scaladoc.md) plugin |
 | `ciEnableDeployPreview` | `Boolean` | `false` | Adds website-artifact upload steps to `build` and generates `deploy-preview.yml`. Requires `NETLIFY_AUTH_TOKEN`/`NETLIFY_SITE_ID` secrets |
 | `ciDeployPreviewMode` | `DeployPreviewMode` | `DeployPreviewMode.Automatic` | Only used with `ciEnableDeployPreview`. `Automatic` deploys every successful pull-request CI run; `OnDemand` posts a "Deploy preview" checkbox comment and deploys only when it is ticked |
 | `ciEnableReleaseDrafter` | `Boolean` | `true` | Generates `release-drafter.yml` and scaffolds `.github/release-drafter.yml` (once). Overwrites a hand-written `release-drafter.yml` when on; when off, only deletes a copy it generated itself |

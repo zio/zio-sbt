@@ -3,7 +3,7 @@ id: how-the-plugins-fit-together
 title: "How the Plugins Fit Together"
 ---
 
-ZIO SBT splits the build of a ZIO library into three sbt plugins that each own one concern, and two modules that support them.
+ZIO SBT splits the build of a ZIO library into three sbt plugins that each own one concern, an optional fourth that checks Scaladoc examples, and two modules that support them.
 
 ## One Plugin per Concern
 
@@ -27,3 +27,7 @@ The first stage runs on a laptop, which is why `previewWebsite` can show the sam
 ## Source Embedding
 
 `zio-sbt-source` is not a plugin. It is a library on the classpath of the docs project, so mdoc can load its `mdoc:embed` modifier. Embedding examples from real source files keeps the documentation compiling against the code it describes.
+
+## Scaladoc Examples
+
+The Scaladoc plugin is optional. Loading it gives every module a `scaladocCheck` task that compiles the code examples in its Scaladoc comments, like mdoc does for the Markdown in `docs/`. The CI plugin runs it in the `build` job when `ciCheckScaladocExamples` is on. See the [ZIO SBT Scaladoc reference](../reference/scaladoc.md).
