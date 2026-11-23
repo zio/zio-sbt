@@ -24,26 +24,26 @@ package zio.sbt
  * Comma-separated:
  * {{{
  *   ExprEval.show(
- *     isPrimitive(TypeId.of[Int]),
- *     isPrimitive(TypeId.of[String])
+ *     List(1, 2, 3).sum,
+ *     "zio".toUpperCase
  *   )
  * }}}
  *
  * Block form (newline-separated):
  * {{{
  *   ExprEval.show {
- *     isPrimitive(TypeId.of[Int])
- *     isPrimitive(TypeId.of[String])
+ *     List(1, 2, 3).sum
+ *     "zio".toUpperCase
  *   }
  * }}}
  *
  * In both cases, consecutive `//` comment lines immediately above the `show`
  * call are printed as a label, and each expression is followed by its result:
  * {{{
- *   isPrimitive(TypeId.of[Int])
- *   // true
- *   isPrimitive(TypeId.of[String])
- *   // false
+ *   List(1, 2, 3).sum
+ *   // 6
+ *   "zio".toUpperCase
+ *   // ZIO
  * }}}
  */
 object ExprEval {

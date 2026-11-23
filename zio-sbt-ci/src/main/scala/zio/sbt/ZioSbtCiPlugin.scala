@@ -115,6 +115,13 @@ object ZioSbtCiPlugin extends AutoPlugin {
           "NETLIFY_SITE_ID secrets to be configured on the repository. See `ciDeployPreviewMode` to " +
           "deploy on demand instead of on every successful run. Default is false"
       )
+    val ciCheckScaladocExamples: SettingKey[Boolean] =
+      settingKey[Boolean](
+        "When true, adds a \"Check Scaladoc examples\" step to the build job that runs " +
+          "`sbt +scaladocCheck`, which compiles the code examples in the Scaladoc of every module on " +
+          "every Scala version and platform. Needs the zio-sbt-scaladoc plugin in project/plugins.sbt. " +
+          "Default is false"
+      )
     val ciDeployPreviewMode: SettingKey[DeployPreviewMode] =
       settingKey[DeployPreviewMode](
         "How deploy-preview.yml deploys the website preview, only used when `ciEnableDeployPreview` " +
@@ -298,7 +305,9 @@ object ZioSbtCiPlugin extends AutoPlugin {
     val checkAllCodeCompiles      = ciCheckArtifactsCompilationSteps.value
     val checkArtifactBuildProcess = ciCheckArtifactsBuildSteps.value
     val checkWebsiteBuildProcess  = ciCheckWebsiteBuildProcess.value
-    val netlifyPreviewBuildSteps  =
+    val checkScaladocExamples     =
+      if (ciCheckScaladocExamples.value) Seq(CheckScaladocExamples) else Seq.empty
+    val netlifyPreviewBuildSteps =
       if (ciEnableDeployPreview.value) NetlifyPreviewBuildSteps.value else Seq.empty
 
     Seq(
@@ -312,8 +321,8 @@ object ZioSbtCiPlugin extends AutoPlugin {
               SetupJava(javaVersion),
               SetupSBT,
               CacheDependencies
-            ) ++ checkAllCodeCompiles ++ checkArtifactBuildProcess ++ checkWebsiteBuildProcess ++
-            netlifyPreviewBuildSteps
+            ) ++ checkAllCodeCompiles ++ checkArtifactBuildProcess ++ checkScaladocExamples ++
+            checkWebsiteBuildProcess ++ netlifyPreviewBuildSteps
         }
       )
     )
@@ -2016,6 +2025,7 @@ object ZioSbtCiPlugin extends AutoPlugin {
           )
         ),
       ciCheckWebsiteBuildProcess := CheckWebsiteBuildProcess.value,
+      ciCheckScaladocExamples    := false,
       ciEnableDeployPreview      := false,
       ciDeployPreviewMode        := DeployPreviewMode.Automatic,
       ciEnableReleaseDrafter     := true,
@@ -2281,6 +2291,12 @@ object ZioSbtCiPlugin extends AutoPlugin {
         )
       )
     }
+
+  // Compiles the Scaladoc examples of every module (zio-sbt-scaladoc's `scaladocCheck`) on every Scala version.
+  val CheckScaladocExamples: Step.SingleStep = Step.SingleStep(
+    name = "Check Scaladoc examples",
+    run = Some(SbtCommand + " +scaladocCheck")
+  )
 
   lazy val Lint: Def.Initialize[Step.SingleStep] = Def.setting {
     val backgroundJobs = ciBackgroundJobs.value

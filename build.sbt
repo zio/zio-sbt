@@ -66,6 +66,8 @@ inThisBuild(
     // The docs site already has NETLIFY_AUTH_TOKEN/NETLIFY_SITE_ID secrets configured, so this
     // repo dogfoods deploy previews for its own Docusaurus site (website/build).
     ciEnableDeployPreview := true,
+    // Compiles the Scaladoc examples of every module (zio-sbt-scaladoc, loaded from project/build.sbt).
+    ciCheckScaladocExamples := true,
     // Dependabot and Renovate PRs here already have hand-written regenerate workflows
     // (dependabot-/renovate-regenerate-workflows.yml) that first sync V.scala, the source of the
     // action pins; the generic generated one would just fight them by regenerating from a stale V.scala.
@@ -110,14 +112,15 @@ inThisBuild(
 // `+publishLocal` (the default `ciCheckArtifactsBuildSteps` step) already publishes every
 // cross-built module's sbt-2.x/Scala-3 artifacts, so this step just proves a real sbt 2.0.7
 // process can resolve and use them - the `-sbt2` scripted fixtures added alongside the existing
-// sbt-1.x ones in zio-sbt-ecosystem/zio-sbt-website/zio-sbt-ci.
+// sbt-1.x ones in zio-sbt-ecosystem/zio-sbt-website/zio-sbt-ci/zio-sbt-scaladoc.
 ThisBuild / ciCheckArtifactsBuildSteps += Step.SingleStep(
   name = "Check sbt-2.x scripted fixtures",
   run = Some(
     "sbt --no-colors " +
       "\"zio-sbt-ecosystem/scripted zio-sbt-ecosystem/verifySettings-sbt2\" " +
       "\"zio-sbt-website/scripted zio-sbt-website/installWebsite-sbt2 zio-sbt-website/docsFromThinClient-sbt2\" " +
-      "\"zio-sbt-ci/scripted zio-sbt-ci/defaults-sbt2\""
+      "\"zio-sbt-ci/scripted zio-sbt-ci/defaults-sbt2\" " +
+      "\"zio-sbt-scaladoc/scripted zio-sbt-scaladoc/jvm-sbt2 zio-sbt-scaladoc/crossPlatform-sbt2\""
   )
 )
 
@@ -131,6 +134,7 @@ lazy val root = project
     `zio-sbt-githubactions`,
     `zio-sbt-website`,
     `zio-sbt-ecosystem`,
+    `zio-sbt-scaladoc`,
     `zio-sbt-ci`,
     `zio-sbt-tests`,
     `zio-sbt-source`
@@ -171,6 +175,30 @@ lazy val `zio-sbt-ecosystem` =
       pluginCrossBuildSettings,
       scala3JavaPlatformSettings,
       scriptedTestSettings
+    )
+    .enablePlugins(SbtPlugin)
+
+lazy val `zio-sbt-scaladoc` =
+  project
+    .settings(stdSettings())
+    .settings(
+      headerEndYear      := Some(2026),
+      crossScalaVersions := Seq(Scala212, Scala3),
+      pluginCrossBuildSettings,
+      scala3JavaPlatformSettings,
+      scriptedTestSettings,
+      // `scriptedTestSettings` turns `Test / test` into `scripted` alone, which would skip this module's
+      // unit tests; run them first, on both axes, and the scripted fixtures after them on the 2.12 axis.
+      Test / test := Def.taskDyn {
+        val unitTests = (Test / testOnly).toTask("")
+        if (scalaBinaryVersion.value == "3") unitTests
+        else Def.sequential(unitTests, scripted.toTask(""))
+      }.value,
+      libraryDependencies ++= Seq(
+        "dev.zio" %% "zio-test"     % zio % Test,
+        "dev.zio" %% "zio-test-sbt" % zio % Test
+      ),
+      testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
     )
     .enablePlugins(SbtPlugin)
 

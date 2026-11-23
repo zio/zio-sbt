@@ -30,7 +30,8 @@ const sidebars = {
         "reference/website",
         "reference/ci",
         "reference/githubactions",
-        "reference/source"
+        "reference/source",
+        "reference/scaladoc"
       ]
     },
     {
@@ -58,6 +59,7 @@ const sidebars = {
         "how-to-guides/add-a-service-container-to-a-job",
         "how-to-guides/change-the-workflow-environment",
         "how-to-guides/test-against-several-scala-and-java-versions",
+        "how-to-guides/check-scaladoc-examples-in-ci",
         "how-to-guides/customize-the-generated-readme"
       ]
     }

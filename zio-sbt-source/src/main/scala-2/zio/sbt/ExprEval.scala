@@ -25,17 +25,19 @@ import scala.language.experimental.macros
  *
  * Comma-separated:
  * {{{
+ *   // no-check: on Scala 2, show does not compile outside package zio.sbt (a known bug)
  *   ExprEval.show(
- *     isPrimitive(TypeId.of[Int]),
- *     isPrimitive(TypeId.of[String])
+ *     List(1, 2, 3).sum,
+ *     "zio".toUpperCase
  *   )
  * }}}
  *
  * Block form (newline-separated):
  * {{{
+ *   // no-check: on Scala 2, show does not compile outside package zio.sbt (a known bug)
  *   ExprEval.show {
- *     isPrimitive(TypeId.of[Int])
- *     isPrimitive(TypeId.of[String])
+ *     List(1, 2, 3).sum
+ *     "zio".toUpperCase
  *   }
  * }}}
  *

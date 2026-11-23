@@ -13,3 +13,4 @@ The reference has one page for each module of ZIO SBT. Each page lists the setti
 | [ZIO SBT CI](./ci.md)                         | `zio-sbt-ci`             | The generated workflows and every `ci*` setting and task                                |
 | [ZIO SBT GitHub Actions](./githubactions.md)  | `zio-sbt-githubactions`  | The model of workflows, jobs, steps and bot configuration                               |
 | [ZIO SBT Source](./source.md)                 | `zio-sbt-source`         | `ExprEval`, `SourceFile` and the `mdoc:embed` modifier                                  |
+| [ZIO SBT Scaladoc](./scaladoc.md)             | `zio-sbt-scaladoc`       | The `scaladocCheck` task, which compiles the code examples in Scaladoc comments, and its markers |

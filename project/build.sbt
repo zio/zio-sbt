@@ -14,3 +14,8 @@ Compile / unmanagedResourceDirectories += file("zio-sbt-ci/src/main/resources")
 
 Compile / unmanagedSourceDirectories += file("zio-sbt-githubactions/src/main/scala")
 Compile / unmanagedResourceDirectories += file("zio-sbt-githubactions/src/main/resources")
+
+Compile / unmanagedSourceDirectories += file("zio-sbt-scaladoc/src/main/scala")
+// Same for zio-sbt-scaladoc's ScaladocCheckCompat.scala. Loading the plugin here makes zio-sbt check
+// the Scaladoc examples of its own modules (`sbt +scaladocCheck`).
+Compile / unmanagedSourceDirectories += file("zio-sbt-scaladoc/src/main/scala-2.12")
