@@ -1,5 +1,5 @@
 // Pins regenerate-workflows.yml as generated under the plugin's defaults (ciEnableRegenerateWorkflows
-// defaults to true; the bots default to Dependabot, Renovate and zio-scala-steward).
+// defaults to true; the bots default to Dependabot, Renovate, zio-scala-steward and zio-assistant[bot]).
 
 ThisBuild / name := "Test Project"
 

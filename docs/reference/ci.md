@@ -128,7 +128,7 @@ All settings are `ThisBuild`-scoped.
 | `ciPublishSnapshots` | `Boolean` | `true` | Also publish SNAPSHOTs on pushes to the default branch |
 | `ciUpdateReadmeCondition` | `Option[Condition]` | `None` | When to run the README job. Defaults to published releases |
 | `ciDocsVersioningScheme` | `DocsVersioning` | `SemanticVersioning` | `SemanticVersioning` or `HashVersioning` |
-| `ciDependencyUpdateBots` | `Seq[DependencyBot]` | Dependabot, Renovate, `ScalaSteward("zio-scala-steward")` | Bots whose PRs are auto-approved and auto-merged |
+| `ciDependencyUpdateBots` | `Seq[DependencyBot]` | Dependabot, Renovate, `ScalaSteward("zio-scala-steward")`, `Custom("zio-assistant[bot]")` | Bots whose PRs are auto-approved and auto-merged |
 
 ### Tasks
 

@@ -1976,7 +1976,8 @@ object ZioSbtCiPlugin extends AutoPlugin {
       ciDependencyUpdateBots := Seq(
         DependencyBot.Dependabot,
         DependencyBot.Renovate,
-        DependencyBot.ScalaSteward("zio-scala-steward")
+        DependencyBot.ScalaSteward("zio-scala-steward"),
+        DependencyBot.Custom("zio-assistant[bot]")
       ),
       ciGenerateAutoApproveWorkflow := generateAutoApproveWorkflowTask.value,
       ciGenerateAutoMergeWorkflow   := generateAutoMergeWorkflowTask.value,
