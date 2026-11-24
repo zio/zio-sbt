@@ -25,7 +25,7 @@ ciDependencyUpdateBots := Seq(
 - `DependencyBot.ScalaSteward(githubAppName)` — matches login `<githubAppName>[bot]`, where `githubAppName` is the name of the GitHub App you registered for Scala Steward
 - `DependencyBot.Custom(login)` — matches any exact GitHub login, for bots not covered by the predefined cases
 
-The default value mirrors the bots used by the `zio/zio` repository: `Seq(DependencyBot.Dependabot, DependencyBot.Renovate, DependencyBot.ScalaSteward("zio-scala-steward"))`. If your Scala Steward GitHub App has a different name, override the setting with the correct `ScalaSteward` app name.
+The default value mirrors the bots used by the `zio/zio` repository, plus the `zio-assistant[bot]` GitHub App that opens the README-update PRs: `Seq(DependencyBot.Dependabot, DependencyBot.Renovate, DependencyBot.ScalaSteward("zio-scala-steward"), DependencyBot.Custom("zio-assistant[bot]"))`. If your Scala Steward GitHub App has a different name, override the setting with the correct `ScalaSteward` app name.
 
 > **Note:**
 >
