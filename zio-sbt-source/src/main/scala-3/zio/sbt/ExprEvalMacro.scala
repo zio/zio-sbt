@@ -18,12 +18,14 @@ package zio.sbt
 
 import scala.quoted.*
 
+/** The macro implementation of `ExprEval.show`. */
 object ExprEvalMacro {
 
   /**
-   * Handles both call styles:
-   *   - show(a, b, c) — comma-separated varargs
-   *   - show { a; b; c } — single block argument, statements unpacked
+   * Expands a call to `ExprEval.show` into code that prints the `//` comment
+   * lines above the call, then the source text and the value of each argument,
+   * then a blank line. Several arguments are printed one by one; a single block
+   * argument is split into its statements unless one of them is a declaration.
    */
   def showImpl(exprs: Expr[Seq[Any]])(using Quotes): Expr[Unit] = {
     import quotes.reflect.*

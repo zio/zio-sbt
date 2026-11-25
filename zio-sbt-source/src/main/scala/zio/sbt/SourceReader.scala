@@ -21,6 +21,7 @@ import java.nio.charset.StandardCharsets
 
 import scala.io.Source
 
+/** Reads the `//` comment lines that `ExprEval.show` prints as a label. */
 object SourceReader {
 
   /**

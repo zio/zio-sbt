@@ -21,6 +21,21 @@ import java.nio.charset.StandardCharsets
 
 import mdoc.{PostModifier, PostModifierContext}
 
+/**
+ * An mdoc post-modifier named `embed`. It replaces a code fence whose info
+ * string is `scala mdoc:embed:path/to/Example.scala` with the file at that
+ * path, printed by `SourceFile.printSource` with a `title`. A
+ * `:showLineNumbers` or `:show-line-numbers` suffix adds the `showLineNumbers`
+ * flag, and double quotes around the path are removed.
+ *
+ * An empty path is reported as the mdoc error "embed modifier requires a path
+ * argument: mdoc:embed:path/to/file.scala". A file that cannot be read is
+ * reported as "Failed to embed source from 'path': " followed by the
+ * exception's message. In both cases `process` returns an empty string.
+ *
+ * The class is listed in `META-INF/services/mdoc.PostModifier`, so mdoc finds
+ * it when the library is on its classpath.
+ */
 class EmbedSourceModifier extends PostModifier {
   override val name = "embed"
 
