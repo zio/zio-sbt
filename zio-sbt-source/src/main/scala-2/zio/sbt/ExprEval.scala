@@ -66,10 +66,10 @@ import scala.language.experimental.macros
  * saw. When no file exists at that path, no label is printed.
  *
  * On Scala 2.13, `show` compiles only when called from code in package
- * `zio.sbt`: a call from `object Main` in package `demo` fails with "method
- * commentsAbove in object SourceReader cannot be accessed as a member of object
- * zio.sbt.SourceReader from object Main in package demo". On Scala 3, the same
- * call compiles and runs.
+ * `zio.sbt` or a package inside it: a call from `object Main` in package `demo`
+ * fails with "method commentsAbove in object SourceReader cannot be accessed as
+ * a member of object zio.sbt.SourceReader from object Main in package demo". On
+ * Scala 3, the same call compiles and runs.
  */
 object ExprEval {
 

@@ -29,10 +29,10 @@ import scala.io.Source
 object SourceFile {
 
   /**
-   * Returns the content of the file at `path`, its lines joined with `\n` and
-   * no line break at the end. When no file exists at `path`, it reads
-   * `"../" + path` instead, and throws `java.io.FileNotFoundException` when
-   * that file is missing too.
+   * Returns the content of the file at `path`, its lines joined with `\n`; the
+   * line break at the end of the last line is dropped. When no file exists at
+   * `path`, it reads `"../" + path` instead, and throws
+   * `java.io.FileNotFoundException` when that file is missing too.
    */
   def readSource(path: String): String = {
     val f          = new JFile(path)
