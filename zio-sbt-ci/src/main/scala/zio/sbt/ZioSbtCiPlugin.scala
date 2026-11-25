@@ -68,8 +68,10 @@ object ZioSbtCiPlugin extends AutoPlugin {
 
     /**
      * The branches listed in the `push` trigger of the default
-     * `ciWorkflowTriggers`. When `ciReleaseDrafterBranch` is `None`, the first
-     * of them is the branch release-drafter runs on. Default is empty.
+     * `ciWorkflowTriggers`. When the list is empty, which is the default, that
+     * trigger has no branch filter and matches pushes to all branches. When
+     * `ciReleaseDrafterBranch` is `None`, the first of them is the branch
+     * release-drafter runs on, or `main` when the list is empty.
      */
     val ciEnabledBranches: SettingKey[Seq[String]] = settingKey[Seq[String]]("Publish branch for documentation")
 
@@ -77,8 +79,12 @@ object ZioSbtCiPlugin extends AutoPlugin {
      * Applies when `ciTargetScalaVersions` or `ciTargetMinJavaVersions` is not
      * empty. When true, the test job's matrix crosses the Java versions with
      * the distinct Scala versions, and each step runs `/test` for the modules
-     * that cross-build that Scala version. When false, the matrix has one entry
-     * per module and Scala version. Default is false.
+     * that cross-build that Scala version, leaving out the modules whose
+     * minimum in `ciTargetMinJavaVersions` is above the matrix Java version.
+     * When false, the matrix has one entry per module and Scala version; when
+     * `ciTargetMinJavaVersions` is not empty, these entries go into one
+     * `scala-project-java<N>` axis per Java version `N`, which leaves out the
+     * modules whose minimum is above `N`. Default is false.
      */
     val ciGroupSimilarTests: SettingKey[Boolean] =
       settingKey[Boolean]("Group similar test by their Java and Scala versions, default is false")
@@ -97,7 +103,11 @@ object ZioSbtCiPlugin extends AutoPlugin {
      * after another: `auto-approve.yml`, `auto-merge.yml`,
      * `regenerate-workflows.yml`, `deploy-preview.yml`, `release-drafter.yml`,
      * `scala-steward.yml` and `.github/dependabot.yml`. The `ciEnable*`
-     * settings switch the optional ones on and off.
+     * settings switch the optional ones on and off. It also writes
+     * `.github/release-drafter.yml` when it is missing and
+     * `ciEnableReleaseDrafter` is true, and `.scala-steward.conf` when it is
+     * missing, `ciEnableScalaSteward` is true and `ciScalaStewardConfig`
+     * renders content.
      */
     val ciGenerateGithubWorkflow: TaskKey[Unit] = taskKey[Unit]("Generate github workflow")
 
@@ -130,11 +140,11 @@ object ZioSbtCiPlugin extends AutoPlugin {
 
     /**
      * The events the CI workflow runs on. The default is `workflow_dispatch`, a
-     * published release, a push (to the branches in `ciEnabledBranches`) and a
-     * pull request that does not target `gh-pages`. `ciGenerateGithubWorkflow`
-     * fails with an error when the list is empty. When the workflow has a
-     * `release-docs` job, each `workflow_dispatch` trigger that lacks it gets a
-     * `docs-only` input.
+     * published release, a push (to the branches in `ciEnabledBranches`, or to
+     * all branches when that list is empty) and a pull request that does not
+     * target `gh-pages`. `ciGenerateGithubWorkflow` fails with an error when
+     * the list is empty. When the workflow has a `release-docs` job, each
+     * `workflow_dispatch` trigger that lacks it gets a `docs-only` input.
      */
     val ciWorkflowTriggers: SettingKey[Seq[Trigger]] =
       settingKey[Seq[Trigger]](
@@ -150,8 +160,8 @@ object ZioSbtCiPlugin extends AutoPlugin {
     /**
      * The `concurrency` block of the CI workflow, or `None` to leave it out.
      * The default is `Some(Workflow.defaultConcurrency)`, whose group is one
-     * per branch (every run is its own group on the default branch) and which
-     * cancels in-progress runs.
+     * per Git ref (branch, tag or pull request), except on the default branch
+     * where every run is its own group, and which cancels in-progress runs.
      */
     val ciConcurrency: SettingKey[Option[Concurrency]] =
       settingKey[Option[Concurrency]](
@@ -284,11 +294,11 @@ object ZioSbtCiPlugin extends AutoPlugin {
     /**
      * Selects the workflow that `deploy-preview.yml` contains, and has an
      * effect only when `ciEnableDeployPreview` is true.
-     * `DeployPreviewMode.Automatic` deploys after every successful pull request
-     * run of the CI workflow. `DeployPreviewMode.OnDemand` is triggered by an
-     * edit to an issue comment as well as by completed runs of the CI workflow,
-     * and deploys on request through that comment. Default is
-     * `DeployPreviewMode.Automatic`.
+     * `DeployPreviewMode.Automatic` deploys after a successful pull request run
+     * of the CI workflow that uploaded the website artifact.
+     * `DeployPreviewMode.OnDemand` is triggered by an edit to an issue comment
+     * as well as by completed runs of the CI workflow, and deploys on request
+     * through that comment. Default is `DeployPreviewMode.Automatic`.
      */
     val ciDeployPreviewMode: SettingKey[DeployPreviewMode] =
       settingKey[DeployPreviewMode](
@@ -431,9 +441,9 @@ object ZioSbtCiPlugin extends AutoPlugin {
 
     /**
      * The content of `.scala-steward.conf` at the build's base directory,
-     * written only when it renders non-empty and the file does not exist yet.
-     * Default is `ScalaStewardConfig()`, which renders nothing, so no file is
-     * written.
+     * written only when `ciEnableScalaSteward` is true, the content renders
+     * non-empty and the file does not exist yet. Default is
+     * `ScalaStewardConfig()`, which renders nothing, so no file is written.
      */
     val ciScalaStewardConfig: SettingKey[ScalaStewardConfig] =
       settingKey[ScalaStewardConfig](
@@ -516,11 +526,12 @@ object ZioSbtCiPlugin extends AutoPlugin {
       settingKey[Seq[String]]("Job IDs that need to pass before a new release.")
 
     /**
-     * The name of the CI workflow. The file name derives from it: lower-cased,
-     * with each run of characters other than letters and digits replaced by one
-     * dash and leading and trailing dashes removed, so "CI" gives
-     * `.github/workflows/ci.yml`. The `deploy-preview.yml` workflow also uses
-     * it to name the workflow it follows. Default is "CI".
+     * The name of the CI workflow. The file name derives from it: trimmed and
+     * lower-cased, with each run of characters other than `a-z` and `0-9`
+     * replaced by one dash and leading and trailing dashes removed (`ci` when
+     * nothing is left), so "CI" gives `.github/workflows/ci.yml`. The
+     * `deploy-preview.yml` workflow also uses it to name the workflow it
+     * follows. Default is "CI".
      */
     val ciWorkflowTitle: SettingKey[String] =
       settingKey[String](
@@ -577,8 +588,10 @@ object ZioSbtCiPlugin extends AutoPlugin {
 
     /**
      * Shell commands started in the background, joined with ` & `, before the
-     * sbt command of the steps that run test, compile, lint, release, docs and
-     * readme tasks. Default is empty.
+     * first sbt command of the default test, compile, `ciCheckGithubWorkflow`,
+     * lint, website build, release, npm publish and readme steps. The
+     * `+publishLocal` and `+scaladocCheck` steps do not get them. Default is
+     * empty.
      */
     val ciBackgroundJobs: SettingKey[Seq[String]] = settingKey[Seq[String]]("Background jobs")
 
@@ -955,8 +968,9 @@ object ZioSbtCiPlugin extends AutoPlugin {
    * The default `update-readme` job. It runs `sbt docs/generateReadme` (the
    * `GenerateReadme` step), then opens a pull request that changes only
    * `README.md` on the branch `zio-sbt-website/update-readme` with a GitHub App
-   * token, approves it and enables auto-merge. It runs under
-   * `ciUpdateReadmeCondition`, or on a published release when that is `None`.
+   * token, approves it and enables auto-merge, or squash-merges it directly
+   * when enabling auto-merge fails. It runs under `ciUpdateReadmeCondition`, or
+   * on a published release when that is `None`.
    */
   lazy val updateReadmeJobs: Def.Initialize[Seq[Job]] = Def.setting {
     val swapSizeGB            = ciSwapSizeGB.value
@@ -1160,10 +1174,12 @@ object ZioSbtCiPlugin extends AutoPlugin {
   /**
    * The default jobs that run after a release. `release-docs` needs `release`:
    * it sets up Java, sbt and Node.js and publishes the docs to npm with
-   * `PublishToNpmRegistry`, after a successful `release` or on a manual
-   * dispatch with `docs-only` set to `true`. `notify-docs-release` then sends
-   * an `update-docs` dispatch event to the zio/zio repository with the docs
-   * package name and version, when `release-docs` succeeded.
+   * `PublishToNpmRegistry`, on a published release or a manual dispatch when
+   * `release` succeeded, or on a manual dispatch with `docs-only` set to
+   * `true`. It does not run on the pushes that publish a SNAPSHOT.
+   * `notify-docs-release` then sends an `update-docs` dispatch event to the
+   * zio/zio repository with the docs package name and version, when
+   * `release-docs` succeeded.
    */
   lazy val postReleaseJobs: Def.Initialize[Seq[Job]] = Def.setting {
     val swapSizeGB           = ciSwapSizeGB.value
@@ -1631,9 +1647,10 @@ object ZioSbtCiPlugin extends AutoPlugin {
    * The `auto-merge.yml` workflow. Its `auto-merge` job handles pull requests
    * opened by the `ciDependencyUpdateBots`: it enables auto-merge when the base
    * branch requires status checks, and otherwise waits for the other checks to
-   * finish and merges the pull request with squash. On a manual dispatch it
-   * enables auto-merge on the open pull requests of those bots. It uses a
-   * GitHub App token when the `APP_ID` secret is set, and `GITHUB_TOKEN`
+   * finish and merges the pull request with squash, or fails the job and leaves
+   * the pull request open when a check failed or was cancelled. On a manual
+   * dispatch it enables auto-merge on the open pull requests of those bots. It
+   * uses a GitHub App token when the `APP_ID` secret is set, and `GITHUB_TOKEN`
    * otherwise.
    */
   lazy val autoMergeWorkflow: Def.Initialize[Workflow] = Def.setting {
@@ -2807,10 +2824,11 @@ object ZioSbtCiPlugin extends AutoPlugin {
   /**
    * The steps that prepare a Netlify deploy preview in the `build` job. On pull
    * request runs they check whether `website/package.json` and
-   * `website/docusaurus.config.js` exist, detect changes under `docs/` or
-   * `website/`, upload `./website/build` as the `website-artifact` artifact
-   * when the website is installed and those paths changed, and upload the pull
-   * request number as the `pr-metadata` artifact.
+   * `website/docusaurus.config.js` exist. When both exist, which means the
+   * website is installed, they detect changes under `docs/` or `website/`,
+   * upload `./website/build` as the `website-artifact` artifact when those
+   * paths changed, and upload the pull request number as the `pr-metadata`
+   * artifact.
    */
   lazy val NetlifyPreviewBuildSteps: Def.Initialize[Seq[Step.SingleStep]] =
     Def.setting {
