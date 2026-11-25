@@ -173,6 +173,12 @@ object WebsiteUtils {
     def badge: String =
       s"https://img.shields.io/badge/Project%20Stage-${name.replace(" ", "%20") + '-' + color}.svg"
   }
+
+  /**
+   * The six stages a project can be in: `ProductionReady`, `Development`,
+   * `Experimental`, `Research`, `Concept` and `Deprecated`, each with its own
+   * badge colour.
+   */
   object ProjectStage {
 
     /**
