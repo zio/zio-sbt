@@ -60,11 +60,14 @@ object WebsiteUtils {
   import java.nio.charset.StandardCharsets
 
   /**
-   * Returns `markdown` without its leading YAML front matter: it drops the
-   * opening `---` line, the lines up to the next `---` line, and that closing
-   * line, and joins the remaining lines with `\n`. Input that contains no `---`
-   * line comes back as an empty string, and for input that starts without front
-   * matter, everything before the first `---` line is dropped.
+   * Returns `markdown` without its leading YAML front matter. It splits the
+   * text on `\n`, drops the leading `---` lines, then every line up to the next
+   * `---` line, then the `---` lines there, and joins the rest with `\n`. Input
+   * that contains no `---` line comes back as an empty string; input that
+   * starts without front matter loses everything up to and including its first
+   * `---` line (and any `---` lines right after it); and an empty front matter
+   * (two `---` lines in a row at the start) also drops the body up to and
+   * including its next `---` line, or the whole body when it has none.
    */
   def removeYamlHeader(markdown: String): String =
     markdown
@@ -76,8 +79,8 @@ object WebsiteUtils {
 
   /**
    * Reads the file at `pathname` as one string in which the lines are joined
-   * with `\n`, so the result has no trailing newline. The read runs on ZIO's
-   * blocking thread pool.
+   * with `\n`; the line break at the end of the last line is dropped. The read
+   * runs on ZIO's blocking thread pool.
    */
   def readFile(pathname: String): Task[String] =
     ZIO.attemptBlocking {
@@ -215,7 +218,7 @@ object WebsiteUtils {
    * Sonatype release, Sonatype snapshot, javadoc and GitHub stars, in that
    * order. The release and javadoc badges are included only when
    * `releaseVersion` finds a release tag in git; the javadoc badge uses
-   * `docsArtifactId` and the others use `artifactId`.
+   * `docsArtifactId`, and the release and snapshot badges use `artifactId`.
    */
   def generateProjectBadges(
     projectStage: ProjectStage,

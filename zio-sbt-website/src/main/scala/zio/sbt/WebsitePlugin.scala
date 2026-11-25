@@ -33,8 +33,8 @@ import zio.sbt.WebsiteUtils.{readFile, removeYamlHeader}
 /**
  * An sbt plugin that compiles the project documentation with mdoc into the
  * `docs` folder of the Docusaurus website (`websiteDir`), builds, previews and
- * installs that website, publishes it to npm as a docs package, and generates
- * the project `README.md`. It requires `MdocPlugin` and
+ * installs that website, publishes the compiled `docs` folder to npm as a docs
+ * package, and generates the project `README.md`. It requires `MdocPlugin` and
  * [[UnifiedScaladocPlugin]], and is enabled per project (it has no trigger of
  * its own).
  */
@@ -55,11 +55,12 @@ object WebsitePlugin extends sbt.AutoPlugin {
     /**
      * Scaffolds the Docusaurus website into `websiteDir` with
      * `npx @zio.dev/create-zio-website` at the version
-     * `createZioWebsiteVersion`, then runs `npm install` there and creates the
-     * `docs` folder. It logs a warning and skips the installation when
-     * `websiteDir` already contains a `package.json`. When the scaffold is on
-     * Docusaurus 2.x, it adds an `overrides` entry that pins `webpack` to
-     * `5.75.0` to `package.json`.
+     * `createZioWebsiteVersion`, then runs `npm install` there. It logs a
+     * warning and skips the installation when `websiteDir` already contains a
+     * `package.json`; in both cases it creates the `docs` folder. When the
+     * `@docusaurus/core` major version in the scaffold's `package.json` is
+     * below 3, it adds an `overrides` entry to `package.json` that pins
+     * `webpack` to `5.75.0`.
      */
     val installWebsite: TaskKey[Unit] = taskKey[Unit]("Install the website for the first time")
 
@@ -74,10 +75,9 @@ object WebsitePlugin extends sbt.AutoPlugin {
     val buildWebsite: TaskKey[Unit] = taskKey[Unit]("Build website (default output: website/build)")
 
     /**
-     * Compiles the docs once with `compileDocs`, then starts the Docusaurus
-     * development server with `npm run start` in `websiteDir`. It fails with
-     * "Failed to run start command!" when the server command exits with a
-     * non-zero code.
+     * Runs `compileDocs`, `compileDocs --watch` and the Docusaurus development
+     * server (`npm run start` in `websiteDir`). It fails with "Failed to run
+     * start command!" when the server command exits with a non-zero code.
      */
     val previewWebsite: TaskKey[Unit] = taskKey[Unit]("preview website")
 
@@ -85,11 +85,11 @@ object WebsitePlugin extends sbt.AutoPlugin {
      * Compiles the docs, scaffolds a new website under `target` from
      * `@zio.dev/create-zio-website` at the version `createZioWebsiteVersion`,
      * replaces its `docs` folder with the compiled docs, and runs `npm install`
-     * and `npm run build` there. It does nothing but log a message when
-     * `websiteDir` has no `package.json`, because `buildWebsite` then already
-     * builds on a freshly scaffolded site. It fails with "The docs do not build
-     * on a fresh ZIO website (the one zio/zio builds them with)!" when the
-     * build fails.
+     * and `npm run build` there. When `websiteDir` has no `package.json`, it
+     * only compiles the docs and logs a message, because `buildWebsite` then
+     * already builds on a freshly scaffolded site. It fails with "The docs do
+     * not build on a fresh ZIO website (the one zio/zio builds them with)!"
+     * when the build fails.
      */
     val checkDocsOnFreshWebsite: TaskKey[Unit] =
       taskKey[Unit]("Build the docs in a freshly scaffolded ZIO website, the way the ZIO website consumes them")
@@ -116,8 +116,9 @@ object WebsitePlugin extends sbt.AutoPlugin {
     /**
      * Runs `compileDocs`, then publishes the `docs` folder inside `websiteDir`
      * to npm under the `hash` dist-tag. The package version is the current date
-     * as `yyyy.MM.dd` followed by `-` and the first 12 characters of the git
-     * `HEAD` hash. It fails when the hash cannot be read from git, and with
+     * as `yyyy.MM.dd` followed by `-` and the git `HEAD` hash shortened by
+     * `git rev-parse --short=12 HEAD` (12 characters, more when 12 are not
+     * unique). It fails when the hash cannot be read from git, and with
      * "scmInfo must be set for npm provenance verification" when `scmInfo` is
      * not set.
      */
@@ -125,9 +126,11 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
     /**
      * Runs `generateReadme`, then runs `git diff --exit-code`, and fails with
-     * "The README.md file is not up-to-date!" when that command exits with code 1.
-     * The check covers every uncommitted change in the git working tree, not
-     * only `README.md`.
+     * an error whose message starts with "The README.md file is not
+     * up-to-date!" when that command exits with code 1. `git diff` compares the
+     * working tree with the git index, so the check covers every unstaged
+     * change to a tracked file, not only `README.md`; staged changes and
+     * untracked files do not fail it.
      */
     val checkReadme: TaskKey[Unit] = taskKey[Unit]("Make sure if the README.md file is up-to-date")
 
@@ -203,8 +206,8 @@ object WebsitePlugin extends sbt.AutoPlugin {
 
     /**
      * Markdown placed at the top of the generated README, before the
-     * introduction. The default is an empty string. A non-empty banner also
-     * removes the `# <projectName>` title unless `readmeShowTitle` is
+     * introduction. The default is an empty string. A banner that is not blank
+     * also removes the `# <projectName>` title unless `readmeShowTitle` is
      * `Some(true)`.
      */
     val readmeBanner: SettingKey[String] = settingKey[String]("Readme banner section")
@@ -312,9 +315,10 @@ object WebsitePlugin extends sbt.AutoPlugin {
   object VersioningScheme {
 
     /**
-     * The version is the current date as `yyyy.MM.dd`, then `-` and the first
-     * 12 characters of the git `HEAD` hash. It falls back to the project
-     * `version` (with a warning) when git cannot supply the hash.
+     * The version is the current date as `yyyy.MM.dd`, then `-` and the git
+     * `HEAD` hash shortened by `git rev-parse --short=12 HEAD` (12 characters,
+     * more when 12 are not unique). It falls back to the project `version`
+     * (with a warning) when git cannot supply the hash.
      */
     final case object HashVersioning extends VersioningScheme
 
@@ -413,9 +417,7 @@ object WebsitePlugin extends sbt.AutoPlugin {
   }
 
   /**
-   * The implementation of `previewWebsite`. It depends on a single run of
-   * `compileDocs`, and its body starts `compileDocs --watch` in a daemon fiber
-   * and runs `docusaurusServerTask`.
+   * The implementation of `previewWebsite`.
    */
   lazy val previewWebsiteTask: Def.Initialize[Task[Unit]] = Def.task {
     import zio.*
@@ -723,9 +725,10 @@ object WebsitePlugin extends sbt.AutoPlugin {
   /**
    * The major version of `@docusaurus/core` declared under `dependencies` in a
    * scaffolded site's package.json: the first run of digits in the declared
-   * version string, so `^3.1.0` gives 3. Returns None when `dependencies` or
-   * the `@docusaurus/core` entry is missing or is not a string, or when the
-   * string contains no digits.
+   * version string, so `^3.1.0` gives 3. Returns None when `dependencies` is
+   * missing or is not an object, when its `@docusaurus/core` entry is missing
+   * or is not a string, or when that string contains no digits or its first run
+   * of digits does not fit in an `Int`.
    */
   private[sbt] def docusaurusMajorOf(pkgJson: Json.Obj): Option[Int] = {
     def field(obj: Json.Obj, key: String): Option[Json] =
