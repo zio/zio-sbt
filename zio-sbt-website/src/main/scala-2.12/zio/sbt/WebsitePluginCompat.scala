@@ -19,9 +19,13 @@ package zio.sbt
 import sbt._
 
 /**
- * sbt 1.x counterpart of the `scala-3` [[WebsitePluginCompat]]. sbt 1.x always
- * runs `runMain` inside the sbt server, so mdoc has written its output by the
- * time `compileDocs` returns and nothing needs to change here.
+ * Settings that make `compileDocs` return only after mdoc has written its
+ * output. sbt-mdoc's `mdoc` task is `Compile / runMain`. On sbt 2.x, the
+ * settings set `Compile / runMain / clientSide` to `false`, because `runMain`
+ * defaults to `clientSide := true` there: for a command from the thin client
+ * the run is then handed over to the client and returns at once, so tasks that
+ * read `website/docs` after `compileDocs` (`generateReadme`, `buildWebsite`,
+ * `publishToNpm`) find nothing there. On sbt 1.x the settings are empty.
  */
 private[sbt] object WebsitePluginCompat {
   def runMdocInServerSettings: Seq[Setting[_]] = Seq.empty

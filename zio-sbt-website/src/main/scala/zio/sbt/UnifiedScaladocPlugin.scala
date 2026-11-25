@@ -20,6 +20,12 @@ import sbt.Keys._
 import sbt._
 import sbtunidoc.ScalaUnidocPlugin
 
+/**
+ * An sbt plugin that sets `Compile / doc` to the `ScalaUnidoc / doc` task of
+ * sbt-unidoc, so that the Scaladoc of a project is built for its aggregated
+ * sources. It requires `ScalaUnidocPlugin` and is enabled per project (it has
+ * no trigger of its own).
+ */
 object UnifiedScaladocPlugin extends sbt.AutoPlugin {
   override def requires = ScalaUnidocPlugin
 
