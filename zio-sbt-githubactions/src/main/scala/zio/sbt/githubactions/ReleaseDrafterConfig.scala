@@ -25,7 +25,10 @@ import zio.json.ast.Json
  */
 case class ReleaseDrafterCategory(title: String, labels: Seq[String])
 
+/** The JSON encoder of [[ReleaseDrafterCategory]]. */
 object ReleaseDrafterCategory {
+
+  /** Encodes a category as an object with the keys `title` and `labels`. */
   implicit val encoder: JsonEncoder[ReleaseDrafterCategory] =
     JsonEncoder[Json].contramap { c =>
       Json.Obj(
@@ -39,8 +42,7 @@ object ReleaseDrafterCategory {
  * Maps PR labels present since the last release to a semver bump, used to
  * compute
  * `\$RESOLVED_VERSION`/`\$NEXT_MAJOR_VERSION`/`\$NEXT_MINOR_VERSION`/`\$NEXT_PATCH_VERSION`.
- * `default` is release-drafter's own fallback ("patch") when no labelled bump
- * matches.
+ * `default` is the bump used when no label matches, `"patch"` unless set.
  */
 case class ReleaseDrafterVersionResolver(
   major: Seq[String] = Seq("major"),
@@ -49,7 +51,13 @@ case class ReleaseDrafterVersionResolver(
   default: String = "patch"
 )
 
+/** The JSON encoder of [[ReleaseDrafterVersionResolver]]. */
 object ReleaseDrafterVersionResolver {
+
+  /**
+   * Encodes a resolver as the keys `major`, `minor` and `patch`, each with its
+   * `labels`, plus `default`.
+   */
   implicit val encoder: JsonEncoder[ReleaseDrafterVersionResolver] =
     JsonEncoder[Json].contramap { v =>
       Json.Obj(
@@ -62,10 +70,10 @@ object ReleaseDrafterVersionResolver {
 }
 
 /**
- * One autolabeler rule. release-drafter applies `label` to a PR lacking any
- * category label when any of `files` (glob), `branch`/`title`/`body` (regex)
- * match. Empty sequences are omitted from the rendered YAML rather than emitted
- * as `[]`.
+ * One autolabeler rule: release-drafter applies `label` to a pull request that
+ * matches `files` (glob patterns) or `branch`, `title` or `body` (regular
+ * expressions). Empty sequences are left out of the rendered YAML rather than
+ * emitted as `[]`.
  */
 case class ReleaseDrafterAutolabelerRule(
   label: String,
@@ -75,7 +83,13 @@ case class ReleaseDrafterAutolabelerRule(
   body: Seq[String] = Seq.empty
 )
 
+/** The JSON encoder of [[ReleaseDrafterAutolabelerRule]]. */
 object ReleaseDrafterAutolabelerRule {
+
+  /**
+   * Encodes a rule as an object with `label`, and with `files`, `branch`,
+   * `title` and `body` when they are not empty.
+   */
   implicit val encoder: JsonEncoder[ReleaseDrafterAutolabelerRule] =
     JsonEncoder[Json].contramap { r =>
       Json.Obj(
@@ -89,15 +103,15 @@ object ReleaseDrafterAutolabelerRule {
 }
 
 /**
- * Full `.github/release-drafter.yml` document. Field order here is the field
- * order rendered in the YAML (`JsonEncoder` below), fixed so the scaffolded
- * file's shape is stable and testable.
+ * Full `.github/release-drafter.yml` document. The keys are rendered in the
+ * order `name-template`, `tag-template`, `categories`, `exclude-labels`,
+ * `change-template`, `change-title-escapes`, `autolabeler`, `version-resolver`,
+ * `template`, `sort-by`, `sort-direction`.
  *
- * Defaults reproduce this repo's own current config (research.md §3) plus the
- * `exclude-labels` hardening called out in decision 7 (this repo's actual
- * current file has no `exclude-labels` key; the generated default adds one,
- * since every other surveyed repo uses this pattern and it is a strict
- * improvement, not a behavior change repos need to opt out of).
+ * `exclude-labels` and `autolabeler` are left out when their sequences are
+ * empty, and `change-title-escapes`, `version-resolver`, `sort-by` and
+ * `sort-direction` when they are `None`. The name and tag templates default to
+ * `v` followed by release-drafter's next patch version variable.
  */
 case class ReleaseDrafterConfig(
   nameTemplate: String = "v$NEXT_PATCH_VERSION",
@@ -113,7 +127,13 @@ case class ReleaseDrafterConfig(
   sortDirection: Option[String] = None
 )
 
+/** The JSON encoder of [[ReleaseDrafterConfig]]. */
 object ReleaseDrafterConfig {
+
+  /**
+   * Encodes a configuration as the YAML keys of `.github/release-drafter.yml`,
+   * in the order listed on [[ReleaseDrafterConfig]].
+   */
   implicit val encoder: JsonEncoder[ReleaseDrafterConfig] =
     JsonEncoder[Json].contramap { c =>
       Json.Obj(

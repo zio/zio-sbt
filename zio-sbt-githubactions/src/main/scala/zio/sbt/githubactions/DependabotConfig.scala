@@ -39,14 +39,15 @@ case class DependabotUpdate(
 )
 
 /**
- * Full `.github/dependabot.yml` document. The default is a single weekly
- * `github-actions` update at the repository root, which is byte-for-byte what
- * 13 of the 14 surveyed ZIO-ecosystem repos that have a `dependabot.yml` use.
+ * Full `.github/dependabot.yml` document. The default is a single update for
+ * the `github-actions` ecosystem at the directory `/` with the interval
+ * `weekly`.
  */
 case class DependabotConfig(
   updates: Seq[DependabotUpdate] = Seq(DependabotUpdate("github-actions"))
 )
 
+/** Rendering of [[DependabotConfig]] as a `.github/dependabot.yml` document. */
 object DependabotConfig {
 
   private def q(s: String): String =
