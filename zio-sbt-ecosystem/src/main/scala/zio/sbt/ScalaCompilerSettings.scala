@@ -206,6 +206,8 @@ trait ScalaCompilerSettings {
    * (`-deprecation`, `-encoding utf8`, `-feature`, `-unchecked`, the result of
    * `extraOptions` and, depending on `turnCompilerWarningIntoErrors`,
    * `-Xfatal-warnings`), `javacOptions`, the `javaPlatform` key,
+   * `Test / parallelExecution` (`false` on Scala 3), `incOptions`,
+   * `autoAPIMappings`, an `unusedCompileDependenciesFilter` entry,
    * `scala3Settings` and the better-monadic-for compiler plugin on Scala 2. The
    * kind-projector plugin, cross-project source directories, build-info
    * settings and scalafix settings are added according to the parameters.
@@ -230,8 +232,8 @@ trait ScalaCompilerSettings {
    *   adds `scalafixSettings` when `true`
    *
    * @param turnCompilerWarningIntoErrors
-   *   adds `-Xfatal-warnings` when `true` and the `CI` environment variable is
-   *   set
+   *   adds `-Xfatal-warnings` on Scala 2 when `true` and the `CI` environment
+   *   variable is set (`scala3Settings` removes it on Scala 3)
    */
   def stdSettings(
     name: Option[String] = None,
@@ -316,9 +318,9 @@ trait ScalaCompilerSettings {
    * Returns the settings that add `dev.zio` `zio` at the `zioVersion` key. When
    * `enableTesting` is `true` it also adds `zio-test` and `zio-test-sbt` as
    * `Test` dependencies and registers `zio.test.sbt.ZTestFramework`; when
-   * `enableStreaming` is `true` it adds `zio-streams`. The dependencies use the
-   * cross-platform `%%%` operator in the `scala-2.12` sources and the plain
-   * `%%` operator in the `scala-3` sources.
+   * `enableStreaming` is `true` it adds `zio-streams`. On sbt 1.x the
+   * dependencies use the cross-platform `%%%` operator, and on sbt 2.x the
+   * plain `%%` operator.
    */
   def enableZIO(
     enableStreaming: Boolean = false,

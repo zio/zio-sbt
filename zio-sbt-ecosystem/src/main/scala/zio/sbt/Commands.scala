@@ -66,7 +66,9 @@ object Commands {
 
     /**
      * Returns a command whose strings are the strings of this command followed
-     * by `other`. The name and description are those of this command.
+     * by `other`. The name and description are those of this command. Since the
+     * operator ends in a colon, `"x" <<: c` calls `c.<<:("x")`, so `x` runs
+     * after the strings of `c`.
      */
     def <<:(other: String): ComposableCommand = self <<: ComposableCommand(other :: Nil, name, description)
 

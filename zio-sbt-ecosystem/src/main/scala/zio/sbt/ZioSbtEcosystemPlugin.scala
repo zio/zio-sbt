@@ -109,8 +109,9 @@ object ZioSbtEcosystemPlugin extends AutoPlugin {
 
     /**
      * A map from task or setting name to its description, listed in the welcome
-     * banner. The plugin starts it with the plugin commands and tasks, and
-     * `addCommand` adds entries.
+     * banner. The plugin starts it with entries for its commands,
+     * `enableStrictCompile`, `disableStrictCompile`, `~compile`, `test` and
+     * `testOnly`, and `addCommand` adds entries.
      */
     val usefulTasksAndSettings: SettingKey[Map[String, String]] = settingKey[Map[String, String]](
       "A map of useful tasks and settings that will be displayed as part of the welcome banner."
