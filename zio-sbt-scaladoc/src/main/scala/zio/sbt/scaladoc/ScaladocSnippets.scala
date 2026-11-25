@@ -20,9 +20,9 @@ import scala.collection.mutable.ListBuffer
 
 /**
  * Finds the code examples in Scaladoc comments and turns each one into a source
- * file that a compiler can check. Plain functions from strings to strings: no
- * sbt types, so [[zio.sbt.ScaladocCheckPlugin]] calls them from a task and the
- * unit tests call them directly.
+ * file that a compiler can check. Plain functions over source text: no sbt
+ * types, so [[zio.sbt.ScaladocCheckPlugin]] calls them from a task and the unit
+ * tests call them directly.
  *
  * Ported from zio-blocks' `project/ScaladocSnippets.scala`. The changes: the
  * wrapper's imports come from each file's `package` clauses instead of a
@@ -34,11 +34,22 @@ object ScaladocSnippets {
   /** A platform an example can be compiled for. */
   sealed abstract class Platform(val name: String) extends Product with Serializable
 
+  /** The platforms an example can be compiled for: `Jvm`, `Js` and `Native`. */
   object Platform {
-    case object Jvm    extends Platform("jvm")
-    case object Js     extends Platform("js")
+
+    /** The JVM. */
+    case object Jvm extends Platform("jvm")
+
+    /** Scala.js. */
+    case object Js extends Platform("js")
+
+    /** Scala Native. */
     case object Native extends Platform("native")
 
+    /**
+     * All three platforms: the ones an example without a platform marker is
+     * compiled for.
+     */
     val all: Set[Platform] = Set(Jvm, Js, Native)
   }
 
@@ -46,7 +57,8 @@ object ScaladocSnippets {
    * One code example.
    *
    * @param sourcePath
-   *   path of the source file, relative to the build root, with `/` separators
+   *   path of the source file, relative to the build root (absolute when the
+   *   file lies outside it), with `/` separators
    * @param line
    *   1-based line of the line that opens the code block
    * @param code
@@ -95,7 +107,7 @@ object ScaladocSnippets {
     /**
      * The position in the source file of a 1-based `line` and 0-based `column`
      * of the wrapper, as `(line, column, sourceLine)`, or `None` for a line
-     * outside the example (the header or the imports).
+     * outside the example (the header, the imports or the closing brace).
      */
     def mapPosition(line: Int, column: Option[Int]): Option[(Int, Option[Int], String)] = {
       val index = line - firstCodeLine
@@ -123,8 +135,9 @@ object ScaladocSnippets {
    * Returns the multi-line code blocks (between triple braces, or in a `scala`
    * fence) inside the Scaladoc comments of `content`, leaving out the ones
    * marked `// no-check: <reason>`. Throws `IllegalArgumentException`, with
-   * `path:line: message`, for an unknown or contradicting marker, a block that
-   * is never closed, and a code line that contains three closing braces.
+   * `path:line: message`, for an unknown or contradicting marker, a
+   * `// no-check` without a reason, a block that is never closed, and a code
+   * line of a triple-brace block that contains three closing braces.
    */
   def extract(sourcePath: String, content: String): List[Snippet] = {
     val lines  = content.split("\n", -1).map(_.stripSuffix("\r"))
@@ -220,11 +233,12 @@ object ScaladocSnippets {
    * read from its `package` clauses, not its directory. For each file of a
    * package, every declaration (`class`, `trait`, `object`, `type`, `enum`,
    * `def`, `val`, `var`, not `private`) at column 0 counts; in a file that
-   * defines implicit members (an implicit class, an extension, a package
-   * object, a trait) indented declarations count too, because a reader uses
-   * those without naming their owner (`md` in `md"..."`). Indented names
-   * over-include, which only keeps the import. For each file of a sub-package,
-   * its first name below the package counts (`stream` for `zio.stream`).
+   * defines implicit members (an implicit class or def, an extension, a package
+   * object, a line starting with `trait `) indented declarations count too,
+   * because a reader uses those without naming their owner (`md` in `md"..."`).
+   * Indented names over-include, which only keeps the import. For each file of
+   * a sub-package, its first name below the package counts (`stream` for
+   * `zio.stream`).
    *
    * Givens and anonymous implicit instances are not names. An example that
    * needs one only through the wrapper's import fails to compile, so it then
@@ -269,10 +283,10 @@ object ScaladocSnippets {
 
   /**
    * Whether `snippet` already imports everything it gets from `pkg`: a line
-   * starting `import <pkg>._` (or `.*`), or `import <pkg>.syntax` (`_` or `{`),
-   * whose `syntax` objects hold extension methods that no name check can find.
-   * Other sub-package imports do not count: they bring in only part of the
-   * package.
+   * starting `import <pkg>._` (or `.*`), or one starting `import <pkg>.syntax.`
+   * (as in `._` or `.{`), whose `syntax` objects hold extension methods that no
+   * name check can find. Other sub-package imports do not count: they bring in
+   * only part of the package.
    */
   def importsPackage(snippet: Snippet, pkg: String): Boolean = {
     val quoted   = java.util.regex.Pattern.quote(pkg)
@@ -362,7 +376,9 @@ object ScaladocSnippets {
    * for one Scala major version and platform. `own` are the module's files for
    * that version and platform; `visible` are those of the module and of the
    * modules it depends on, from which [[packageNames]] reads the names each
-   * package contributes.
+   * package contributes. Throws `IllegalArgumentException` for a malformed
+   * block (see [[extract]]) and when two examples get the same wrapper file
+   * name.
    */
   def generate(
     own: Seq[(String, String)],

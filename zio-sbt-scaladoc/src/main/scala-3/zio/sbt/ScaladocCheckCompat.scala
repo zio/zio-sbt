@@ -21,11 +21,12 @@ import sbt.*
 import zio.sbt.scaladoc.ScaladocSnippets.Generated
 
 /**
- * sbt 2.x caches task results, which needs a way to serialize them. A
- * classpath, a function and a compile analysis have none, so these settings opt
- * out of the cache with `Def.uncached`, which sbt 1.x does not have (see the
- * `scala-2.12` [[ScaladocCheckCompat]]). `Def.uncached` has to appear directly
- * in the setting, like `.value`, so the settings themselves live here.
+ * The settings of [[ScaladocCheckPlugin]] that differ between sbt 1.x, which
+ * loads the plugin built for Scala 2.12, and sbt 2.x, which loads the one built
+ * for Scala 3. sbt 2.x caches task results, so its copy (in `scala-3`) wraps
+ * the examples' `dependencyClasspath`, their `sourcePositionMappers` and their
+ * compile in `Def.uncached`. sbt 1.x has no `Def.uncached`, so its copy (in
+ * `scala-2.12`) leaves it out.
  */
 private[sbt] object ScaladocCheckCompat {
 
