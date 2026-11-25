@@ -56,8 +56,9 @@ import zio.sbt.scaladoc.ScaladocSnippets.{Generated, Platform}
  *   - The wrapper imports the packages that the source file's `package` clauses
  *     open, so an example sees what the code around it sees, without the
  *     package-private members. The file's own package is imported only when the
- *     example names one of that package's declarations without importing or
- *     declaring that name itself.
+ *     example uses a name that the package declares, or the name of one of its
+ *     sub-packages, without importing or declaring that name itself; a name
+ *     written after a `.` does not count.
  *   - A compile error inside an example is reported at its line in the Scaladoc
  *     of the source file.
  *
@@ -81,8 +82,9 @@ import zio.sbt.scaladoc.ScaladocSnippets.{Generated, Platform}
  *     `libraryDependencies += ... % ScaladocCheck`, which the published module
  *     does not depend on.
  *   - An example that only uses a `given` or an anonymous implicit of its
- *     package, or a name of its package that comes from a library jar, needs
- *     its own import.
+ *     package, a member of its package that it calls only after a `.` (an
+ *     extension method), or a name of its package that comes from a library
+ *     jar, needs its own import.
  */
 object ScaladocCheckPlugin extends AutoPlugin {
 

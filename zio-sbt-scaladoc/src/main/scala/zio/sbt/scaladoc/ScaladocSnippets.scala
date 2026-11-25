@@ -26,8 +26,8 @@ import scala.collection.mutable.ListBuffer
  *
  * Ported from zio-blocks' `project/ScaladocSnippets.scala`. The changes: the
  * wrapper's imports come from each file's `package` clauses instead of a
- * folder-to-package map, there are platform markers, and every wrapper line is
- * mapped back to its Scaladoc line.
+ * folder-to-package map, there are platform markers, and every line of an
+ * example is mapped back to its Scaladoc line.
  */
 object ScaladocSnippets {
 
@@ -136,8 +136,9 @@ object ScaladocSnippets {
    * fence) inside the Scaladoc comments of `content`, leaving out the ones
    * marked `// no-check: <reason>`. Throws `IllegalArgumentException`, with
    * `path:line: message`, for an unknown or contradicting marker, a
-   * `// no-check` without a reason, a block that is never closed, and a code
-   * line of a triple-brace block that contains three closing braces.
+   * `// no-check` without a reason (or one written `// no check`), a block that
+   * is never closed, and a code line of a triple-brace block that contains
+   * three closing braces.
    */
   def extract(sourcePath: String, content: String): List[Snippet] = {
     val lines  = content.split("\n", -1).map(_.stripSuffix("\r"))
@@ -302,10 +303,13 @@ object ScaladocSnippets {
    * itself ([[importsPackage]]).
    *
    * The check errs towards keeping the import: a name it cannot tell apart
-   * keeps it, which is then used or at worst warns. The one way to drop it
-   * wrongly is a name the example reaches without writing it, which
-   * [[packageNames]] does not list: a given or an anonymous implicit. That
-   * fails to compile loudly, so the example then needs its own import.
+   * keeps it, which is then used or at worst warns. It drops the import wrongly
+   * for a name the example reaches without writing it, which [[packageNames]]
+   * does not list (a given or an anonymous implicit), for a member of the
+   * package that the example only calls after a `.` (`"a".shout` for an
+   * extension `shout`), and for a name of the package that the example also
+   * binds only in an inner scope, by an import or a declaration that starts a
+   * line. Such an example fails to compile, so it then needs its own import.
    */
   def needsImport(snippet: Snippet, pkg: String, names: Set[String]): Boolean = {
     // A `//` comment is not code: a word in it (`the deriver of your codecs`) is not a use of a name.
