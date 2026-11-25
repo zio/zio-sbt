@@ -22,8 +22,18 @@ import java.nio.file.Paths
 
 import scala.io.Source
 
+/**
+ * Reads source files and prints them as Markdown code fences, for pages that
+ * mdoc builds.
+ */
 object SourceFile {
 
+  /**
+   * Returns the content of the file at `path`, its lines joined with `\n`; the
+   * line break at the end of the last line is dropped. When no file exists at
+   * `path`, it reads `"../" + path` instead, and throws
+   * `java.io.FileNotFoundException` when that file is missing too.
+   */
   def readSource(path: String): String = {
     val f          = new JFile(path)
     val actualPath = if (f.exists()) path else "../" + path
@@ -32,12 +42,29 @@ object SourceFile {
     finally src.close()
   }
 
+  /**
+   * Returns the extension of the file name of `path`, which [[printSource]]
+   * uses as the language of the code fence: `scala` for `a/B.scala`, `gz` for
+   * `x.tar.gz`, `gitignore` for `.gitignore`. A file name without a dot is
+   * returned whole (`Makefile` gives `Makefile`), and a path without a file
+   * name, such as `/`, gives an empty string.
+   */
   def fileExtension(path: String): String = {
     val fileName = Paths.get(path).getFileName
     if (fileName == null) ""
     else fileName.toString.split('.').lastOption.getOrElse("")
   }
 
+  /**
+   * Prints the file at `path` to `Console.out` as a Markdown code fence: an
+   * opening line whose language is [[fileExtension]] of `path`, the content
+   * from [[readSource]], and a closing line.
+   *
+   * @param comment
+   *   whether the opening line carries `title="path"`, with `path` as given
+   * @param showLineNumbers
+   *   whether the opening line carries the `showLineNumbers` flag
+   */
   def printSource(
     path: String,
     comment: Boolean = true,

@@ -21,12 +21,24 @@ import scala.Console
 import sbt.Keys._
 import sbt._
 
+/**
+ * The sbt tasks `build`, `enableStrictCompile` and `disableStrictCompile`.
+ */
 object Tasks {
   private val strictCompilationProp = "enable.strict.compilation"
 
+  /**
+   * Sets the system property `enable.strict.compilation` to `true` and logs an
+   * info message. The settings of this plugin do not read that property; a
+   * build can read it in its own settings.
+   */
   val enableStrictCompile: TaskKey[Unit] =
     taskKey[Unit]("Enables stricter compilation e.g. warnings become errors. Compiler Cat is happy 😺!")
 
+  /**
+   * Sets the system property `enable.strict.compilation` to `false` and logs an
+   * info message.
+   */
   val disableStrictCompile: TaskKey[Unit] = taskKey[Unit](
     "Disables strict compilation e.g. warnings are no longer treated as errors.  Compiler Cat is aghast at your poor life choices 🙀!"
   )
@@ -49,6 +61,11 @@ object Tasks {
       disableStrictCompilePure(log.info(_))
     }
 
+  /**
+   * Runs `clean`, `enableStrictCompile`, `Compile / compile`, `Test / compile`
+   * and `Test / test` in order. When the sequence ends, whether it succeeded or
+   * failed, it sets `enable.strict.compilation` back to `false`.
+   */
   val build: TaskKey[Unit] = taskKey[Unit]("Prepares sources, compiles and runs tests.")
 
   private def buildImpl =
@@ -65,6 +82,10 @@ object Tasks {
       )
       .andFinally(disableStrictCompilePure(s => println(s"[info] $s")))
 
+  /**
+   * Settings that bind the `build`, `enableStrictCompile` and
+   * `disableStrictCompile` tasks.
+   */
   lazy val settings: Seq[Setting[_]] = Seq(
     build                := buildImpl.value,
     enableStrictCompile  := enableStrictCompileImpl.value,

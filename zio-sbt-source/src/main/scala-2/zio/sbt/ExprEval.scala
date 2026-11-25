@@ -21,30 +21,61 @@ import scala.language.experimental.macros
 /**
  * Prints one or more expressions together with their evaluated results.
  *
+ * For each expression, `show` prints its source text, then each line of its
+ * value's `String.valueOf` text with a `// ` prefix. Consecutive `//` comment
+ * lines directly above the call are printed first, as a label, and a blank line
+ * ends the output.
+ *
  * Supports two call styles:
  *
  * Comma-separated:
  * {{{
- *   // no-check: on Scala 2, show does not compile outside package zio.sbt (a known bug)
+ *   // scala-3-only
+ *
+ *   // Sum and upper case
  *   ExprEval.show(
  *     List(1, 2, 3).sum,
  *     "zio".toUpperCase
  *   )
  * }}}
  *
- * Block form (newline-separated):
+ * It prints:
  * {{{
- *   // no-check: on Scala 2, show does not compile outside package zio.sbt (a known bug)
+ *   // no-check: console output, not Scala code
+ *   // Sum and upper case
+ *   List(1, 2, 3).sum
+ *   // 6
+ *   "zio".toUpperCase
+ *   // ZIO
+ * }}}
+ *
+ * Block form (newline-separated), where each statement of the block is printed
+ * as its own expression:
+ * {{{
+ *   // scala-3-only
  *   ExprEval.show {
- *     List(1, 2, 3).sum
- *     "zio".toUpperCase
+ *     List(4, 5).max
+ *     "abc".reverse
  *   }
  * }}}
  *
- * In both cases, consecutive `//` comment lines immediately above the `show`
- * call are printed as a label, and each expression is followed by its result.
+ * A block that declares something (a `val`, a `def`, an import, a class) is
+ * printed as one expression.
+ *
+ * The label is read at run time from the source file, at the path the compiler
+ * saw. When no file exists at that path, no label is printed.
+ *
+ * On Scala 2.13, `show` compiles only when called from code in package
+ * `zio.sbt` or a package inside it: a call from `object Main` in package `demo`
+ * fails with "method commentsAbove in object SourceReader cannot be accessed as
+ * a member of object zio.sbt.SourceReader from object Main in package demo". On
+ * Scala 3, the same call compiles and runs.
  */
 object ExprEval {
 
+  /**
+   * Prints the source text and the value of each of `exprs`, after the `//`
+   * comment lines directly above the call.
+   */
   def show(exprs: Any*): Unit = macro ExprEvalMacro.showImpl
 }

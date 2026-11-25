@@ -30,10 +30,10 @@ case class ScalaStewardDependency(
 )
 
 /**
- * One `pullRequests.grouping` match criterion. `version` is one of
- * "major"/"minor"/"patch"; `group` is a groupId (glob-capable, e.g.
- * `"org.typelevel"` or `"*"`). An entry setting both requires both to match;
- * multiple entries in a rule's `filter` list are OR'd together.
+ * One `pullRequests.grouping` match criterion. `version` is expected to be
+ * "major", "minor" or "patch"; `group` is a groupId such as `"org.typelevel"`,
+ * or a glob such as `"*"`. An entry setting both requires both to match, and
+ * the entries of a rule's `filter` list are alternatives.
  */
 case class ScalaStewardGroupFilter(group: Option[String] = None, version: Option[String] = None)
 
@@ -45,13 +45,9 @@ case class ScalaStewardGroupFilter(group: Option[String] = None, version: Option
 case class ScalaStewardGroupingRule(name: String, filter: Seq[ScalaStewardGroupFilter])
 
 /**
- * Full `.scala-steward.conf` document. Unlike `ReleaseDrafterConfig`, every
- * field defaults to empty/`None`: research across the ZIO ecosystem (zio/zio,
- * zio-schema, zio-json, zio-kafka, zio-http, zio-config) found only one
- * non-trivial config in six repos (a single `updates.ignore` entry), and this
- * repo's own file has only an `updates.pin`. `render` reflects that by
- * returning `None` for an all-default config, so the generator can skip
- * scaffolding a file nobody asked for.
+ * Full `.scala-steward.conf` document. Every field defaults to empty or `None`,
+ * and `ScalaStewardConfig.render` returns `None` for a configuration that
+ * leaves all of them at those defaults.
  */
 case class ScalaStewardConfig(
   pins: Seq[ScalaStewardDependency] = Seq.empty,
@@ -66,6 +62,7 @@ case class ScalaStewardConfig(
   reviewers: Seq[String] = Seq.empty
 )
 
+/** Rendering of [[ScalaStewardConfig]] as a `.scala-steward.conf` document. */
 object ScalaStewardConfig {
 
   private def hoconStr(s: String): String =
@@ -100,8 +97,7 @@ object ScalaStewardConfig {
   /**
    * Renders the HOCON document, omitting every field left at its default/empty
    * value. Returns `None` (rather than `Some("")`) when the whole config is
-   * default, so `ZioSbtCiPlugin.generateScalaStewardWorkflowTask` can skip
-   * writing the file entirely.
+   * default.
    */
   def render(config: ScalaStewardConfig): Option[String] = {
     val lines = Seq(

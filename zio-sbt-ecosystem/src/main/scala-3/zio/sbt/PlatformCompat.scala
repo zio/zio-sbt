@@ -21,11 +21,11 @@ import sbt.Keys._
 import sbt._
 
 /**
- * `scala-3` counterpart of the `scala-2.12` [[PlatformCompat]] - see that file
- * for why this split exists. `sbt-platform-deps` has no sbt-2.x / Scala-3
- * release yet, so `enableZIO()` uses the plain (JVM-only) `%%` operator instead
- * of `%%%`. Cross-platform JS/Native support is unavailable here until upstream
- * catches up.
+ * Platform-dependent settings for [[ScalaCompilerSettings]]. The `scala-2.12`
+ * and `scala-3` source directories each hold a copy of this object: the
+ * `scala-2.12` copy adds ZIO dependencies with the cross-platform `%%%`
+ * operator of `sbt-platform-deps`, and the `scala-3` copy uses the plain `%%`
+ * operator.
  */
 private[sbt] object PlatformCompat {
   def unusedCompileDependenciesFilterSettings: Seq[Setting[_]] = Seq(

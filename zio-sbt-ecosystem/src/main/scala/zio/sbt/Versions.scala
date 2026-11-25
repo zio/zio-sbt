@@ -18,15 +18,45 @@ package zio.sbt
 
 import sbt._
 
+/**
+ * The default versions that the plugin uses for Scala, ZIO and the compiler
+ * plugins and scalafix rules it adds.
+ */
 object Versions {
-  val KindProjectorVersion = "0.13.4"
-  val ScaluzziVersion      = "0.1.23"
 
-  val scala3   = "3.9.0"
+  /**
+   * The version of the `kind-projector` compiler plugin that `stdSettings` adds
+   * on Scala 2.
+   */
+  val KindProjectorVersion = "0.13.4"
+
+  /**
+   * The version of the `scaluzzi` scalafix rules that `scalafixSettings` adds
+   * to `scalafixDependencies`.
+   */
+  val ScaluzziVersion = "0.1.23"
+
+  /** The default value of the `scala3` key. */
+  val scala3 = "3.9.0"
+
+  /** The default value of the `scala212` key. */
   val scala212 = "2.12.21"
+
+  /**
+   * The default value of the `scala213` key, which is also the default
+   * `scalaVersion`.
+   */
   val scala213 = "2.13.18"
 
+  /**
+   * The default value of the `zioVersion` key, used by `enableZIO` for the ZIO
+   * dependencies.
+   */
   val zioVersion = "2.1.22"
 
+  /**
+   * The `better-monadic-for` compiler plugin module that `stdSettings` adds on
+   * Scala 2.
+   */
   lazy val betterMonadFor: ModuleID = "com.olegpy" %% "better-monadic-for" % "0.3.1"
 }

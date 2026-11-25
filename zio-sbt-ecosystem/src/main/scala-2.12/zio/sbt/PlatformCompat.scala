@@ -22,16 +22,11 @@ import sbt.Keys._
 import sbt._
 
 /**
- * The platform-dependent half of [[ScalaCompilerSettings]], split into a
- * `scala-2.12`/`scala-3` cross-source pair because `sbt-platform-deps` has no
- * sbt-2.x / Scala-3 release yet - see the `scala-3` sibling of this file for
- * what that axis loses.
- *
- * `enableZIO`'s body (not just the `%%%` operator alone) has to live in this
- * cross-source split, not behind a plain helper method taking `%%%`'s result as
- * a parameter: `%%%`, like `.value`, is itself a macro that only expands when
- * it appears directly inside a recognized settings-DSL expression
- * (`libraryDependencies += ...`), not behind an ordinary function call.
+ * Platform-dependent settings for [[ScalaCompilerSettings]]. The `scala-2.12`
+ * and `scala-3` source directories each hold a copy of this object: the
+ * `scala-2.12` copy adds ZIO dependencies with the cross-platform `%%%`
+ * operator of `sbt-platform-deps`, and the `scala-3` copy uses the plain `%%`
+ * operator.
  */
 private[sbt] object PlatformCompat {
   def unusedCompileDependenciesFilterSettings: Seq[Setting[_]] = Seq(

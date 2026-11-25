@@ -1,6 +1,13 @@
 package zio.sbt
 
+/** Pinned versions of the GitHub Actions used by the generated workflows. */
 object V {
+
+  /**
+   * Returns `packageName` followed by `@` and its pinned version, in the form
+   * `owner/repo@version`. Throws a `java.util.NoSuchElementException` when
+   * `packageName` is not in the table of pinned actions.
+   */
   def apply(packageName: String): String =
     Map(
       "peter-evans/create-pull-request"        -> "v8.1.3",

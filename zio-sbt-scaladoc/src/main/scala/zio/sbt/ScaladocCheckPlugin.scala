@@ -32,21 +32,35 @@ import zio.sbt.scaladoc.ScaladocSnippets.{Generated, Platform}
  * switches it on in every module. `sbt +scaladocCheck` then compiles, in each
  * module and for each of its Scala versions, every multi-line code block
  * (between triple braces, or a fence opened with three backticks and `scala`)
- * inside a Scaladoc comment of the module's main sources. `compile`, `test` and
- * `publish` do not run it.
+ * inside a Scaladoc comment of the module's hand-written main sources (`Compile
+ * / unmanagedSources`). `compile`, `test` and `publish` do not run it.
+ *
+ * {{{
+ * // no-check: sbt build definitions, not library code
+ * // project/plugins.sbt
+ * addSbtPlugin("dev.zio" % "zio-sbt-scaladoc" % "x.y.z")
+ *
+ * // build.sbt: examples of `core` may use sourcecode; `bench` is not checked
+ * lazy val core  = project.settings(libraryDependencies += "com.lihaoyi" %% "sourcecode" % "0.4.2" % ScaladocCheck)
+ * lazy val bench = project.settings(scaladocCheck / skip := true)
+ * }}}
  *
  * How an example is compiled:
  *   - It is wrapped in an `object` of its own, in a file under the module's
  *     `target`, and compiled in the `ScaladocCheck` configuration, which sees
  *     the module's main classpath (its own classes and every library it depends
- *     on) and uses its `Compile / scalacOptions`, minus the flags that turn
- *     warnings into errors. A Scala.js or Scala Native module therefore
- *     compiles its examples with the Scala.js or Scala Native compiler.
+ *     on) and uses its `Compile / scalacOptions`, minus `-Xfatal-warnings`,
+ *     `-Werror`, `-Wconf:any:error`, `-Wconf:any:e` and the SemanticDB options.
+ *     A Scala.js or Scala Native module therefore compiles its examples with
+ *     the Scala.js or Scala Native compiler.
  *   - The wrapper imports the packages that the source file's `package` clauses
  *     open, so an example sees what the code around it sees, without the
  *     package-private members. The file's own package is imported only when the
- *     example uses one of its names, so the import is never unused.
- *   - A compile error is reported at the Scaladoc line of the source file.
+ *     example uses a name that the package declares, or the name of one of its
+ *     sub-packages, without importing or declaring that name itself; a name
+ *     written after a `.` does not count.
+ *   - A compile error inside an example is reported at its line in the Scaladoc
+ *     of the source file.
  *
  * The first lines of a block can be markers: `// scala-3-only`,
  * `// scala-2-only`, `// jvm-only`, `// js-only`, `// native-only`, `// no-js`,
@@ -68,8 +82,9 @@ import zio.sbt.scaladoc.ScaladocSnippets.{Generated, Platform}
  *     `libraryDependencies += ... % ScaladocCheck`, which the published module
  *     does not depend on.
  *   - An example that only uses a `given` or an anonymous implicit of its
- *     package, or a name of its package that comes from a library jar, needs
- *     its own import.
+ *     package, a member of its package that it calls only after a `.` (an
+ *     extension method), or a name of its package that comes from a library
+ *     jar, needs its own import.
  */
 object ScaladocCheckPlugin extends AutoPlugin {
 
@@ -77,6 +92,10 @@ object ScaladocCheckPlugin extends AutoPlugin {
 
   override def requires = plugins.JvmPlugin
 
+  /**
+   * The names sbt imports into the `.sbt` files of a build that loads the
+   * plugin: `ScaladocCheck` and `scaladocCheck`.
+   */
   object autoImport {
 
     /**
@@ -86,6 +105,13 @@ object ScaladocCheckPlugin extends AutoPlugin {
      */
     val ScaladocCheck: Configuration = config("scaladoccheck").extend(Compile).hide
 
+    /**
+     * Compiles the code examples in this module's Scaladoc for the current
+     * Scala version; `+scaladocCheck` runs it for each of the module's
+     * `crossScalaVersions`. `scaladocCheck / skip := true` turns it off for a
+     * module, and a module without examples to compile finishes without
+     * compiling anything.
+     */
     @transient
     val scaladocCheck: TaskKey[Unit] =
       taskKey[Unit](

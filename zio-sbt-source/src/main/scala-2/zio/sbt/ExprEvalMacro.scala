@@ -18,8 +18,15 @@ package zio.sbt
 
 import scala.reflect.macros.whitebox
 
+/** The macro implementation of `ExprEval.show`. */
 object ExprEvalMacro {
 
+  /**
+   * Expands a call to `ExprEval.show` into code that prints the `//` comment
+   * lines above the call, then the source text and the value of each argument,
+   * then a blank line. Several arguments are printed one by one; a single block
+   * argument is split into its statements unless one of them is a declaration.
+   */
   def showImpl(c: whitebox.Context)(exprs: c.Expr[Any]*): c.Expr[Unit] = {
     import c.universe._
 

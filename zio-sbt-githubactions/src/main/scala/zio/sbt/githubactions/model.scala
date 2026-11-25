@@ -23,45 +23,102 @@ import zio.json._
 import zio.json.ast.Json
 import zio.sbt.githubactions.Step.StepSequence
 
+/**
+ * A runner operating system, rendered as a value of the `os` matrix axis and in
+ * the cache and artifact names that `ScalaWorkflow` builds.
+ */
 sealed trait OS {
+
+  /** The runner label rendered in the workflow, for example `ubuntu-latest`. */
   val asString: String
 }
+
+/** The predefined operating systems. */
 object OS {
+
+  /** The `ubuntu-latest` runner label. */
   case object UbuntuLatest extends OS { val asString = "ubuntu-latest" }
 }
 
+/**
+ * A bot account that opens dependency update pull requests, identified by its
+ * GitHub login.
+ */
 sealed trait DependencyBot {
+
+  /** The GitHub login of the bot account, for example `dependabot[bot]`. */
   def login: String
 }
-object DependencyBot {
-  case object Dependabot extends DependencyBot { val login = "dependabot[bot]" }
-  case object Renovate   extends DependencyBot { val login = "renovate[bot]"   }
 
+/** The predefined and parameterised dependency bots. */
+object DependencyBot {
+
+  /** The Dependabot account, with login `dependabot[bot]`. */
+  case object Dependabot extends DependencyBot { val login = "dependabot[bot]" }
+
+  /** The Renovate account, with login `renovate[bot]`. */
+  case object Renovate extends DependencyBot { val login = "renovate[bot]" }
+
+  /**
+   * A Scala Steward account running as the GitHub App `githubAppName`, with
+   * login `githubAppName[bot]`.
+   */
   final case class ScalaSteward(githubAppName: String) extends DependencyBot {
+
+    /** The login, built as the app name followed by `[bot]`. */
     val login: String = s"$githubAppName[bot]"
   }
 
+  /** A bot with the given `login`, used as is. */
   final case class Custom(login: String) extends DependencyBot
 }
 
 /**
  * How the Netlify website preview of a pull request is deployed.
  *
- *   - `Automatic`: deploy after every successful CI run on a pull request.
- *   - `OnDemand`: post a comment with a checkbox after every successful CI run,
- *     and deploy only when someone with write access ticks it.
+ *   - `Automatic`: deploy after a successful CI run on a pull request that
+ *     uploaded the website artifact, which the build job does when the website
+ *     is installed and `docs/` or `website/` changed.
+ *   - `OnDemand`: post a comment with a checkbox after a successful CI run on a
+ *     pull request that uploaded the website artifact, and deploy only when
+ *     someone with write access ticks it.
  */
 sealed trait DeployPreviewMode
+
+/** The modes of deploying a website preview. */
 object DeployPreviewMode {
+
+  /**
+   * Deploys the preview after a successful CI run on a pull request that
+   * uploaded the website artifact, which the build job does when the website is
+   * installed and `docs/` or `website/` changed.
+   */
   case object Automatic extends DeployPreviewMode
-  case object OnDemand  extends DeployPreviewMode
+
+  /**
+   * Posts a comment with a checkbox after a successful CI run on a pull request
+   * that uploaded the website artifact, and deploys only when someone with
+   * write access ticks it.
+   */
+  case object OnDemand extends DeployPreviewMode
 }
 
+/**
+ * A branch filter entry of a trigger, rendered as a string in a `branches` or
+ * `branches-ignore` list.
+ */
 sealed trait Branch
+
+/** The branch filters and their JSON encoder. */
 object Branch {
-  case object All                extends Branch
+
+  /** Matches every branch, rendered as `*`. */
+  case object All extends Branch
+
+  /** Matches the branch or pattern `name`, rendered as is. */
   case class Named(name: String) extends Branch
 
+  /** Encodes `All` as `*` and `Named(name)` as `name`. */
   implicit val encoder: JsonEncoder[Branch] =
     JsonEncoder.string.contramap {
       case All         => "*"
@@ -69,13 +126,38 @@ object Branch {
     }
 }
 
+/**
+ * A workflow event that starts a run, rendered as one entry under the
+ * workflow's `on` key.
+ */
 sealed trait Trigger {
+
+  /**
+   * Returns the event name and its configuration, the key and value placed
+   * under `on`.
+   */
   def toKeyValuePair: (String, Json)
 }
 
+/**
+ * An input offered by a `workflow_dispatch` trigger, rendered under `inputs`
+ * with the keys `description`, `required` and `default`.
+ *
+ * @param key
+ *   the input name, used as the key under `inputs`
+ * @param defaultValue
+ *   the value rendered as `default`
+ */
 case class Input(key: String, description: String, required: Boolean, defaultValue: String)
 
+/** The workflow triggers. */
 object Trigger {
+
+  /**
+   * The `workflow_dispatch` event, which lets a run be started by hand. Renders
+   * an empty object when `inputs` is empty, and otherwise an `inputs` object
+   * that keeps the declaration order.
+   */
   case class WorkflowDispatch private (
     inputs: Chunk[Input]
   ) extends Trigger {
@@ -97,11 +179,18 @@ object Trigger {
     }
   }
 
+  /** Constructor of [[Trigger.WorkflowDispatch]]. */
   object WorkflowDispatch {
+
+    /** Creates the trigger with the given `inputs`, none by default. */
     def apply(inputs: Seq[Input] = Seq.empty): WorkflowDispatch =
       WorkflowDispatch(Chunk.fromIterable(inputs))
   }
 
+  /**
+   * The `schedule` event, rendered as a list with one `cron` entry per element
+   * of `crons`.
+   */
   case class Schedule private (crons: Chunk[String]) extends Trigger {
     override def toKeyValuePair: (String, Json) =
       (
@@ -110,21 +199,40 @@ object Trigger {
       )
   }
 
+  /** Constructor of [[Trigger.Schedule]]. */
   object Schedule {
+
+    /** Creates the trigger from the given cron expressions. */
     def apply(crons: Seq[String]): Schedule = Schedule(Chunk.fromIterable(crons))
   }
 
+  /**
+   * The `release` event, rendered with a `types` list. The `types` key is
+   * rendered even when `releaseTypes` is empty.
+   */
   case class Release private (
     releaseTypes: Chunk[String]
   ) extends Trigger {
     override def toKeyValuePair: (String, Json) =
       ("release", Json.Obj("types" -> releaseTypes.toJsonAST.getOrElse(Json.Null)))
   }
+
+  /** Constructor of [[Trigger.Release]]. */
   object Release {
+
+    /**
+     * Creates the trigger with the given release activity types, none by
+     * default.
+     */
     def apply(releaseTypes: Seq[String] = Seq.empty): Release =
       Release(Chunk.fromIterable(releaseTypes))
   }
 
+  /**
+   * The `pull_request` event. Branches are rendered under `branches` and
+   * ignored branches under `branches-ignore`; a key is left out when its list
+   * is empty.
+   */
   case class PullRequest private (
     branches: Chunk[Branch],
     ignoredBranches: Chunk[Branch]
@@ -143,7 +251,12 @@ object Trigger {
     }
   }
 
+  /** Constructor of [[Trigger.PullRequest]]. */
   object PullRequest {
+
+    /**
+     * Creates the trigger with the given branch filters, both empty by default.
+     */
     def apply(
       branches: Seq[Branch] = Seq.empty,
       ignoredBranches: Seq[Branch] = Seq.empty
@@ -154,6 +267,10 @@ object Trigger {
       )
   }
 
+  /**
+   * The `pull_request_target` event. Renders `types`, `branches` and
+   * `branches-ignore`; a key is left out when its list is empty.
+   */
   case class PullRequestTarget private (
     types: Chunk[String],
     branches: Chunk[Branch],
@@ -174,7 +291,13 @@ object Trigger {
     }
   }
 
+  /** Constructor of [[Trigger.PullRequestTarget]]. */
   object PullRequestTarget {
+
+    /**
+     * Creates the trigger with the given activity types and branch filters, all
+     * empty by default.
+     */
     def apply(
       types: Seq[String] = Seq.empty,
       branches: Seq[Branch] = Seq.empty,
@@ -187,6 +310,10 @@ object Trigger {
       )
   }
 
+  /**
+   * The `push` event. Branches are rendered under `branches` and ignored
+   * branches under `branches-ignore`; a key is left out when its list is empty.
+   */
   case class Push private (
     branches: Chunk[Branch],
     ignoredBranches: Chunk[Branch]
@@ -205,7 +332,12 @@ object Trigger {
     }
   }
 
+  /** Constructor of [[Trigger.Push]]. */
   object Push {
+
+    /**
+     * Creates the trigger with the given branch filters, both empty by default.
+     */
     def apply(
       branches: Seq[Branch] = Seq.empty,
       ignoredBranches: Seq[Branch] = Seq.empty
@@ -216,6 +348,10 @@ object Trigger {
       )
   }
 
+  /**
+   * The `create` event. Branches are rendered under `branches` and ignored
+   * branches under `branches-ignore`; a key is left out when its list is empty.
+   */
   case class Create private (
     branches: Chunk[Branch],
     ignoredBranches: Chunk[Branch]
@@ -234,7 +370,12 @@ object Trigger {
     }
   }
 
+  /** Constructor of [[Trigger.Create]]. */
   object Create {
+
+    /**
+     * Creates the trigger with the given branch filters, both empty by default.
+     */
     def apply(
       branches: Seq[Branch] = Seq.empty,
       ignoredBranches: Seq[Branch] = Seq.empty
@@ -245,6 +386,10 @@ object Trigger {
       )
   }
 
+  /**
+   * The `workflow_run` event, rendered with the `workflows` to watch and the
+   * activity `types`.
+   */
   case class WorkflowRun private (
     workflows: Chunk[String],
     types: Chunk[String]
@@ -259,25 +404,55 @@ object Trigger {
       )
   }
 
+  /** Constructor of [[Trigger.WorkflowRun]]. */
   object WorkflowRun {
+
+    /**
+     * Creates the trigger for the named `workflows`. The `types` default to
+     * `completed`.
+     */
     def apply(workflows: Seq[String], types: Seq[String] = Seq("completed")): WorkflowRun =
       WorkflowRun(Chunk.fromIterable(workflows), Chunk.fromIterable(types))
   }
 
+  /** The `issue_comment` event, rendered with the activity `types`. */
   case class IssueComment private (types: Chunk[String]) extends Trigger {
     override def toKeyValuePair: (String, Json) =
       ("issue_comment", Json.Obj(("types", types.toJsonAST.getOrElse(Json.Null))))
   }
 
+  /** Constructor of [[Trigger.IssueComment]]. */
   object IssueComment {
+
+    /**
+     * Creates the trigger with the given activity types, which default to
+     * `created`, `edited` and `deleted`.
+     */
     def apply(types: Seq[String] = Seq("created", "edited", "deleted")): IssueComment =
       IssueComment(Chunk.fromIterable(types))
   }
 }
 
+/**
+ * A job strategy, rendered with the keys `fail-fast`, `max-parallel` and
+ * `matrix`.
+ *
+ * @param matrix
+ *   the values of each matrix axis, keyed by axis name
+ * @param maxParallel
+ *   the value of `max-parallel`, left unset when `None`
+ * @param failFast
+ *   the value of `fail-fast`, `true` by default
+ */
 case class Strategy(matrix: Map[String, List[String]], maxParallel: Option[Int] = None, failFast: Boolean = true)
 
+/** The JSON encoder of [[Strategy]]. */
 object Strategy {
+
+  /**
+   * Encodes a strategy as an object with the keys `fail-fast`, `max-parallel`
+   * and `matrix`.
+   */
   implicit val encoder: JsonEncoder[Strategy] =
     JsonEncoder[Json].contramap { s =>
       Json.Obj(
@@ -288,20 +463,44 @@ object Strategy {
     }
 }
 
+/**
+ * A reference to an action, such as `actions/checkout@v7.0.1`, rendered as a
+ * string under `uses`.
+ */
 case class ActionRef(ref: String)
+
+/** The JSON encoder of [[ActionRef]]. */
 object ActionRef {
+
+  /** Encodes the reference as a plain string. */
   implicit val encoder: JsonEncoder[ActionRef] =
     JsonEncoder.string.contramap(_.ref)
 }
 
+/** A condition rendered under `if`, on a step or on a job. */
 sealed trait Condition {
+
+  /** Returns the conjunction of this condition and `other`. */
   def &&(other: Condition): Condition
+
+  /** Returns the disjunction of this condition and `other`. */
   def ||(other: Condition): Condition
+
+  /** Returns the text rendered under `if`. */
   def asString: String
 }
 
+/** The kinds of condition and their JSON encoder. */
 object Condition {
+
+  /** A GitHub expression, rendered wrapped as `\${{ expression }}`. */
   case class Expression(expression: String) extends Condition {
+
+    /**
+     * Returns an expression that joins the two with `&&`, each side in
+     * parentheses. Throws a `java.lang.IllegalArgumentException` with the
+     * message "Not supported currently" when `other` is a `Function`.
+     */
     def &&(other: Condition): Condition =
       other match {
         case Expression(otherExpression: String) =>
@@ -310,6 +509,11 @@ object Condition {
           throw new IllegalArgumentException("Not supported currently")
       }
 
+    /**
+     * Returns an expression that joins the two with `||`, each side in
+     * parentheses. Throws a `java.lang.IllegalArgumentException` with the
+     * message "Not supported currently" when `other` is a `Function`.
+     */
     def ||(other: Condition): Condition =
       other match {
         case Expression(otherExpression: String) =>
@@ -318,28 +522,74 @@ object Condition {
           throw new IllegalArgumentException("Not supported currently")
       }
 
+    /** Returns the expression wrapped as `\${{ expression }}`. */
     def asString: String = s"$${{ $expression }}"
   }
 
+  /**
+   * A status check function such as `failure()`, rendered as is without the
+   * `\${{ }}` wrapper.
+   */
   case class Function(expression: String) extends Condition {
+
+    /**
+     * Throws a `java.lang.IllegalArgumentException` with the message "Not
+     * supported currently".
+     */
     def &&(other: Condition): Condition =
       throw new IllegalArgumentException("Not supported currently")
 
+    /**
+     * Throws a `java.lang.IllegalArgumentException` with the message "Not
+     * supported currently".
+     */
     def ||(other: Condition): Condition =
       throw new IllegalArgumentException("Not supported currently")
 
+    /** Returns the function text unchanged. */
     def asString: String = expression
   }
 
+  /** Encodes a condition as the string returned by `asString`. */
   implicit val encoder: JsonEncoder[Condition] =
     JsonEncoder.string.contramap(_.asString)
 }
 
+/**
+ * One step of a job, or a sequence of steps that is flattened into the job's
+ * step list.
+ */
 sealed trait Step {
+
+  /**
+   * Returns a copy with `condition` as the `if` condition of each step it
+   * contains, replacing any condition already set.
+   */
   def when(condition: Condition): Step
+
+  /** Returns the single steps this step consists of, in order. */
   def flatten: Chunk[Step.SingleStep]
 }
+
+/** The kinds of step and their JSON encoder. */
 object Step {
+
+  /**
+   * A single workflow step.
+   *
+   * @param uses
+   *   the action to run, rendered as `uses`
+   * @param condition
+   *   rendered as `if`
+   * @param parameters
+   *   the inputs of the action, rendered as `with` and left out when empty
+   * @param run
+   *   the shell command to run
+   * @param env
+   *   the environment of the step, left out when empty
+   * @param continueOnError
+   *   rendered as `continue-on-error: true` when `true`, and left out otherwise
+   */
   case class SingleStep(
     name: String,
     id: Option[String] = None,
@@ -360,6 +610,10 @@ object Step {
     override def flatten: Chunk[Step.SingleStep] = Chunk.single(this)
   }
 
+  /**
+   * A group of steps. `when` applies a condition to each of them and `flatten`
+   * returns all their single steps in order.
+   */
   case class StepSequence private (steps: Chunk[Step]) extends Step {
     override def when(condition: Condition): Step =
       copy(steps = steps.map(_.when(condition)))
@@ -368,11 +622,18 @@ object Step {
       steps.flatMap(_.flatten)
   }
 
+  /** Constructor of [[Step.StepSequence]]. */
   object StepSequence {
+
+    /** Creates a sequence from the given steps. */
     def apply(steps: Seq[Step]): StepSequence =
       StepSequence(Chunk.fromIterable(steps))
   }
 
+  /**
+   * Encodes a step with the keys `name`, `id`, `uses`, `if`, `with`, `run`,
+   * `env` and `continue-on-error`. Keys without a value are encoded as null.
+   */
   implicit val encoder: JsonEncoder[SingleStep] =
     JsonEncoder[Json].contramap { s =>
       Json.Obj(
@@ -388,8 +649,13 @@ object Step {
     }
 }
 
+/** A container image reference, such as `postgres:17`, rendered as a string. */
 case class ImageRef(ref: String)
+
+/** The JSON encoder of [[ImageRef]]. */
 object ImageRef {
+
+  /** Encodes the reference as a plain string. */
   implicit val encoder: JsonEncoder[ImageRef] =
     JsonEncoder.string.contramap(_.ref)
 }
@@ -398,11 +664,15 @@ object ImageRef {
  * A port mapping, rendered as `inner:outer`.
  *
  * GitHub reads that as `<host>:<container>`, so `inner` is the port exposed on
- * the runner and `outer` the port inside the service container. A step reaching
- * the service connects to `inner` on localhost.
+ * the runner and `outer` the port inside the service container. A step that
+ * runs on the runner reaches the service at `inner` on localhost.
  */
 case class ServicePort(inner: Int, outer: Int)
+
+/** The JSON encoder of [[ServicePort]]. */
 object ServicePort {
+
+  /** Encodes a port mapping as the string `inner:outer`. */
   implicit val encoder: JsonEncoder[ServicePort] =
     JsonEncoder.string.contramap(sp => s"${sp.inner}:${sp.outer}")
 }
@@ -429,7 +699,14 @@ case class Service(
   ports: Chunk[ServicePort] = Chunk.empty,
   options: Option[String] = None
 )
+
+/** The JSON encoder of [[Service]]. */
 object Service {
+
+  /**
+   * Encodes a service with the keys `image`, `env`, `ports` and `options`. The
+   * `env` and `ports` keys are encoded as null when empty.
+   */
   implicit val encoder: JsonEncoder[Service] =
     JsonEncoder[Json].contramap { s =>
       Json.Obj(
@@ -452,21 +729,50 @@ object Service {
  * completion.
  */
 sealed trait CancelInProgress {
+
+  /** Returns the value rendered under `cancel-in-progress`. */
   def toJsonValue: Json
 }
 
+/** The kinds of cancel-in-progress setting. */
 object CancelInProgress {
-  case object Always extends CancelInProgress { def toJsonValue: Json = Json.Bool(true)  }
-  case object Never  extends CancelInProgress { def toJsonValue: Json = Json.Bool(false) }
 
+  /** Always cancels the earlier run, rendered as `true`. */
+  case object Always extends CancelInProgress { def toJsonValue: Json = Json.Bool(true) }
+
+  /** Never cancels the earlier run, rendered as `false`. */
+  case object Never extends CancelInProgress { def toJsonValue: Json = Json.Bool(false) }
+
+  /**
+   * Cancels the earlier run according to `condition`, rendered as its
+   * `asString` text.
+   */
   final case class When(condition: Condition) extends CancelInProgress {
+
+    /** Returns the `asString` text of the condition as a JSON string. */
     def toJsonValue: Json = Json.Str(condition.asString)
   }
 }
 
+/**
+ * A concurrency setting, rendered with the keys `group` and
+ * `cancel-in-progress`.
+ *
+ * @param group
+ *   the concurrency group name, which may contain expressions
+ * @param cancelInProgress
+ *   whether an in-flight run of the group is cancelled,
+ *   `CancelInProgress.Always` by default
+ */
 case class Concurrency(group: String, cancelInProgress: CancelInProgress = CancelInProgress.Always)
 
+/** The JSON encoder of [[Concurrency]]. */
 object Concurrency {
+
+  /**
+   * Encodes a concurrency setting with the keys `group` and
+   * `cancel-in-progress`.
+   */
   implicit val encoder: JsonEncoder[Concurrency] =
     JsonEncoder[Json].contramap { c =>
       Json.Obj(
@@ -478,6 +784,27 @@ object Concurrency {
 
 // The synthetic `copy`/`apply`/`unapply` all mention the deprecated `timeoutMinutes`, which would
 // otherwise warn here on every compile - and `enableStrictCompile` turns warnings into errors.
+/**
+ * A workflow job. Create one with `Job.apply`, which takes sequences and fills
+ * in defaults.
+ *
+ * @param id
+ *   the key of the job under `jobs`
+ * @param runsOn
+ *   the runner label rendered as `runs-on`
+ * @param timeoutMinutes
+ *   deprecated; a value other than 30 is rendered as `timeout-minutes` when
+ *   `jobTimeout` is not set
+ * @param need
+ *   the ids of the jobs this job waits for, rendered as `needs`
+ * @param condition
+ *   rendered as `if`
+ * @param jobTimeout
+ *   the value of `timeout-minutes`, which takes precedence over
+ *   `timeoutMinutes`
+ * @param permissions
+ *   the job-level `permissions`, left out when empty
+ */
 @nowarn("cat=deprecation")
 case class Job private (
   id: String,
@@ -495,25 +822,44 @@ case class Job private (
   concurrency: Option[Concurrency],
   permissions: Map[String, String]
 ) {
+
+  /** Returns a copy with the given strategy. */
   def withStrategy(strategy: Strategy): Job =
     copy(strategy = Some(strategy))
 
+  /** Returns a copy with the given `runs-on` label. */
   def withRunsOn(runsOn: String): Job =
     copy(runsOn = runsOn)
 
+  /**
+   * Returns a copy whose steps are the given ones, replacing the existing
+   * steps.
+   */
   def withSteps(steps: Step*): Job =
     copy(steps = Chunk.fromIterable(steps))
 
+  /**
+   * Returns a copy whose services are the given ones, replacing the existing
+   * services.
+   */
   def withServices(services: Service*): Job =
     copy(services = Chunk.fromIterable(services))
 
+  /**
+   * Returns a copy with `timeout-minutes` set to the given number of minutes.
+   */
   def withTimeout(minutes: Int): Job =
     copy(jobTimeout = Some(minutes))
 
+  /**
+   * Returns a copy whose job-level permissions are the given pairs, replacing
+   * the existing permissions.
+   */
   def withPermissions(permissions: (String, String)*): Job =
     copy(permissions = permissions.toMap)
 }
 
+/** Constructors and the encoder of [[Job]]. */
 object Job {
 
   /**
@@ -527,6 +873,10 @@ object Job {
    */
   private final val UnsetTimeoutMinutes = 30
 
+  /**
+   * Creates a job with the given `id` and `name`. `runsOn` defaults to
+   * `ubuntu-latest`, and the other arguments default to empty or unset values.
+   */
   def apply(
     id: String,
     name: String,
@@ -568,6 +918,12 @@ object Job {
   private def timeoutOf(job: Job): Option[Int] =
     job.jobTimeout.orElse(Some(job.timeoutMinutes).filter(_ != UnsetTimeoutMinutes))
 
+  /**
+   * Encodes the body of a job, without its `id`. Renders `name`, `runs-on`,
+   * `timeout-minutes`, `concurrency`, `continue-on-error`, `permissions`,
+   * `strategy`, `needs`, `services`, `if` and `steps`, where the steps are
+   * flattened. Keys without a value are encoded as null.
+   */
   implicit val encoder: JsonEncoder[Job] =
     JsonEncoder[Json].contramap { job =>
       val servicesJson = if (job.services.nonEmpty) {
@@ -595,6 +951,16 @@ object Job {
     }
 }
 
+/**
+ * A GitHub Actions workflow. Create one with `Workflow.apply`.
+ *
+ * @param env
+ *   the workflow-level `env`
+ * @param triggers
+ *   the events rendered under `on`
+ * @param concurrency
+ *   the workflow-level `concurrency`, left out when `None`
+ */
 case class Workflow private (
   name: String,
   env: Map[String, String],
@@ -605,15 +971,25 @@ case class Workflow private (
   val permissions: Map[String, String],
   val renderPermissions: Boolean
 ) {
+
+  /**
+   * Returns a copy whose triggers are the given ones, replacing the existing
+   * triggers.
+   */
   def on(triggers: Trigger*): Workflow =
     copy(triggers = Chunk.fromIterable(triggers))(permissions, renderPermissions)
 
+  /**
+   * Returns a copy whose jobs are the given ones, replacing the existing jobs.
+   */
   def withJobs(jobs: Job*): Workflow =
     copy(jobs = Chunk.fromIterable(jobs))(permissions, renderPermissions)
 
+  /** Returns a copy with `job` appended after the existing jobs. */
   def addJob(job: Job): Workflow =
     copy(jobs = jobs :+ job)(permissions, renderPermissions)
 
+  /** Returns a copy with `newJobs` appended after the existing jobs. */
   def addJobs(newJobs: Chunk[Job]): Workflow =
     copy(jobs = jobs ++ newJobs)(permissions, renderPermissions)
 
@@ -622,22 +998,29 @@ case class Workflow private (
    *
    * That is not the same as an empty map, which renders `permissions: {}` and
    * grants the token nothing. With no block, the workflow runs with the
-   * repository's default token permissions, which is what a workflow written
-   * before `permissions` was added to this DSL relies on.
+   * repository's default token permissions.
    */
   def withoutPermissions: Workflow =
     copy()(permissions, renderPermissions = false)
 }
 
+/** Constructors, defaults and the encoder of [[Workflow]]. */
 object Workflow {
+
+  /**
+   * The default workflow-level permissions: `id-token` set to `write` and
+   * `contents` set to `read`.
+   */
   val defaultPermissions: Map[String, String] = Map("id-token" -> "write", "contents" -> "read")
 
   /**
-   * One run per branch, except on the default branch where every run is kept.
+   * One run per Git ref (branch, tag or pull request), except on the default
+   * branch where every run is kept.
    *
-   * This was hard-coded into the encoder before it became configurable, so it
-   * stays the default to keep generated workflows byte-identical for builds
-   * that do not override it.
+   * The group is built from the workflow name and, on the default branch, the
+   * run id (otherwise the ref), and `cancelInProgress` is
+   * `CancelInProgress.Always`. It is the default `concurrency` of
+   * `Workflow.apply`.
    */
   val defaultConcurrency: Concurrency = Concurrency(
     group =
@@ -645,6 +1028,11 @@ object Workflow {
     cancelInProgress = CancelInProgress.Always
   )
 
+  /**
+   * Creates a workflow with the given `name`. `permissions` defaults to
+   * `defaultPermissions` and `concurrency` to `Some(defaultConcurrency)`; the
+   * other arguments default to empty.
+   */
   def apply(
     name: String,
     env: Map[String, String] = Map.empty,
@@ -662,6 +1050,12 @@ object Workflow {
     concurrency = concurrency
   )(permissions, renderPermissions = true)
 
+  /**
+   * Encodes a workflow with the keys `name`, `env`, `on`, `permissions`,
+   * `concurrency` and `jobs`. `on` is encoded as null when there are no
+   * triggers, and `permissions` when the workflow was built with
+   * `withoutPermissions`.
+   */
   implicit val encoder: JsonEncoder[Workflow] =
     JsonEncoder[Json].contramap { wf =>
       val onJson = if (wf.triggers.isEmpty) {

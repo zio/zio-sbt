@@ -27,6 +27,15 @@ import sbtbuildinfo.BuildInfoPlugin
 import sbtheader.HeaderPlugin
 import scalafix.sbt.ScalafixPlugin
 
+/**
+ * An sbt plugin that is enabled automatically on projects where its required
+ * plugins are enabled (it triggers on `allRequirements`). It requires the
+ * header, scalafix, scalafmt and build-info plugins, registers the `fix`,
+ * `fmt`, `lint`, `prepare`, `publish-all` and `quiet` commands and the `build`,
+ * `enableStrictCompile` and `disableStrictCompile` tasks, shows a welcome
+ * banner, and sets the default Scala versions, ZIO version, `javaPlatform`,
+ * license, organization, homepage and SCM information.
+ */
 object ZioSbtEcosystemPlugin extends AutoPlugin {
 
   override def trigger = allRequirements
@@ -34,29 +43,76 @@ object ZioSbtEcosystemPlugin extends AutoPlugin {
   override def requires: Plugins =
     super.requires && HeaderPlugin && ScalafixPlugin && ScalafmtPlugin && BuildInfoPlugin
 
+  /**
+   * The keys and helpers that the plugin makes available in `build.sbt`,
+   * together with the members of [[ScalaCompilerSettings]].
+   */
   object autoImport extends ScalaCompilerSettings {
 
+    /**
+     * Returns settings that register the given command strings as a command
+     * with the given name and description, and list it in
+     * `usefulTasksAndSettings`.
+     */
     def addCommand(commandString: List[String], name: String, description: String): Seq[Setting[_]] = {
       val cCommand = Commands.ComposableCommand(commandString, name, description)
       addCommand(cCommand)
     }
 
+    /**
+     * Returns settings that register `command` as an sbt command and add its
+     * name and description to `usefulTasksAndSettings`.
+     */
     def addCommand(command: Commands.ComposableCommand): Seq[Setting[_]] =
       Seq(
         commands += command.toCommand,
         usefulTasksAndSettings += command.toItem
       )
 
-    lazy val scala3: SettingKey[String]     = settingKey[String]("Scala 3 version")
-    lazy val scala212: SettingKey[String]   = settingKey[String]("Scala 2.12 version")
-    lazy val scala213: SettingKey[String]   = settingKey[String]("Scala 2.13 version")
+    /**
+     * The Scala 3 version; the plugin sets it to `Versions.scala3` in the build
+     * settings.
+     */
+    lazy val scala3: SettingKey[String] = settingKey[String]("Scala 3 version")
+
+    /**
+     * The Scala 2.12 version; the plugin sets it to `Versions.scala212` in the
+     * build settings.
+     */
+    lazy val scala212: SettingKey[String] = settingKey[String]("Scala 2.12 version")
+
+    /**
+     * The Scala 2.13 version; the plugin sets it to `Versions.scala213` in the
+     * build settings, and uses it as the default `scalaVersion`.
+     */
+    lazy val scala213: SettingKey[String] = settingKey[String]("Scala 2.13 version")
+
+    /**
+     * The ZIO version; the plugin sets it to `Versions.zioVersion` in the build
+     * settings, and `enableZIO` uses it for the ZIO dependencies.
+     */
     lazy val zioVersion: SettingKey[String] = settingKey[String]("ZIO version")
 
+    /**
+     * The Java platform version of the build. The plugin sets it to `"17"` in
+     * the build settings, and `stdSettings` sets it from its `javaPlatform`
+     * parameter, whose default is `"17"`.
+     */
     lazy val javaPlatform: SettingKey[String] = settingKey[String]("java target platform, default is 11")
 
+    /**
+     * Whether the welcome banner is shown as the `onLoadMessage`. The plugin
+     * sets it to `true`, and the `quiet` command changes it.
+     */
     val welcomeBannerEnabled: SettingKey[Boolean] =
       settingKey[Boolean]("Indicates whether or not to enable the welcome banner.")
 
+    /**
+     * A map from task or setting name to its description, listed in the welcome
+     * banner. The plugin starts it with entries for its commands,
+     * `enableStrictCompile`, `disableStrictCompile`, `~compile`, `test` and
+     * `testOnly`, and `addCommand` adds entries.
+     */
     val usefulTasksAndSettings: SettingKey[Map[String, String]] = settingKey[Map[String, String]](
       "A map of useful tasks and settings that will be displayed as part of the welcome banner."
     )
@@ -74,6 +130,12 @@ object ZioSbtEcosystemPlugin extends AutoPlugin {
     """testOnly *.YourSpec -- -t \"YourLabel\"""" -> "Only runs tests with matching term e.g."
   )
 
+  /**
+   * Returns the setting for `onLoadMessage`: when `welcomeBannerEnabled` is
+   * `true`, the `Banner.trueColor` banner with the project name and version,
+   * then `Useful sbt tasks:` and one line per entry of
+   * `usefulTasksAndSettings`; otherwise an empty string.
+   */
   def welcomeMessage: Setting[String] =
     onLoadMessage := {
       if (welcomeBannerEnabled.value) {

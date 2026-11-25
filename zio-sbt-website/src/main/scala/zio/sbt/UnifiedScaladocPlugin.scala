@@ -20,6 +20,14 @@ import sbt.Keys._
 import sbt._
 import sbtunidoc.ScalaUnidocPlugin
 
+/**
+ * An sbt plugin that sets `Compile / doc` to the `ScalaUnidoc / doc` task of
+ * sbt-unidoc, which builds one Scaladoc from the sources (TASTy files on Scala
+ * 3) of the projects that `ScalaUnidoc / unidoc / unidocProjectFilter` selects:
+ * every project of the build unless the build narrows it. It requires
+ * `ScalaUnidocPlugin` and is enabled per project (it has no trigger of its
+ * own).
+ */
 object UnifiedScaladocPlugin extends sbt.AutoPlugin {
   override def requires = ScalaUnidocPlugin
 
