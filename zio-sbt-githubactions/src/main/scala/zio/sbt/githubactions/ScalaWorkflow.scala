@@ -88,10 +88,11 @@ object ScalaWorkflow {
   /**
    * Returns a step named "Cache SBT" that runs `actions/cache` on the
    * directories `~/.ivy2/cache`, `~/.sbt`, `~/.coursier/cache/v1` and
-   * `~/.cache/coursier/v1`. The cache key joins the operating system, the Scala
-   * version, and the hashes of the `.sbt` files and of the `build.properties`
-   * files. The operating system and Scala version fall back to
-   * `\${{ matrix.os }}` and `\${{ matrix.scala }}` when `None`.
+   * `~/.cache/coursier/v1`. The cache key is the operating system, `sbt`, the
+   * Scala version and the hashes of the `.sbt` files and of the
+   * `build.properties` files, joined with dashes. The operating system and
+   * Scala version fall back to `\${{ matrix.os }}` and `\${{ matrix.scala }}`
+   * when `None`.
    */
   def cacheSBT(
     os: Option[OS] = None,

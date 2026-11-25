@@ -24,8 +24,8 @@ import zio.json.ast.Json
 import zio.sbt.githubactions.Step.StepSequence
 
 /**
- * A runner operating system, rendered as the `os` values of a job matrix and as
- * `runs-on`.
+ * A runner operating system, rendered as a value of the `os` matrix axis and in
+ * the cache and artifact names that `ScalaWorkflow` builds.
  */
 sealed trait OS {
 
@@ -46,7 +46,7 @@ object OS {
  */
 sealed trait DependencyBot {
 
-  /** The GitHub login of the bot account, including the `[bot]` suffix. */
+  /** The GitHub login of the bot account, for example `dependabot[bot]`. */
   def login: String
 }
 
@@ -76,21 +76,29 @@ object DependencyBot {
 /**
  * How the Netlify website preview of a pull request is deployed.
  *
- *   - `Automatic`: deploy after every successful CI run on a pull request.
- *   - `OnDemand`: post a comment with a checkbox after every successful CI run,
- *     and deploy only when someone with write access ticks it.
+ *   - `Automatic`: deploy after a successful CI run on a pull request that
+ *     uploaded the website artifact, which the build job does when the website
+ *     is installed and `docs/` or `website/` changed.
+ *   - `OnDemand`: post a comment with a checkbox after a successful CI run on a
+ *     pull request that uploaded the website artifact, and deploy only when
+ *     someone with write access ticks it.
  */
 sealed trait DeployPreviewMode
 
 /** The modes of deploying a website preview. */
 object DeployPreviewMode {
 
-  /** Deploys the preview after every successful CI run on a pull request. */
+  /**
+   * Deploys the preview after a successful CI run on a pull request that
+   * uploaded the website artifact, which the build job does when the website is
+   * installed and `docs/` or `website/` changed.
+   */
   case object Automatic extends DeployPreviewMode
 
   /**
-   * Posts a comment with a checkbox after every successful CI run, and deploys
-   * only when someone with write access ticks it.
+   * Posts a comment with a checkbox after a successful CI run on a pull request
+   * that uploaded the website artifact, and deploys only when someone with
+   * write access ticks it.
    */
   case object OnDemand extends DeployPreviewMode
 }
@@ -866,8 +874,8 @@ object Job {
   private final val UnsetTimeoutMinutes = 30
 
   /**
-   * Creates a job. `runsOn` defaults to `ubuntu-latest`, and the other
-   * arguments default to empty or unset values.
+   * Creates a job with the given `id` and `name`. `runsOn` defaults to
+   * `ubuntu-latest`, and the other arguments default to empty or unset values.
    */
   def apply(
     id: String,
@@ -1006,7 +1014,8 @@ object Workflow {
   val defaultPermissions: Map[String, String] = Map("id-token" -> "write", "contents" -> "read")
 
   /**
-   * One run per branch, except on the default branch where every run is kept.
+   * One run per Git ref (branch, tag or pull request), except on the default
+   * branch where every run is kept.
    *
    * The group is built from the workflow name and, on the default branch, the
    * run id (otherwise the ref), and `cancelInProgress` is
@@ -1020,9 +1029,9 @@ object Workflow {
   )
 
   /**
-   * Creates a workflow. `permissions` defaults to `defaultPermissions` and
-   * `concurrency` to `Some(defaultConcurrency)`; the other arguments default to
-   * empty.
+   * Creates a workflow with the given `name`. `permissions` defaults to
+   * `defaultPermissions` and `concurrency` to `Some(defaultConcurrency)`; the
+   * other arguments default to empty.
    */
   def apply(
     name: String,

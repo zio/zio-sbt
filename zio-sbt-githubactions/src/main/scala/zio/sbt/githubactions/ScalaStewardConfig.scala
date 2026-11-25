@@ -31,9 +31,9 @@ case class ScalaStewardDependency(
 
 /**
  * One `pullRequests.grouping` match criterion. `version` is expected to be
- * "major", "minor" or "patch"; `group` is a groupId, which may be a glob such
- * as `"org.typelevel"` or `"*"`. An entry setting both requires both to match,
- * and the entries of a rule's `filter` list are alternatives.
+ * "major", "minor" or "patch"; `group` is a groupId such as `"org.typelevel"`,
+ * or a glob such as `"*"`. An entry setting both requires both to match, and
+ * the entries of a rule's `filter` list are alternatives.
  */
 case class ScalaStewardGroupFilter(group: Option[String] = None, version: Option[String] = None)
 
