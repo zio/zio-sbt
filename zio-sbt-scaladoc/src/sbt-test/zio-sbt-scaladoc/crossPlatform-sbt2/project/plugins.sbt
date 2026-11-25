@@ -5,4 +5,4 @@ sys.props.get("plugin.version") match {
 }
 
 addSbtPlugin("org.scala-js"     % "sbt-scalajs"      % "1.23.0")
-addSbtPlugin("org.scala-native" % "sbt-scala-native" % "0.5.12")
+addSbtPlugin("org.scala-native" % "sbt-scala-native" % "0.5.13")
