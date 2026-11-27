@@ -1,3 +1,8 @@
-# Default ciEnableDependabot := true generates the default github-actions config.
+# Default ciEnableDependabot := true generates the default github-actions config, which excludes the
+# generated workflows but not the hand-written one.
 > ciGenerateGithubWorkflow
 > checkDependabot
+
+> set ThisBuild / ciDependabotExcludeGenerated := false
+> ciGenerateGithubWorkflow
+> checkNoExcludePaths

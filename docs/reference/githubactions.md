@@ -39,7 +39,7 @@ These types are the values of the `ci*` settings of [ZIO SBT CI](./ci.md).
 | `DependencyBot`                | `ciDependencyUpdateBots`                         | `Dependabot` (`dependabot[bot]`), `Renovate` (`renovate[bot]`), `ScalaSteward(githubAppName)` (`<githubAppName>[bot]`) and `Custom(login)` |
 | `DeployPreviewMode`            | `ciDeployPreviewMode`                            | `Automatic` or `OnDemand`                                                                             |
 | `DependabotConfig`             | `ciDependabotConfig`                             | `DependabotConfig(updates)`, by default one weekly `github-actions` update                            |
-| `DependabotUpdate`             | `DependabotConfig`                               | `ecosystem`, `directory = "/"`, `interval = "weekly"`, `openPullRequestsLimit` and `groups`           |
+| `DependabotUpdate`             | `DependabotConfig`                               | `ecosystem`, `directory = "/"`, `interval = "weekly"`, `openPullRequestsLimit`, `groups` and `excludePaths` |
 | `DependabotGroup`              | `DependabotUpdate`                               | `name`, `patterns` and `updateTypes`                                                                  |
 | `ScalaStewardConfig`           | `ciScalaStewardConfig`                           | The `.scala-steward.conf` content: `pins`, `allow`, `ignore`, `updatesLimit`, `updatePullRequests`, `commitMessage`, `pullRequestsFrequency`, `grouping`, `assignees` and `reviewers` |
 | `ScalaStewardDependency`       | `ScalaStewardConfig`                             | `groupId`, `artifactId` and `version`                                                                 |
