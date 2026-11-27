@@ -88,6 +88,7 @@ All settings are `ThisBuild`-scoped.
 | `ciEnableDependabot` | `Boolean` | `true` | Generates `.github/dependabot.yml`. Overwrites a hand-written one when on; when off, only deletes a copy it generated itself |
 | `ciEnableRegenerateWorkflows` | `Boolean` | `true` | Generates `regenerate-workflows.yml`, which re-runs `ciGenerateGithubWorkflow` on bot PRs and pushes the result to the PR branch. When off, only deletes a copy it generated itself |
 | `ciDependabotConfig` | `DependabotConfig` | one weekly `github-actions` update at `/` | Content of the generated `dependabot.yml` |
+| `ciDependabotExcludeGenerated` | `Boolean` | `true` | Adds the generated workflows to the `exclude-paths` of each `github-actions` update, since their action versions come from the plugin |
 
 ### Test Matrix
 

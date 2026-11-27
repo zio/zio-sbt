@@ -7,5 +7,9 @@ lazy val root = (project in file("."))
       baseDirectory.value,
       "dependabot",
       ".github/dependabot.yml"
-    )
+    ),
+    TaskKey[Unit]("checkNoExcludePaths") := {
+      val f = baseDirectory.value / ".github" / "dependabot.yml"
+      if (IO.read(f).contains("exclude-paths")) sys.error(s"expected no exclude-paths in $f")
+    }
   )

@@ -28,14 +28,16 @@ case class DependabotGroup(
 )
 
 /**
- * One item of the `updates` list in `.github/dependabot.yml`.
+ * One item of the `updates` list in `.github/dependabot.yml`. `excludePaths`
+ * are glob patterns of files Dependabot skips.
  */
 case class DependabotUpdate(
   ecosystem: String,
   directory: String = "/",
   interval: String = "weekly",
   openPullRequestsLimit: Option[Int] = None,
-  groups: Seq[DependabotGroup] = Seq.empty
+  groups: Seq[DependabotGroup] = Seq.empty,
+  excludePaths: Seq[String] = Seq.empty
 )
 
 /**
@@ -71,8 +73,11 @@ object DependabotConfig {
     val groups =
       if (u.groups.isEmpty) Seq.empty[String]
       else "    groups:" +: u.groups.flatMap(renderGroup)
+    val excludePaths =
+      if (u.excludePaths.isEmpty) Seq.empty[String]
+      else "    exclude-paths:" +: u.excludePaths.map(p => s"      - ${q(p)}")
 
-    header ++ limit ++ groups
+    header ++ limit ++ groups ++ excludePaths
   }
 
   /**

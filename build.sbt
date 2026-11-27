@@ -81,7 +81,9 @@ inThisBuild(
       DependencyBot.Custom("zio-assistant[bot]")
     ),
     // GitHub Actions versions are pinned in zio-sbt-githubactions' `V.scala` and baked into the generated
-    // workflows; `dependabot-regenerate-workflows.yml` syncs each Dependabot PR back to `V.scala`.
+    // workflows; `dependabot-regenerate-workflows.yml` syncs each Dependabot PR back to `V.scala`, so here
+    // Dependabot has to bump the generated workflows.
+    ciDependabotExcludeGenerated := false,
     // The Docusaurus site under website/ is built with npm; Docusaurus and its peer packages are
     // grouped so they always move together in a single PR.
     ciDependabotConfig := DependabotConfig(
