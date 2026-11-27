@@ -10,13 +10,14 @@ _ZIO SBT_ contains multiple sbt plugins that are useful for ZIO projects. It pro
 
 ## Overview
 
-ZIO SBT is made of five modules, three of which are sbt plugins that a ZIO project enables in its build:
+ZIO SBT is made of six modules, four of which are sbt plugins that a ZIO project enables in its build:
 
 - **ZIO SBT Ecosystem** (`zio-sbt-ecosystem`) holds the standard settings, compiler options and commands (`fmt`, `lint`, `prepare`) that every ZIO project shares.
 - **ZIO SBT Website** (`zio-sbt-website`) compiles the documentation in `docs/` with mdoc, builds and previews the Docusaurus website, publishes the docs to npm, and generates the `README.md`.
 - **ZIO SBT CI** (`zio-sbt-ci`) generates the GitHub Actions workflows of a project from its `build.sbt`.
 - **ZIO SBT GitHub Actions** (`zio-sbt-githubactions`) is the model of GitHub workflows (`Workflow`, `Job`, `Step`, ...) that ZIO SBT CI is built on. It comes with `zio-sbt-ci`, so it needs no installation of its own.
 - **ZIO SBT Source** (`zio-sbt-source`) is a library, not an sbt plugin, that embeds source files and evaluated expressions into the documentation.
+- **ZIO SBT Scaladoc** (`zio-sbt-scaladoc`) compiles the code examples in Scaladoc comments, on every Scala version and platform, so they cannot go stale.
 
 ## Installation
 
@@ -24,13 +25,13 @@ Add the following lines to your `project/plugins.sbt` file:
 
 ```scala
 // Standard settings, compiler options and the fmt, lint and prepare commands
-addSbtPlugin("dev.zio" % "zio-sbt-ecosystem" % "0.8.12")
+addSbtPlugin("dev.zio" % "zio-sbt-ecosystem" % "0.8.13")
 
 // Generates the GitHub Actions workflows from build.sbt
-addSbtPlugin("dev.zio" % "zio-sbt-ci"        % "0.8.12")
+addSbtPlugin("dev.zio" % "zio-sbt-ci"        % "0.8.13")
 
 // Builds, previews and publishes the documentation website
-addSbtPlugin("dev.zio" % "zio-sbt-website"   % "0.8.12")
+addSbtPlugin("dev.zio" % "zio-sbt-website"   % "0.8.13")
 ```
 
 Then you can enable them by using the following code in your `build.sbt` file:
@@ -47,10 +48,16 @@ enablePlugins(
 Always try to keep the SBT version specified in the `project/build.properties` file up to date to ensure compatibility with the ZIO SBT plugins.
 :::
 
+To compile the code examples in Scaladoc comments (`sbt +scaladocCheck`), also add `zio-sbt-scaladoc` to `project/plugins.sbt`. It turns itself on in every module:
+
+```scala
+addSbtPlugin("dev.zio" % "zio-sbt-scaladoc"  % "0.8.13")
+```
+
 To embed source files into the documentation, also add `zio-sbt-source`, which is a regular library dependency and belongs in the `build.sbt` of the docs project:
 
 ```scala
-libraryDependencies += "dev.zio" %% "zio-sbt-source" % "0.8.12"
+libraryDependencies += "dev.zio" %% "zio-sbt-source" % "0.8.13"
 ```
 
 ## Where to Go Next
